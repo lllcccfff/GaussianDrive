@@ -54,7 +54,7 @@ class BaseEngine(EngineCore, Randomizable):
     def __init__(self, global_config):
         self.c_id = dict()
         self.id_c = dict()
-        self.try_pull_asset()
+        # self.try_pull_asset()
         EngineCore.__init__(self, global_config)
         Randomizable.__init__(self, self.global_random_seed)
         self.episode_step = 0
@@ -62,7 +62,6 @@ class BaseEngine(EngineCore, Randomizable):
         self.interface = Interface(self)
 
         # managers
-        self.task_manager = self.taskMgr  # use the inner TaskMgr of Panda3D as MetaDrive task manager
         self._managers = OrderedDict()
 
         # for recovering, they can not exist together
@@ -70,9 +69,6 @@ class BaseEngine(EngineCore, Randomizable):
         self.replay_episode = False
         self.only_reset_when_replay = False
         # self.accept("s", self._stop_replay)
-
-        # add camera or not
-        self.main_camera = self.setup_main_camera()
 
         self._spawned_objects = dict()
         self._object_policies = dict()
@@ -95,126 +91,9 @@ class BaseEngine(EngineCore, Randomizable):
         self._current_level = 0
         self._num_scenarios_per_level = int(self.global_config.get("num_scenarios", 1) / self._max_level)
 
-    def add_policy(self, object_id, policy_class, *args, **kwargs):
-        policy = policy_class(*args, **kwargs)
-        self._object_policies[object_id] = policy
-        if self.record_episode:
-            assert self.record_manager is not None, "No record manager"
-            self.record_manager.add_policy_info(object_id, policy_class, *args, **kwargs)
-        return policy
-
-    def get_policy(self, object_id):
-        """
-        Return policy of specific object with id
-        :param object_id: a filter function, only return objects satisfying this condition
-        :return: policy
-        """
-        if object_id in self._object_policies:
-            return self._object_policies[object_id]
-        else:
-            # print("Can not find the policy for object(id: {})".format(object_id))
-            return None
-
-    def has_policy(self, object_id, policy_cls=None):
-        if policy_cls is None:
-            return True if object_id in self._object_policies else False
-        else:
-            return True if object_id in self._object_policies and isinstance(
-                self._object_policies[object_id], policy_cls
-            ) else False
-
-    def spawn_object(self, object_class, force_spawn=False, auto_fill_random_seed=True, record=True, **kwargs):
-        """
-        Call this func to spawn one object
-        :param object_class: object class
-        :param force_spawn: spawn a new object instead of fetching from _dying_objects list
-        :param auto_fill_random_seed: whether to set random seed using purely random integer
-        :param record: record the spawn information
-        :param kwargs: class init parameters
-        :return: object spawned
-        """
-        if ("random_seed" not in kwargs) and auto_fill_random_seed:
-            kwargs["random_seed"] = self.generate_seed()
-        if force_spawn or object_class.__name__ not in self._dying_objects or len(
-                self._dying_objects[object_class.__name__]) == 0:
-            obj = object_class(**kwargs)
-        else:
-            obj = self._dying_objects[object_class.__name__].pop()
-            obj.reset(**kwargs)
-            if not is_map_related_class(object_class) and ("name" not in kwargs or kwargs["name"] is None):
-                obj.random_rename()
-
-        if "name" in kwargs and kwargs["name"] is not None:
-            assert kwargs["name"] == obj.name == obj.id
-        if "id" in kwargs and kwargs["name"] is not None:
-            assert kwargs["id"] == obj.id == obj.name
-
-        if self.global_config["record_episode"] and not self.replay_episode and record:
-            self.record_manager.add_spawn_info(obj, object_class, kwargs)
-        self._spawned_objects[obj.id] = obj
-        color = self._pick_color(obj.id)
-        if color == (-1, -1, -1):
-            raise ValueError(
-                "No color available for object: {} instance segment mask. We already used all {} colors...".format(
-                    obj.id, BaseEngine.MAX_COLOR
-                )
-            )
-
-        obj.attach_to_world(self.worldNP, self.physics_world)
-        return obj
-
-    def _pick_color(self, id):
-        """
-        Return a color multiplier representing a unique color for an object if some colors are available.
-        Return -1,-1,-1 if no color available
-
-        SideEffect: COLOR_PTR will no longer point to the available color
-        SideEffect: COLORS_OCCUPIED[COLOR_PTR] will not be avilable
-        """
-        if len(BaseEngine.COLORS_OCCUPIED) == BaseEngine.MAX_COLOR:
-            return (-1, -1, -1)
-        assert (len(BaseEngine.COLORS_FREE) > 0)
-        my_color = BaseEngine.COLORS_FREE.pop()
-        BaseEngine.COLORS_OCCUPIED.add(my_color)
-        # print("After picking:", len(BaseEngine.COLORS_OCCUPIED), len(BaseEngine.COLORS_FREE))
-        self.id_c[id] = my_color
-        self.c_id[my_color] = id
-        return my_color
-
-    def _clean_color(self, id):
-        """
-        Relinquish a color once the object is focibly destroyed
-        SideEffect:
-        BaseEngins.COLORS_OCCUPIED += 1
-        BaseEngine.COLOR_PTR now points to the idx just released
-        BaseEngine.COLORS_RECORED
-        Mapping Destroyed
-
-        """
-        if id in self.id_c.keys():
-            my_color = self.id_c.pop(id)
-            if my_color in BaseEngine.COLORS_OCCUPIED:
-                BaseEngine.COLORS_OCCUPIED.remove(my_color)
-            BaseEngine.COLORS_FREE.add(my_color)
-            # print("After cleaning:,", len(BaseEngine.COLORS_OCCUPIED), len(BaseEngine.COLORS_FREE))
-            # if id in self.id_c.keys():
-            #     self.id_c.pop(id)
-            assert my_color in self.c_id.keys()
-            self.c_id.pop(my_color)
-
-    def id_to_color(self, id):
-        if id in self.id_c.keys():
-            return self.id_c[id]
-        else:
-            print("Invalid ID: ", id)
-            return -1, -1, -1
-
-    def color_to_id(self, color):
-        if color in self.c_id.keys():
-            return self.c_id[color]
-        else:
-            print("Invalid color:", color)
-            return "NA"
+    def render(self, *kwargs):
+        rendered = self.managers['map_manager'].model.render(*kwargs)
+        return rendered
 
     def get_objects(self, filter: Optional[Union[Callable, List]] = None):
         """
@@ -324,37 +203,37 @@ class BaseEngine(EngineCore, Randomizable):
         # initialize
         self._episode_start_time = time.time()
         self.episode_step = 0
-        if self.global_config["debug_physics_world"]:
-            self.addTask(self.report_body_nums, "report_num")
+        # if self.global_config["debug_physics_world"]:
+        #     self.addTask(self.report_body_nums, "report_num")
 
         # Update record replay
         self.replay_episode = True if self.global_config["replay_episode"] is not None else False
         self.record_episode = self.global_config["record_episode"]
         self.only_reset_when_replay = self.global_config["only_reset_when_replay"]
 
-        _debug_memory_usage = False
+        # _debug_memory_usage = False
 
-        if _debug_memory_usage:
+        # if _debug_memory_usage:
 
-            def process_memory():
-                import psutil
-                import os
-                process = psutil.Process(os.getpid())
-                mem_info = process.memory_info()
-                return mem_info.rss
+        #     def process_memory():
+        #         import psutil
+        #         import os
+        #         process = psutil.Process(os.getpid())
+        #         mem_info = process.memory_info()
+        #         return mem_info.rss
 
-            cm = process_memory()
+        #     cm = process_memory()
 
         # reset manager
         for manager_name, manager in self._managers.items():
             # clean all manager
             new_step_infos = manager.before_reset()
             step_infos = concat_step_infos([step_infos, new_step_infos])
-            if _debug_memory_usage:
-                lm = process_memory()
-                if lm - cm != 0:
-                    print("{}: Before Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
-                cm = lm
+            # if _debug_memory_usage:
+            #     lm = process_memory()
+            #     if lm - cm != 0:
+            #         print("{}: Before Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
+            #     cm = lm
         self.terrain.before_reset()
         self._object_clean_check()
 
@@ -365,34 +244,27 @@ class BaseEngine(EngineCore, Randomizable):
             new_step_infos = manager.reset()
             step_infos = concat_step_infos([step_infos, new_step_infos])
 
-            if _debug_memory_usage:
-                lm = process_memory()
-                if lm - cm != 0:
-                    print("{}: Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
-                cm = lm
+            # if _debug_memory_usage:
+            #     lm = process_memory()
+            #     if lm - cm != 0:
+            #         print("{}: Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
+            #     cm = lm
 
         for manager_name, manager in self.managers.items():
             new_step_infos = manager.after_reset()
             step_infos = concat_step_infos([step_infos, new_step_infos])
 
-            if _debug_memory_usage:
-                lm = process_memory()
-                if lm - cm != 0:
-                    print("{}: After Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
-                cm = lm
+            # if _debug_memory_usage:
+            #     lm = process_memory()
+            #     if lm - cm != 0:
+            #         print("{}: After Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
+            #     cm = lm
 
         # reset terrain
         # center_p = self.current_map.get_center_point() if isinstance(self.current_map, PGMap) else [0, 0]
-        center_p = [0, 0]
-        self.terrain.reset(center_p)
+        # center_p = [0, 0]
+        # self.terrain.reset(center_p)
 
-        # move skybox
-        if self.sky_box is not None:
-            self.sky_box.set_position(center_p)
-
-        # refresh graphics to support multi-thread rendering, avoiding bugs like shadow disappearance at first frame
-        for _ in range(5):
-            self.graphicsEngine.renderFrame()
 
         # reset colors
         BaseEngine.COLORS_FREE = set(COLOR_SPACE)
@@ -451,14 +323,6 @@ class BaseEngine(EngineCore, Randomizable):
                 # after the creation of new cars and then can be recorded in ```record_managers.after_step()```
                 self.record_manager.step()
 
-            if self.force_fps.real_time_simulation and i < step_num - 1:
-                self.task_manager.step()
-
-        #  Do rendering
-        self.task_manager.step()
-        if self.on_screen_message is not None:
-            self.on_screen_message.render()
-
     def after_step(self, *args, **kwargs) -> Dict:
         """
         Update states after finishing movement
@@ -472,24 +336,7 @@ class BaseEngine(EngineCore, Randomizable):
             new_step_info = manager.after_step(*args, **kwargs)
             step_infos = concat_step_infos([step_infos, new_step_info])
         self.interface.after_step()
-
-        # === Option 1: Set episode_step to "num of calls to env.step"
-        # We want to make sure that the episode_step is always aligned to the "number of calls to env.step"
-        # So if this function is called in env.reset, we will not increment episode_step.
-        # if call_from_reset:
-        #     pass
-        # else:
-        #     self.episode_step += 1
-
-        # === Option 2: Following old code.
-        # Note that this function will be called in _get_reset_return.
-        # Therefore, after reset the episode_step is immediately goes to 1
-        # even if no env.step is called.
-
-        # Episode_step should be increased before env.step(). I moved it to engine.before_step() now.
-
-        # cull distant blocks
-        # poses = [v.position for v in self.agent_manager.active_agents.values()]
+        
         return step_infos
 
     def dump_episode(self, pkl_file_name=None) -> None:
@@ -540,99 +387,65 @@ class BaseEngine(EngineCore, Randomizable):
     def __del__(self):
         logger.debug("{} is destroyed".format(self.__class__.__name__))
 
-    def _stop_replay(self):
-        raise DeprecationWarning
-        if not self.IN_REPLAY:
-            return
-        self.STOP_REPLAY = not self.STOP_REPLAY
+    # def _stop_replay(self):
+    #     raise DeprecationWarning
+    #     if not self.IN_REPLAY:
+    #         return
+    #     self.STOP_REPLAY = not self.STOP_REPLAY
 
-    def register_manager(self, manager_name: str, manager):
-        """
-        Add a manager to BaseEngine, then all objects can communicate with this class
-        :param manager_name: name shouldn't exist in self._managers and not be same as any class attribute
-        :param manager: subclass of BaseManager
-        """
-        assert manager_name not in self._managers, "Manager {} already exists in BaseEngine, Use update_manager() to " \
-                                                   "overwrite".format(manager_name)
-        assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEngine"
-        self._managers[manager_name] = manager
-        setattr(self, manager_name, manager)
-        self._managers = OrderedDict(sorted(self._managers.items(), key=lambda k_v: k_v[-1].PRIORITY))
+    # def register_manager(self, manager_name: str, manager):
+    #     """
+    #     Add a manager to BaseEngine, then all objects can communicate with this class
+    #     :param manager_name: name shouldn't exist in self._managers and not be same as any class attribute
+    #     :param manager: subclass of BaseManager
+    #     """
+    #     assert manager_name not in self._managers, "Manager {} already exists in BaseEngine, Use update_manager() to " \
+    #                                                "overwrite".format(manager_name)
+    #     assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEngine"
+    #     self._managers[manager_name] = manager
+    #     setattr(self, manager_name, manager)
+    #     self._managers = OrderedDict(sorted(self._managers.items(), key=lambda k_v: k_v[-1].PRIORITY))
 
-    def seed(self, random_seed):
-        start_seed = self.gets_start_index(self.global_config)
-        random_seed = ((random_seed - start_seed) % self._num_scenarios_per_level) + start_seed
-        random_seed += self._current_level * self._num_scenarios_per_level
-        self.global_random_seed = random_seed
-        super(BaseEngine, self).seed(random_seed)
-        for mgr in self._managers.values():
-            mgr.seed(random_seed)
+    # def seed(self, random_seed):
+    #     start_seed = self.gets_start_index(self.global_config)
+    #     random_seed = ((random_seed - start_seed) % self._num_scenarios_per_level) + start_seed
+    #     random_seed += self._current_level * self._num_scenarios_per_level
+    #     self.global_random_seed = random_seed
+    #     super(BaseEngine, self).seed(random_seed)
+    #     for mgr in self._managers.values():
+    #         mgr.seed(random_seed)
 
-    @staticmethod
-    def gets_start_index(config):
-        start_seed = config.get("start_seed", None)
-        start_scenario_index = config.get("start_scenario_index", None)
-        assert start_seed is None or start_scenario_index is None, \
-            "It is not allowed to define `start_seed` and `start_scenario_index`"
-        if start_seed is not None:
-            return start_seed
-        elif start_scenario_index is not None:
-            return start_scenario_index
-        else:
-            logger.warning("Can not find `start_seed` or `start_scenario_index`. Use 0 as `start_seed`")
-            return 0
+    # @staticmethod
+    # def gets_start_index(config):
+    #     start_seed = config.get("start_seed", None)
+    #     start_scenario_index = config.get("start_scenario_index", None)
+    #     assert start_seed is None or start_scenario_index is None, \
+    #         "It is not allowed to define `start_seed` and `start_scenario_index`"
+    #     if start_seed is not None:
+    #         return start_seed
+    #     elif start_scenario_index is not None:
+    #         return start_scenario_index
+    #     else:
+    #         logger.warning("Can not find `start_seed` or `start_scenario_index`. Use 0 as `start_seed`")
+    #         return 0
 
-    @property
-    def max_level(self):
-        return self._max_level
+    # @property
+    # def max_level(self):
+    #     return self._max_level
 
-    @property
-    def current_level(self):
-        return self._current_level
+    # @property
+    # def current_level(self):
+    #     return self._current_level
 
-    def level_up(self):
-        old_level = self._current_level
-        self._current_level = min(self._current_level + 1, self._max_level - 1)
-        if old_level != self._current_level:
-            self.seed(self.current_seed + self._num_scenarios_per_level)
+    # def level_up(self):
+    #     old_level = self._current_level
+    #     self._current_level = min(self._current_level + 1, self._max_level - 1)
+    #     if old_level != self._current_level:
+    #         self.seed(self.current_seed + self._num_scenarios_per_level)
 
-    @property
-    def num_scenarios_per_level(self):
-        return self._num_scenarios_per_level
-
-    @property
-    def current_map(self):
-        if self.replay_episode:
-            return self.replay_manager.current_map
-        else:
-            if hasattr(self, "map_manager"):
-                return self.map_manager.current_map
-            else:
-                return None
-
-    @property
-    def current_track_agent(self):
-        if self.main_camera is not None:
-            return self.main_camera.current_track_agent
-        elif "default_agent" in self.agents:
-            return self.agents["default_agent"]
-        else:
-            return None
-
-    @property
-    def agents(self):
-        if not self.replay_episode:
-            return self.agent_manager.active_agents
-        else:
-            return self.replay_manager.replay_agents
-
-    def setup_main_camera(self):
-        from metadrive.engine.core.main_camera import MainCamera
-        # Not we should always enable main camera RGBCamera will return incorrect result, as we are using PSSM!
-        if self.mode != RENDER_MODE_NONE:
-            return MainCamera(self, self.global_config["camera_height"], self.global_config["camera_dist"])
-        else:
-            return None
+    # @property
+    # def num_scenarios_per_level(self):
+    #     return self._num_scenarios_per_level
 
     @property
     def current_seed(self):
@@ -758,55 +571,54 @@ class BaseEngine(EngineCore, Randomizable):
             cone = self.spawn_object(TrafficCone, position=[0, 0], heading_theta=0, record=False)
             for vel in Pedestrian.SPEED_LIST:
                 warm_up_pedestrian.set_velocity([1, 0], vel - 0.1)
-                self.taskMgr.step()
             self.clear_objects([warm_up_pedestrian.id, warm_up_light.id, barrier.id, cone.id], record=False)
             warm_up_pedestrian = None
             warm_up_light = None
             barrier = None
             cone = None
 
-    @staticmethod
-    def try_pull_asset():
-        from metadrive.engine.asset_loader import AssetLoader
-        msg = "Assets folder doesn't exist. Begin to download assets..."
-        if not os.path.exists(AssetLoader.asset_path):
-            AssetLoader.logger.warning(msg)
-            pull_asset(update=False)
-        else:
-            if AssetLoader.should_update_asset():
-                AssetLoader.logger.warning(
-                    "Assets outdated! Current: {}, Expected: {}. "
-                    "Updating the assets ...".format(asset_version(), VERSION)
-                )
-                pull_asset(update=True)
-            else:
-                AssetLoader.logger.info("Assets version: {}".format(VERSION))
+    # @staticmethod
+    # def try_pull_asset():
+    #     from metadrive.engine.asset_loader import AssetLoader
+    #     msg = "Assets folder doesn't exist. Begin to download assets..."
+    #     if not os.path.exists(AssetLoader.asset_path):
+    #         AssetLoader.logger.warning(msg)
+    #         pull_asset(update=False)
+    #     else:
+    #         if AssetLoader.should_update_asset():
+    #             AssetLoader.logger.warning(
+    #                 "Assets outdated! Current: {}, Expected: {}. "
+    #                 "Updating the assets ...".format(asset_version(), VERSION)
+    #             )
+    #             pull_asset(update=True)
+    #         else:
+    #             AssetLoader.logger.info("Assets version: {}".format(VERSION))
 
-    def change_object_name(self, obj, new_name):
-        raise DeprecationWarning("This function is too dangerous to be used")
-        """
-        Change the name of one object, Note: it may bring some bugs if abusing
-        """
-        obj = self._spawned_objects.pop(obj.name)
-        self._spawned_objects[new_name] = obj
+    # def change_object_name(self, obj, new_name):
+    #     raise DeprecationWarning("This function is too dangerous to be used")
+    #     """
+    #     Change the name of one object, Note: it may bring some bugs if abusing
+    #     """
+    #     obj = self._spawned_objects.pop(obj.name)
+    #     self._spawned_objects[new_name] = obj
 
-    def add_task(self, object_id, task):
-        raise DeprecationWarning
-        self._object_tasks[object_id] = task
+    # def add_task(self, object_id, task):
+    #     raise DeprecationWarning
+    #     self._object_tasks[object_id] = task
 
-    def has_task(self, object_id):
-        raise DeprecationWarning
-        return True if object_id in self._object_tasks else False
+    # def has_task(self, object_id):
+    #     raise DeprecationWarning
+    #     return True if object_id in self._object_tasks else False
 
-    def get_task(self, object_id):
-        """
-        Return task of specific object with id
-        :param object_id: a filter function, only return objects satisfying this condition
-        :return: task
-        """
-        raise DeprecationWarning
-        assert object_id in self._object_tasks, "Can not find the task for object(id: {})".format(object_id)
-        return self._object_tasks[object_id]
+    # def get_task(self, object_id):
+    #     """
+    #     Return task of specific object with id
+    #     :param object_id: a filter function, only return objects satisfying this condition
+    #     :return: task
+    #     """
+    #     raise DeprecationWarning
+    #     assert object_id in self._object_tasks, "Can not find the task for object(id: {})".format(object_id)
+    #     return self._object_tasks[object_id]
 
 
 if __name__ == "__main__":

@@ -16,27 +16,14 @@ class DefaultVehicle(BaseVehicle):
     # HEIGHT = 1.19
     TIRE_RADIUS = 0.313
     TIRE_WIDTH = 0.25
-    MASS = 1100
     LATERAL_TIRE_TO_CENTER = 0.815
     FRONT_WHEELBASE = 1.05234
     REAR_WHEELBASE = 1.4166
-    path = ('ferra/vehicle.gltf', (1, 1, 1), (0, 0.075, 0.), (0, 0, 0))  # asset path, scale, offset, HPR
+    MASS = 1100
 
     DEFAULT_LENGTH = 4.515  # meters
     DEFAULT_HEIGHT = 1.19  # meters
     DEFAULT_WIDTH = 1.852  # meters
-
-    @property
-    def LENGTH(self):
-        return self.DEFAULT_LENGTH
-
-    @property
-    def HEIGHT(self):
-        return self.DEFAULT_HEIGHT
-
-    @property
-    def WIDTH(self):
-        return self.DEFAULT_WIDTH
 
 
 # When using DefaultVehicle as traffic, please use this class.
@@ -56,33 +43,18 @@ class XLVehicle(BaseVehicle):
     # WIDTH = 2.3
     # HEIGHT = 2.8
     TIRE_RADIUS = 0.37
-    TIRE_MODEL_CORRECT = -1
+    TIRE_WIDTH = 0.5
+    LATERAL_TIRE_TO_CENTER = 0.931
     REAR_WHEELBASE = 1.075
     FRONT_WHEELBASE = 1.726
-    LATERAL_TIRE_TO_CENTER = 0.931
     CHASSIS_TO_WHEEL_AXIS = 0.3
-    TIRE_WIDTH = 0.5
     MASS = 1600
-    LIGHT_POSITION = (-0.75, 2.7, 0.2)
+
     SEMANTIC_LABEL = Semantics.TRUCK.label
-    path = ('truck/vehicle.gltf', (1, 1, 1), (0, 0.25, 0.04), (0, 0, 0))
 
     DEFAULT_LENGTH = 5.74  # meters
     DEFAULT_HEIGHT = 2.8  # meters
     DEFAULT_WIDTH = 2.3  # meters
-
-    @property
-    def LENGTH(self):
-        return self.DEFAULT_LENGTH
-
-    @property
-    def HEIGHT(self):
-        return self.DEFAULT_HEIGHT
-
-    @property
-    def WIDTH(self):
-        return self.DEFAULT_WIDTH
-
 
 class LVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.L_VEHICLE)
@@ -90,29 +62,16 @@ class LVehicle(BaseVehicle):
     # WIDTH = 1.86
     # HEIGHT = 1.85
     TIRE_RADIUS = 0.429
+    TIRE_WIDTH = 0.35
+    LATERAL_TIRE_TO_CENTER = 0.75
     REAR_WHEELBASE = 1.218261
     FRONT_WHEELBASE = 1.5301
-    LATERAL_TIRE_TO_CENTER = 0.75
-    TIRE_WIDTH = 0.35
     MASS = 1300
-    LIGHT_POSITION = (-0.65, 2.13, 0.3)
+
     DEFAULT_LENGTH = 4.87  # meters
     DEFAULT_HEIGHT = 1.85  # meters
     DEFAULT_WIDTH = 2.046  # meters
 
-    path = ['lada/vehicle.gltf', (1.1, 1.1, 1.1), (0, -0.27, 0.07), (0, 0, 0)]
-
-    @property
-    def LENGTH(self):
-        return self.DEFAULT_LENGTH
-
-    @property
-    def HEIGHT(self):
-        return self.DEFAULT_HEIGHT
-
-    @property
-    def WIDTH(self):
-        return self.DEFAULT_WIDTH
 
 
 class MVehicle(BaseVehicle):
@@ -121,69 +80,33 @@ class MVehicle(BaseVehicle):
     # WIDTH = 1.85
     # HEIGHT = 1.37
     TIRE_RADIUS = 0.39
+    TIRE_WIDTH = 0.3
+    LATERAL_TIRE_TO_CENTER = 0.803
     REAR_WHEELBASE = 1.203
     FRONT_WHEELBASE = 1.285
-    LATERAL_TIRE_TO_CENTER = 0.803
-    TIRE_WIDTH = 0.3
     MASS = 1200
-    LIGHT_POSITION = (-0.67, 1.86, 0.22)
+
     DEFAULT_LENGTH = 4.6  # meters
     DEFAULT_HEIGHT = 1.37  # meters
     DEFAULT_WIDTH = 1.85  # meters
-    path = ['130/vehicle.gltf', (1, 1, 1), (0, -0.05, 0.1), (0, 0, 0)]
-
-    @property
-    def LENGTH(self):
-        return self.DEFAULT_LENGTH
-
-    @property
-    def HEIGHT(self):
-        return self.DEFAULT_HEIGHT
-
-    @property
-    def WIDTH(self):
-        return self.DEFAULT_WIDTH
-
 
 class SVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.S_VEHICLE)
     # LENGTH = 4.25
     # WIDTH = 1.7
     # HEIGHT = 1.7
-    LATERAL_TIRE_TO_CENTER = 0.7
-    TIRE_TWO_SIDED = True
-    FRONT_WHEELBASE = 1.385
-    REAR_WHEELBASE = 1.11
     TIRE_RADIUS = 0.376
     TIRE_WIDTH = 0.25
+    LATERAL_TIRE_TO_CENTER = 0.7
+
+    FRONT_WHEELBASE = 1.385
+    REAR_WHEELBASE = 1.11
+
     MASS = 800
-    LIGHT_POSITION = (-0.57, 1.86, 0.23)
+
     DEFAULT_LENGTH = 4.3  # meters
     DEFAULT_HEIGHT = 1.7  # meters
     DEFAULT_WIDTH = 1.7  # meters
-
-    @property
-    def path(self):
-        if self.use_render_pipeline and platform.system() != "Linux":
-            # vfs = VirtualFileSystem.get_global_ptr()
-            # vfs.mount(convert_path(AssetLoader.file_path("models", "beetle")), "/$$beetle_model", 0)
-            return ['beetle/vehicle.bam', (0.0077, 0.0077, 0.0077), (0.04512, -0.24 - 0.04512, 1.77), (-90, -90, 0)]
-        else:
-            factor = 1
-            return ['beetle/vehicle.gltf', (factor, factor, factor), (0, -0.2, 0.03), (0, 0, 0)]
-
-    @property
-    def LENGTH(self):
-        return self.DEFAULT_LENGTH
-
-    @property
-    def HEIGHT(self):
-        return self.DEFAULT_HEIGHT
-
-    @property
-    def WIDTH(self):
-        return self.DEFAULT_WIDTH
-
 
 class VaryingDynamicsVehicle(DefaultVehicle):
     @property

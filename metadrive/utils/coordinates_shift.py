@@ -54,23 +54,3 @@ def metadrive_vector(position):
     # return np.array([position[0], -position[1]])
     # return position[0], -position[1]
     return Vector([position[0], position[1]])
-
-
-def panda_heading(heading: float) -> float:
-    """
-    Transform the heading in MetaDrive to Panda3d
-    :param heading: float, heading in MetaDrive (degree)
-    :return: heading (degree)
-    """
-    # return -heading
-    return heading
-
-
-def metadrive_heading(heading: float) -> float:
-    """
-    Transform the heading in Panda3d to MetaDrive
-    :param heading: float, heading in panda3d (degree)
-    :return: heading (degree)
-    """
-    # return -heading
-    return heading

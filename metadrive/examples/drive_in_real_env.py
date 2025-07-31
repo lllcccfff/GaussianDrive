@@ -43,10 +43,11 @@ if __name__ == "__main__":
         additional_cfg = {
             "interface_panel": ["rgb_camera", "depth_camera", "semantic"],
             "sensors": {
-                "rgb_camera": (DepthCamera, 256, 256),
-                "depth_camera": (RGBCamera, 256, 256),
+                "rgb_camera": (RGBCamera, 256, 256),
+                "depth_camera": (DepthCamera, 256, 256),
                 "semantic": (SemanticCamera, 256, 256)
-            }
+            },
+            'image_observation': True,
         }
         cfg.update(additional_cfg)
 

@@ -1,55 +1,103 @@
+import copy
+import numpy as np
+from gymnasium.spaces import Space
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
-from metadrive.manager.base_manager import BaseAgentManager
+from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.AI_protect_policy import AIProtectPolicy
 from metadrive.policy.idm_policy import TrajectoryIDMPolicy
 from metadrive.policy.manual_control_policy import ManualControlPolicy, TakeoverPolicy, TakeoverPolicyWithoutBrake
 from metadrive.policy.replay_policy import ReplayTrafficParticipantPolicy
 
 logger = get_logger()
-
-
-class VehicleAgentManager(BaseAgentManager):
+class VehicleAgentManager(BaseManager):
     """
-    This class maintain the relationship between active agents in the environment with the underlying instance
-    of objects.
+    This class maintains a single vehicle agent in the environment.
+    Simplified to handle only one vehicle object instead of multiple agents.
 
     Note:
-    agent name: Agent name that exists in the environment, like default_agent, agent0, agent1, ....
-    object name: The unique name for each object, typically be random string.
+    agent name: Single agent name (typically default_agent)
+    object name: The unique name for the single vehicle object
     """
-    INITIALIZED = False  # when vehicles instances are created, it will be set to True
+    INITIALIZED = False  # when vehicle instance is created, it will be set to True
 
     def __init__(self, init_observations):
         """
         The real init is happened in self.init(), in which super().__init__() will be called
         """
-        super(VehicleAgentManager, self).__init__(init_observations)
-        # For multi-agent env, None values is updated in init()
-        self._allow_respawn = None
-        self._delay_done = None
-        self._infinite_agents = None
+        """
+        The real init is happened in self.init(), in which super().__init__() will be called
+        """
+        super().__init__(self)
+        # for getting {agent_id: BaseObject}, use agent_manager.active_agents
 
-        self._dying_objects = {}  # BaseVehicles which will be recycled after the delay_done time
-        self._agents_finished_this_frame = dict()  # for observation space
-        self.next_agent_count = 0
+        # fake init. before creating engine, it is necessary when all objects re-created in runtime
+        self.observations = copy.copy(init_observations)  # its value is map<agent_id, obs> before init() is called
+        self._init_observations = init_observations  # map <agent_id, observation>
 
-    def _create_agents(self, config_dict: dict):
+        # init spaces before initializing env.engine
+        observation_space = {
+            agent_id: single_obs.observation_space
+            for agent_id, single_obs in init_observations.items()
+        }
+        init_action_space = self._get_action_space()
+        assert isinstance(init_action_space, dict)
+        assert isinstance(observation_space, dict)
+        self._init_observation_spaces = observation_space
+        self._init_action_spaces = init_action_space
+        self.observation_spaces = copy.copy(observation_space)
+        self.action_spaces = copy.copy(init_action_space)
+        self.episode_created_agents = None
+        
+        # For single-agent env
+
+        self._agent_finished_this_frame = None  # for observation space
+        self._dying_countdown = 0
+
+    def _create_agent(self, config_dict: dict):
         from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
-        ret = {}
-        for agent_id, v_config in config_dict.items():
-            v_type = random_vehicle_type(self.np_random) if self.engine.global_config["random_agent_model"] else \
-                vehicle_type[v_config["vehicle_model"] if v_config.get("vehicle_model", False) else "default"]
+        # Only create one agent - use the first config or default agent
+        agent_id = list(config_dict.keys())[0] if config_dict else "default_agent"
+        v_config = list(config_dict.values())[0] if config_dict else {}
 
-            obj_name = agent_id if self.engine.global_config["force_reuse_object_name"] else None
-            obj = self.spawn_object(v_type, vehicle_config=v_config, name=obj_name)
-            ret[agent_id] = obj
-            policy_cls = self.agent_policy
-            args = [obj, self.generate_seed()]
-            if policy_cls == TrajectoryIDMPolicy or issubclass(policy_cls, TrajectoryIDMPolicy):
-                args.append(self.engine.map_manager.current_sdc_route)
-            self.add_policy(obj.id, policy_cls, *args)
-        return ret
+        v_type = random_vehicle_type(self.np_random) if self.engine.global_config["random_agent_model"] else \
+            vehicle_type[v_config["vehicle_model"] if v_config.get("vehicle_model", False) else "default"]
+
+        obj_name = agent_id if self.engine.global_config["force_reuse_object_name"] else None
+        
+        current_metadata = self.engine.data_manager.get_current_scenario_data()
+        cameras, agent_state = current_metadata['cameras_objects'], current_metadata['agent_state']
+        ground_height = current_metadata['ground_height']
+        
+        ego_poses = current_metadata['ego_poses']
+        self.ego2cameras = self._calc_ego2camera(obj, cameras, ego_poses, ground_height)
+
+        p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.HEIGHT / 2]
+        obj = self.spawn_object(
+            v_type, 
+            vehicle_config=v_config, 
+            name=obj_name,
+            position=p,
+            heading=agent_state['spawn_heading']
+        )
+        self.init_pos = agent_state['spawn_position']
+        self.dest_pos = agent_state['destination']
+
+        policy_cls = self.agent_policy
+        args = [obj, self.generate_seed(), ]
+        self.add_policy(obj.id, policy_cls, *args)
+
+        # Return single agent instead of dictionary
+        return obj
+
+    def _calc_ego2camera(self, vehicle_object, cameras, ego_poses, ground_height):
+        ego2cameras = {}
+        for cam_name, camera in cameras:
+            w2c = camera.world_view_transform[0]
+            ego2world = ego_poses[0]
+            ego2world[2, 3] = ground_height + vehicle_object.HEIGHT / 2
+            ego2cameras[cam_name] = np.linalg.inv(ego2world) @ w2c
+        return ego2cameras
 
     @property
     def agent_policy(self):
@@ -66,106 +114,32 @@ class VehicleAgentManager(BaseAgentManager):
         if get_global_config()["agent_policy"] in [TakeoverPolicy, TakeoverPolicyWithoutBrake]:
             return get_global_config()["agent_policy"]
         if get_global_config()["manual_control"]:
-            if get_global_config().get("use_AI_protector", False):
-                policy = AIProtectPolicy
-            else:
-                policy = ManualControlPolicy
+            policy = ManualControlPolicy
         else:
             policy = get_global_config()["agent_policy"]
         return policy
 
     def before_reset(self):
         if not self.INITIALIZED:
-            super(BaseAgentManager, self).__init__()
+            super().__init__()
             self.INITIALIZED = True
-
         self.episode_created_agents = None
 
-        if not self.engine.replay_episode:
-            for v in self.dying_agents.values():
-                self._remove_vehicle(v)
-
-        for v in list(self._active_objects.values()) + [v for (v, _) in self._dying_objects.values()]:
-            if hasattr(v, "before_reset"):
-                v.before_reset()
-
-        super(VehicleAgentManager, self).before_reset()
+        super().before_reset()
 
     def reset(self):
         """
-        Agent manager is really initialized after the BaseVehicle Instances are created
+        Agent manager is really initialized after the BaseObject Instances are created
         """
-        self.random_spawn_lane_in_single_agent()
-        config = self.engine.global_config
-        self._delay_done = config["delay_done"]
-        self._infinite_agents = config["num_agents"] == -1
-        self._allow_respawn = config["allow_respawn"]
-        super(VehicleAgentManager, self).reset()
+        self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["agent_configs"])
+        self.observations.reset()
+
 
     def after_reset(self):
-        super(VehicleAgentManager, self).after_reset()
-        self._dying_objects = {}
-        self._agents_finished_this_frame = dict()
-        self.next_agent_count = len(self.episode_created_agents)
+        # it is used when reset() is called to reset its original agent_id
+        self._agent_object = self.episode_created_agent
 
-    def random_spawn_lane_in_single_agent(self):
-        if not self.engine.global_config["is_multi_agent"] and \
-                self.engine.global_config.get("random_spawn_lane_index", False) and self.engine.current_map is not None:
-            spawn_road_start = self.engine.global_config["agent_configs"][DEFAULT_AGENT]["spawn_lane_index"][0]
-            spawn_road_end = self.engine.global_config["agent_configs"][DEFAULT_AGENT]["spawn_lane_index"][1]
-            index = self.np_random.randint(self.engine.current_map.config["lane_num"])
-            self.engine.global_config["agent_configs"][DEFAULT_AGENT]["spawn_lane_index"] = (
-                spawn_road_start, spawn_road_end, index
-            )
-
-    def _finish(self, agent_name, ignore_delay_done=False):
-        """
-        ignore_delay_done: Whether to ignore the delay done. This is not required when the agent success the episode!
-        """
-        if not self.engine.replay_episode:
-            vehicle_name = self._agent_to_object[agent_name]
-            v = self._active_objects.pop(vehicle_name)
-            if (not ignore_delay_done) and (self._delay_done > 0):
-                self._put_to_dying_queue(v)
-            else:
-                # move to invisible place
-                self._remove_vehicle(v)
-            self._agents_finished_this_frame[agent_name] = v.name
-            self._check()
-
-    def _check(self):
-        if self._debug:
-            current_keys = sorted(list(self._active_objects.keys()) + list(self._dying_objects.keys()))
-            exist_keys = sorted(list(self._object_to_agent.keys()))
-            assert current_keys == exist_keys, "You should confirm_respawn() after request for propose_new_vehicle()!"
-
-    def propose_new_vehicle(self):
-        # Create a new vehicle.
-        agent_name = self._next_agent_id()
-        next_config = self.engine.global_config["agent_configs"]["agent0"]
-        vehicle = self._create_agents({agent_name: next_config})[agent_name]
-        new_v_name = vehicle.name
-        self._agent_to_object[agent_name] = new_v_name
-        self._object_to_agent[new_v_name] = agent_name
-        # TODO: this may cause error? Sharing observation
-        # logger.warning("Test MARL new agent observation to avoid bug!")
-        self.observations[new_v_name] = self._init_observations["agent0"]
-        self.observations[new_v_name].reset(vehicle)
-        self.observation_spaces[new_v_name] = self._init_observation_spaces["agent0"]
-        self.action_spaces[new_v_name] = self._init_action_spaces["agent0"]
-        self._active_objects[vehicle.name] = vehicle
-        self._check()
-        step_info = vehicle.before_step([0, 0])
-        vehicle.set_static(False)
-        return agent_name, vehicle, step_info
-
-    def _next_agent_id(self):
-        ret = "agent{}".format(self.next_agent_count)
-        self.next_agent_count += 1
-        return ret
-
-    def set_allow_respawn(self, flag: bool):
-        self._allow_respawn = flag
+        assert isinstance(self.action_spaces, Space)
 
     def try_actuate_agent(self, step_infos, stage="before_step"):
         """
@@ -174,66 +148,61 @@ class VehicleAgentManager(BaseAgentManager):
         exempt the requirement for rolling out the dynamic system to get it.
         """
         assert stage == "before_step" or stage == "after_step"
-        for agent_id in self.active_agents.keys():
+        # Handle single agent
+        if self._agent_object:
+            agent_id = self._agent_object.id  # Get the single agent
             policy = self.get_policy(self._agent_to_object[agent_id])
-            is_replay = isinstance(policy, ReplayTrafficParticipantPolicy)
             assert policy is not None, "No policy is set for agent {}".format(agent_id)
-            if is_replay:
+            if isinstance(policy, ReplayTrafficParticipantPolicy):
                 if stage == "after_step":
                     policy.act(agent_id)
                     step_infos[agent_id] = policy.get_action_info()
                 else:
-                    step_infos[agent_id] = self.get_agent(agent_id).before_step([0, 0])
+                    step_infos[agent_id] = self._agent_object.before_step([0, 0])
             else:
                 if stage == "before_step":
                     action = policy.act(agent_id)
                     step_infos[agent_id] = policy.get_action_info()
-                    step_infos[agent_id].update(self.get_agent(agent_id).before_step(action))
+                    step_infos[agent_id].update(self._agent_object.before_step(action))
 
         return step_infos
 
     def before_step(self):
         # not in replay mode
-        step_infos = super(VehicleAgentManager, self).before_step()
-        self._agents_finished_this_frame = dict()
-        finished = set()
-        for v_name in self._dying_objects.keys():
-            self._dying_objects[v_name][1] -= 1
-            if self._dying_objects[v_name][1] <= 0:  # Countdown goes to 0, it's time to remove the vehicles!
-                v = self._dying_objects[v_name][0]
-                self._remove_vehicle(v)
-                finished.add(v_name)
-        for v_name in finished:
-            self._dying_objects.pop(v_name)
+        step_infos = self.try_actuate_agent(dict(), stage="before_step")
         return step_infos
 
-    def get_observations(self):
-        if hasattr(self, "engine") and self.engine.replay_episode:
-            return self.engine.replay_manager.get_replay_agent_observations()
-        else:
-            ret = {
-                old_agent_id: self.observations[v_name]
-                for old_agent_id, v_name in self._agents_finished_this_frame.items()
-            }
-            for obj_id, observation in self.observations.items():
-                if self.is_active_object(obj_id):
-                    ret[self.object_to_agent(obj_id)] = observation
-            return ret
+    def after_step(self, *args, **kwargs):
+        step_infos = self.try_actuate_agent({}, stage="after_step")
+        step_infos.update({'after_step': self._agent_object.after_step()})
+        return step_infos
+
+    def get_sensor_pose(self):
+        ego_pose = self._agent_object.get_transform()
+        camera_pose_in_ego = self.ego2cameras
+        sensor_pose = {}
+        for sensor_name, camera_pose in camera_pose_in_ego.items():
+            sensor_pose[sensor_name] = camera_pose @ np.linalg.inv(ego_pose)
+        return sensor_pose
+
+    def get_observations(self, step):
+        return self.observations.observe(step, self.get_sensor_pose(), self._agent_object, self.engine.traffic_manager.traffic_poses)
 
     def get_observation_spaces(self):
-        ret = {
-            old_agent_id: self.observation_spaces[v_name]
-            for old_agent_id, v_name in self._agents_finished_this_frame.items()
-        }
-        for obj_id, space in self.observation_spaces.items():
-            if self.is_active_object(obj_id):
-                ret[self.object_to_agent(obj_id)] = space
+        return self.observation_space
+
+    def get_action_spaces(self):
+        return self.action_spaces
+
+    def get_state(self):
+        ret = super().get_state()
+        ret["created_agents"] = self.episode_created_agent.name
         return ret
 
-    @property
-    def dying_agents(self):
-        assert not self.engine.replay_episode
-        return {self._object_to_agent[k]: v for k, (v, _) in self._dying_objects.items()}
+    def is_arrive(self):
+        p = self._agent_object.position
+        dest = self.dest_pos
+        return (p[0] - dest[0])**2 + (p[1] - dest[1])**2 < 4
 
     @property
     def just_terminated_agents(self):
@@ -244,49 +213,19 @@ class VehicleAgentManager(BaseAgentManager):
             ret[agent_name] = v
         return ret
 
-    def get_agent(self, agent_name, raise_error=True):
-        try:
-            object_name = self.agent_to_object(agent_name)
-        except KeyError:
-            if raise_error:
-                raise ValueError("Object {} not found!".format(object_name))
-            else:
-                return None
-        if object_name in self._active_objects:
-            return self._active_objects[object_name]
-        elif object_name in self._dying_objects:
-            return self._dying_objects[object_name][0]
-        else:
-            if raise_error:
-                raise ValueError("Object {} not found!".format(object_name))
-            else:
-                return None
-
     def destroy(self):
         # when new agent joins in the game, we only change this two maps.
-        super(VehicleAgentManager, self).destroy()
-        self._dying_objects = {}
-        self.next_agent_count = 0
-        self._agents_finished_this_frame = dict()
+        if self.INITIALIZED:
+            super().destroy()
+        self._agent_to_object = {}
+        self._object_to_agent = {}
+        self._active_objects = {}
+        for obs in self.observations.values():
+            obs.destroy()
+        self.observations = {}
+        self.observation_spaces = {}
+        self.action_spaces = {}
 
-    def _put_to_dying_queue(self, v, ignore_delay_done=False):
-        vehicle_name = v.name
-        v.set_static(True)
-        self._dying_objects[vehicle_name] = [v, 0 if ignore_delay_done else self._delay_done]
+        self.INITIALIZED = False
 
-    def _remove_vehicle(self, vehicle):
-        vehicle_name = vehicle.name
-        assert vehicle_name not in self._active_objects
-        self.clear_objects([vehicle_name])
-        self._agent_to_object.pop(self._object_to_agent[vehicle_name])
-        self._object_to_agent.pop(vehicle_name)
-
-    @property
-    def allow_respawn(self):
-        if not self._allow_respawn:
-            return False
-        if len(self._active_objects) + len(self._dying_objects) < self.engine.global_config["num_agents"] \
-                or self._infinite_agents:
-            return True
-        else:
-            return False
+        self._agents_finished_this_frame = {}

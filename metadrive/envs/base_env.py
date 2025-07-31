@@ -28,8 +28,10 @@ from metadrive.obs.observation_base import DummyObservation
 from metadrive.obs.state_obs import LidarStateObservation
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.scenario.utils import convert_recorded_scenario_exported
-from metadrive.utils import Config, merge_dicts, get_np_random, concat_step_infos
+from metadrive.utils import merge_dicts, get_np_random, concat_step_infos
 from metadrive.version import VERSION
+
+from easydrive.engine.config import Config
 
 BASE_DEFAULT_CONFIG = dict(
 
@@ -285,28 +287,19 @@ class BaseEnv(gym.Env):
         return Config(BASE_DEFAULT_CONFIG)
 
     # ===== Intialization =====
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Config = None):
         if config is None:
-            config = {}
+            config = Config()
         self.logger = get_logger()
         set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
-        merged_config = self.default_config().update(config, False, ["agent_configs", "sensors"])
+        merged_config = self.default_config().merge_from(config, replace_keys=["agent_configs", "sensors"])
         global_config = self._post_process_config(merged_config)
 
         self.config = global_config
         initialize_global_config(self.config)
 
-        # agent check
-        self.num_agents = self.config["num_agents"]
-        self.is_multi_agent = self.config["is_multi_agent"]
-        if not self.is_multi_agent:
-            assert self.num_agents == 1
-        else:
-            assert not self.config["image_on_cuda"], "Image on cuda don't support Multi-agent!"
-        assert isinstance(self.num_agents, int) and (self.num_agents > 0 or self.num_agents == -1)
-
         # observation and action space
-        self.agent_manager = self._get_agent_manager()
+        self.agent_manager = self._init_agent_manager()
 
         # lazy initialization, create the main simulation in the lazy_init() func
         # self.engine: Optional[BaseEngine] = None
@@ -368,9 +361,6 @@ class BaseEnv(gym.Env):
                     to_use.append(panel)
         config["interface_panel"] = to_use
 
-        # Merge default sensor to list
-        sensor_cfg = self.default_config()["sensors"].update(config["sensors"])
-        config["sensors"] = sensor_cfg
 
         # show sensor lists
         _str = "Sensors: [{}]"
@@ -410,8 +400,6 @@ class BaseEnv(gym.Env):
         :return: None
         """
         # It is the true init() func to create the main vehicle and its module, to avoid incompatible with ray
-        if engine_initialized():
-            return
         initialize_engine(self.config)
         # engine setup
         self.setup_engine()
@@ -489,25 +477,6 @@ class BaseEnv(gym.Env):
         self.logger.warning("Done function is not implemented. Return Done = False", extra={"log_once": True})
         return False, {}
 
-    def render(self, text: Optional[Union[dict, str]] = None, mode=None, *args, **kwargs) -> Optional[np.ndarray]:
-        """
-        This is a pseudo-render function, only used to update onscreen message when using panda3d backend
-        :param text: text to show
-        :param mode: start_top_down rendering candidate parameter is ["top_down", "topdown", "bev", "birdview"]
-        :return: None or top_down image
-        """
-
-        if mode in ["top_down", "topdown", "bev", "birdview"]:
-            ret = self._render_topdown(text=text, *args, **kwargs)
-            return ret
-        if self.config["use_render"] or self.engine.mode != RENDER_MODE_NONE:
-            self.engine.render_frame(text)
-        else:
-            self.logger.warning(
-                "Panda Rendering is off now, can not render. Please set config['use_render'] = True!",
-                exc_info={"log_once": True}
-            )
-        return None
 
     def reset(self, seed: Union[None, int] = None):
         """
@@ -520,7 +489,10 @@ class BaseEnv(gym.Env):
             self.logger = get_logger()
             log_level = self.config.get("log_level", logging.DEBUG if self.config.get("debug", False) else logging.INFO)
             set_log_level(log_level)
-        self.lazy_init()  # it only works the first time when reset() is called to avoid the error when render
+
+        if not engine_initialized():
+            self.lazy_init()  # it only works the first time when reset() is called to avoid the error when render
+
         self._reset_global_seed(seed)
         if self.engine is None:
             raise ValueError(
@@ -530,14 +502,13 @@ class BaseEnv(gym.Env):
                 "singleton of MetaDrive and restart your program."
             )
         reset_info = self.engine.reset()
-        self.reset_sensors()
         # render the scene
-        self.engine.taskMgr.step()
-        if self.top_down_renderer is not None:
-            self.top_down_renderer.clear()
-            self.engine.top_down_renderer = None
+        # self.engine.taskMgr.step()
+        # if self.top_down_renderer is not None:
+        #     self.top_down_renderer.clear()
+        #     self.engine.top_down_renderer = None
 
-        self.dones = {agent_id: False for agent_id in self.agents.keys()}
+        self.dones = False
         self.episode_rewards = defaultdict(float)
         self.episode_lengths = defaultdict(int)
 
@@ -545,29 +516,6 @@ class BaseEnv(gym.Env):
             "Agents: {} != Num_agents: {}".format(len(self.agents), self.num_agents)
         assert self.config is self.engine.global_config is get_global_config(), "Inconsistent config may bring errors!"
         return self._get_reset_return(reset_info)
-
-    def reset_sensors(self):
-        """
-        This is the developer API. Overriding it determines how to place sensors in the scene. You can mount it on an
-        object or fix it at a given position for the whole episode.
-        """
-        # reset the cam at the start at the episode.
-        if self.main_camera is not None:
-            self.main_camera.reset()
-            if hasattr(self, "agent_manager"):
-                bev_cam = self.main_camera.is_bird_view_camera() and self.main_camera.current_track_agent is not None
-                agents = list(self.engine.agents.values())
-                current_track_agent = agents[0]
-                self.main_camera.set_follow_lane(self.config["use_chase_camera_follow_lane"])
-                self.main_camera.track(current_track_agent)
-                if bev_cam:
-                    self.main_camera.stop_track()
-                    self.main_camera.set_bird_view_pos_hpr(current_track_agent.position)
-                for name, sensor in self.engine.sensors.items():
-                    if hasattr(sensor, "track") and name != "main_camera":
-                        sensor.track(current_track_agent.origin, DEFAULT_SENSOR_OFFSET, DEFAULT_SENSOR_HPR)
-        # Step the env to avoid the black screen in the first frame.
-        self.engine.taskMgr.step()
 
     def _get_reset_return(self, reset_info):
         # TODO: figure out how to get the information of the before step
@@ -582,8 +530,7 @@ class BaseEnv(gym.Env):
             scene_manager_after_step_infos, scene_manager_before_step_infos, allow_new_keys=True, without_copy=True
         )
         for v_id, v in self.agents.items():
-            self.observations[v_id].reset(self, v)
-            obses[v_id] = self.observations[v_id].observe(v)
+            obses[v_id] = self.agent_manager.get_observations()
             _, reward_infos[v_id] = self.reward_function(v_id)
             _, done_infos[v_id] = self.done_function(v_id)
             _, cost_infos[v_id] = self.cost_function(v_id)
@@ -610,15 +557,14 @@ class BaseEnv(gym.Env):
         cost_infos = {}
         reward_infos = {}
         rewards = {}
-        for v_id, v in self.agents.items():
-            self.episode_lengths[v_id] += 1
-            rewards[v_id], reward_infos[v_id] = self.reward_function(v_id)
-            self.episode_rewards[v_id] += rewards[v_id]
-            done_function_result, done_infos[v_id] = self.done_function(v_id)
-            _, cost_infos[v_id] = self.cost_function(v_id)
-            self.dones[v_id] = done_function_result or self.dones[v_id]
-            o = self.observations[v_id].observe(v)
-            obses[v_id] = o
+
+        self.episode_lengths += 1
+        rewards, reward_infos = self.reward_function()
+        self.episode_rewards += rewards
+        done_function_result, done_infos = self.done_function()
+        _, cost_infos = self.cost_function()
+        self.dones = done_function_result or self.dones[]
+        obses = self.agent_manager.get_observations()
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
         truncateds = {k: step_infos[k].get(TerminationState.MAX_STEP, False) for k in self.agents.keys()}
@@ -661,9 +607,6 @@ class BaseEnv(gym.Env):
         self._capture_img.write(file_name)
         self.logger.info("Image is saved at: {}".format(file_name))
 
-    def for_each_agent(self, func, *args, **kwargs):
-        return self.agent_manager.for_each_active_agents(func, *args, **kwargs)
-
     def get_single_observation(self):
         """
         Get the observation for one object
@@ -681,10 +624,6 @@ class BaseEnv(gym.Env):
     def _wrap_as_single_agent(self, data):
         return data[next(iter(self.agents.keys()))]
 
-    def seed(self, seed=None):
-        if seed is not None:
-            set_global_random_seed(seed)
-
     @property
     def current_seed(self):
         return self.engine.global_random_seed
@@ -699,7 +638,7 @@ class BaseEnv(gym.Env):
         Return observations of active and controllable agents
         :return: Dict
         """
-        return self.agent_manager.get_observations()
+        return self
 
     @property
     def observation_space(self) -> gym.Space:
@@ -746,7 +685,7 @@ class BaseEnv(gym.Env):
         Return all active agents
         :return: Dict[agent_id:agent]
         """
-        return self.agent_manager.active_agents
+        return self.agent_manager._agent_object
 
     @property
     def agent(self):

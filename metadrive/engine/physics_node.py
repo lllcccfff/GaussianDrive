@@ -9,12 +9,15 @@ from panda3d.bullet import BulletRigidBodyNode, BulletGhostNode
 
 
 class BaseRigidBodyNode(BulletRigidBodyNode):
-    def __init__(self, base_object_name, type_name):
+    def __init__(self, base_object_name, type_name, mass=None):
         self.type_name = type_name
         super(BaseRigidBodyNode, self).__init__(type_name)
         self.setPythonTag(type_name, self)
         self.base_object_name = base_object_name
         self._clear_python_tag = False
+
+        if mass is not None:
+            self.setMass(mass)
 
     def rename(self, new_name):
         self.base_object_name = new_name
@@ -24,8 +27,8 @@ class BaseRigidBodyNode(BulletRigidBodyNode):
         self.base_object_name = None
         self.clearPythonTag(self.getName())
         self._clear_python_tag = True
-
     def __del__(self):
+
         assert self._clear_python_tag, "You should call destroy() of BaseRigidBodyNode!"
 
 

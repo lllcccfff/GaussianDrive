@@ -1,6 +1,6 @@
 from typing import Dict, Union
 
-from metadrive.utils.config import Config
+from easydrive.engine.config import Config
 
 
 class Configurable:
@@ -11,7 +11,7 @@ class Configurable:
         # initialize and specify the value in config
         self._config = Config(config if config is not None else {})
 
-    def get_config(self, copy=True) -> Union[Config, Dict]:
+    def get_config(self, copy=True) -> Config:
         """
         Return self._config
         :param copy:

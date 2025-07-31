@@ -1,10 +1,12 @@
 import copy
 
 from metadrive.component.map.scenario_map import ScenarioMap
+from metadrive.component.ground import GroundPlane
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager
-from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state, get_idm_route
 from metadrive.engine.logger import get_logger, set_log_level
+
+from easydrive.engine import MODELS
 
 logger = get_logger()
 
@@ -17,13 +19,6 @@ class ScenarioMapManager(BaseManager):
         super(ScenarioMapManager, self).__init__()
         self.store_map = self.engine.global_config.get("store_map", False)
         self.current_map = None
-        self._no_map = self.engine.global_config["no_map"]
-        self.map_num = self.engine.global_config["num_scenarios"]
-        self.start_scenario_index = self.engine.global_config["start_scenario_index"]
-        self._stored_maps = {
-            i: None
-            for i in range(self.start_scenario_index, self.start_scenario_index + self.map_num)
-        }
 
         # we put the route searching function here
         self.sdc_start_point = None
@@ -32,75 +27,25 @@ class ScenarioMapManager(BaseManager):
         self.current_sdc_route = None
 
     def reset(self):
-        if not self._no_map:
-            seed = self.engine.global_random_seed
-            assert self.start_scenario_index <= seed < self.start_scenario_index + self.map_num
+        seed = self.engine.global_random_seed
 
-            self.current_sdc_route = None
-            self.sdc_dest_point = None
+        self.current_sdc_route = None
+        self.sdc_dest_point = None
 
-            if self._stored_maps[seed] is None:
-                m_data = self.engine.data_manager.get_scenario(seed, should_copy=False)["map_features"]
-                new_map = ScenarioMap(map_index=seed, map_data=m_data)
-                if self.store_map:
-                    self._stored_maps[seed] = new_map
-            else:
-                new_map = self._stored_maps[seed]
-            self.load_map(new_map)
-        self.update_route()
+        scene_data = self.engine.data_manager.get_scenario(seed, should_copy=False)
+        self.model = MODELS.build(
+            cfg=scene_data['config'].model_cfg,
+            render_mode='gui',
+            renderer_cfg=scene_data['config'].renderer_cfg
+        )
+        self.model.model_setup(scene_data['camera_objects'], scene_data['bounding_box_objects'])
+        self.model.load_model(**scene_data['config'].model_path)
+
+        self.ground = GroundPlane([0,0,1.], scene_data['ground_height'])
+        # self.update_route()
 
     def update_route(self):
         data = self.engine.data_manager.current_scenario
-
-        sdc_track = data.get_sdc_track()
-
-        sdc_traj = parse_full_trajectory(sdc_track)
-
-        init_state = parse_object_state(sdc_track, 0, check_last_state=False, include_z_position=True)
-
-        # PZH: There is a wierd bug in the nuscene's source data, the width and length of the object is not consistent.
-        # Maybe this should be handle in ScenarioNet. But for now, we have to handle it here.
-        # As a workaround, we swap the width and length if the width is larger than length.
-        if data["version"].startswith("nuscenesv1.0") or data["metadata"]["dataset"] == "nuscenes":
-            if init_state["width"] > init_state["length"]:
-                init_state["width"], init_state["length"] = init_state["length"], init_state["width"]
-
-        if max(init_state["width"], init_state["length"]) > 2 and (init_state["width"] > init_state["length"]):
-            logger.warning(
-                "The width of the object {} is larger than length {}. Are you sure?".format(
-                    init_state["width"], init_state["length"]
-                )
-            )
-
-        last_state = parse_object_state(sdc_track, -1, check_last_state=True)
-        init_position = init_state["position"]
-
-        # Add a fake Z axis so that the object will not fall from the sky.
-        init_position[-1] = 0
-
-        init_yaw = init_state["heading"]
-        last_position = last_state["position"]
-        last_yaw = last_state["heading"]
-
-        self.current_sdc_route = get_idm_route(sdc_traj)
-        self.sdc_start_point = copy.deepcopy(init_position)
-        self.sdc_dest_point = copy.deepcopy(last_position)
-
-        self.engine.global_config.update(
-            copy.deepcopy(
-                dict(
-                    agent_configs={
-                        DEFAULT_AGENT: dict(
-                            spawn_position_heading=(list(init_position), init_yaw),
-                            spawn_velocity=init_state["velocity"],
-                            width=init_state["width"],
-                            length=init_state["length"],
-                            height=init_state["height"],
-                        )
-                    }
-                )
-            )
-        )
 
     def filter_path(self, start_lanes, end_lanes):
         for start in start_lanes:
