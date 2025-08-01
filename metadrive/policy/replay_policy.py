@@ -31,7 +31,7 @@ class ReplayTrafficParticipantPolicy(BasePolicy):
 
     def act(self, *args, **kwargs):
 
-        info = self.traj_info[index]
+        info = self.traj_info[self.episode_step]
 
         # Before step
         # Warning by LQY: Don't call before step here! Before step should be called by manager

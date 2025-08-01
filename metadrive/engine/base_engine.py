@@ -59,7 +59,6 @@ class BaseEngine(EngineCore, Randomizable):
         Randomizable.__init__(self, self.global_random_seed)
         self.episode_step = 0
         BaseEngine.singleton = self
-        self.interface = Interface(self)
 
         # managers
         self._managers = OrderedDict()
@@ -335,7 +334,6 @@ class BaseEngine(EngineCore, Randomizable):
         for manager in self.managers.values():
             new_step_info = manager.after_step(*args, **kwargs)
             step_infos = concat_step_infos([step_infos, new_step_info])
-        self.interface.after_step()
         
         return step_infos
 
