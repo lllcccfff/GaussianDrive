@@ -37,41 +37,13 @@ assert sys.version_info.major == 3 and sys.version_info.minor >= 6, \
     "python version >= 3.6 is required"
     
 install_requires = [
-    "requests",
-    "matplotlib",
-    "pygame",
-    "yapf",
-    "tqdm",
-    "progressbar",
-    "pillow",
     "lxml",
-    "psutil",
-    "shapely",
-    "filelock",
-    "Pygments",
-    "mediapy"
-]
-
-test_requirement = [
-    "pandas",
-    "pytest",
-    "scipy"
-]
-
-cuda_requirement = [
-    "cuda-python==12.1.0",
-    "PyOpenGL==3.1.6",
-    "PyOpenGL-accelerate==3.1.6",
-    "pyrr==0.10.3",
-    "glfw",
+    "mediapy",
+    "shapely"
 ]
 
 gym_requirement = [
     "gym>=0.19.0, <=0.26.0"
-]
-
-ros_requirement = [
-    "zmq"
 ]
 
 setup(
@@ -84,9 +56,7 @@ setup(
     packages=packages,
     install_requires=install_requires,
     extras_require={
-        "cuda": cuda_requirement,
         "gym": gym_requirement,
-        "ros": ros_requirement,
         ":python_version == '3.6'": ["panda3d==1.10.11", "panda3d-gltf==0.10, <1.0", "gymnasium>=0.26", "numpy", "opencv-python==4.5.5.64"],
         ":python_version == '3.7'": ["panda3d>=1.10.11", "panda3d-gltf>=0.10, <1.0", "gymnasium>=0.26", "numpy", "opencv-python"],
         ":python_version >= '3.8'": ["panda3d>=1.10.14", "panda3d-gltf>=0.13, <1.0", "gymnasium>=0.28", "numpy>=1.21.6", "opencv-python"],

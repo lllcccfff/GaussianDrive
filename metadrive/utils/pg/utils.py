@@ -12,7 +12,6 @@ from metadrive.component.lane.pg_lane import PGLane
 from metadrive.constants import CollisionGroup
 from metadrive.constants import Decoration, MetaDriveType
 from metadrive.engine.physics_node import BaseRigidBodyNode, BaseGhostBodyNode
-from metadrive.utils.coordinates_shift import panda_heading
 from metadrive.utils.coordinates_shift import panda_vector
 from metadrive.utils.interpolating_line import InterpolatingLine
 from metadrive.utils.math import get_points_bounding_box, norm
@@ -210,50 +209,50 @@ def ray_localization(
     #     return (lane, index) if not return_on_lane else (lane, index, on_lane)
 
 
-def rect_region_detection(
-    engine,
-    position: Tuple,
-    heading: float,
-    heading_direction_length: float,
-    side_direction_width: float,
-    detection_group: int,
-    height=10,
-    in_static_world=False
-):
-    """
+# def rect_region_detection(
+#     engine,
+#     position: Tuple,
+#     heading: float,
+#     heading_direction_length: float,
+#     side_direction_width: float,
+#     detection_group: int,
+#     height=10,
+#     in_static_world=False
+# ):
+#     """
 
-     ----------------------------------
-     |               *                |  --->>>
-     ----------------------------------
-     * position
-     --->>> heading direction
-     ------ longitude length
-     | lateral width
+#      ----------------------------------
+#      |               *                |  --->>>
+#      ----------------------------------
+#      * position
+#      --->>> heading direction
+#      ------ longitude length
+#      | lateral width
 
-     **CAUTION**: position is the middle point of longitude edge
+#      **CAUTION**: position is the middle point of longitude edge
 
-    :param engine: BaseEngine class
-    :param position: position in MetaDrive
-    :param heading: heading in MetaDrive [degree]
-    :param heading_direction_length: rect length in heading direction
-    :param side_direction_width: rect width in side direction
-    :param detection_group: which group to detect
-    :param height: the detect will be executed from this height to 0
-    :param in_static_world: execute detection in static world
-    :return: detection result
-    """
-    region_detect_start = panda_vector(position, z=height)
-    region_detect_end = panda_vector(position, z=-1)
-    tsFrom = TransformState.makePosHpr(region_detect_start, Vec3(panda_heading(heading), 0, 0))
-    tsTo = TransformState.makePosHpr(region_detect_end, Vec3(panda_heading(heading), 0, 0))
+#     :param engine: BaseEngine class
+#     :param position: position in MetaDrive
+#     :param heading: heading in MetaDrive [degree]
+#     :param heading_direction_length: rect length in heading direction
+#     :param side_direction_width: rect width in side direction
+#     :param detection_group: which group to detect
+#     :param height: the detect will be executed from this height to 0
+#     :param in_static_world: execute detection in static world
+#     :return: detection result
+#     """
+#     region_detect_start = panda_vector(position, z=height)
+#     region_detect_end = panda_vector(position, z=-1)
+#     tsFrom = TransformState.makePosHpr(region_detect_start, Vec3(panda_heading(heading), 0, 0))
+#     tsTo = TransformState.makePosHpr(region_detect_end, Vec3(panda_heading(heading), 0, 0))
 
-    shape = BulletBoxShape(Vec3(heading_direction_length / 2, side_direction_width / 2, 1))
-    penetration = 0.0
+#     shape = BulletBoxShape(Vec3(heading_direction_length / 2, side_direction_width / 2, 1))
+#     penetration = 0.0
 
-    physics_world = engine.physics_world.dynamic_world if not in_static_world else engine.physics_world.static_world
+#     physics_world = engine.physics_world.dynamic_world if not in_static_world else engine.physics_world.static_world
 
-    result = physics_world.sweep_test_closest(shape, tsFrom, tsTo, detection_group, penetration)
-    return result
+#     result = physics_world.sweep_test_closest(shape, tsFrom, tsTo, detection_group, penetration)
+#     return result
 
 
 def circle_region_detection(

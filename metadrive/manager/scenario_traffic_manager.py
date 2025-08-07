@@ -3,8 +3,8 @@ import copy
 import numpy as np
 
 from metadrive.component.static_object.traffic_object import TrafficCone, TrafficBarrier
-from metadrive.component.traffic_participants.cyclist import Cyclist, CyclistBoundingBox
-from metadrive.component.traffic_participants.pedestrian import Pedestrian, PedestrianBoundingBox
+from metadrive.component.traffic_participants.cyclist import Cyclist
+from metadrive.component.traffic_participants.pedestrian import Pedestrian
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.component.vehicle.vehicle_type import LVehicle, MVehicle, XLVehicle, \
     VaryingDynamicsBoundingBoxVehicle, SVehicle, DefaultVehicle
@@ -12,7 +12,6 @@ from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.idm_policy import TrajectoryIDMPolicy
-from metadrive.policy.replay_policy import ReplayEgoCarPolicy
 from metadrive.policy.replay_policy import ReplayTrafficParticipantPolicy
 from metadrive.scenario.parse_object_state import parse_object_state, get_idm_route, get_max_valid_indicis
 from metadrive.scenario.scenario_description import ScenarioDescription as SD
@@ -172,29 +171,29 @@ class ScenarioTrafficManager(BaseManager):
         policy = self.add_policy(obj.name, ReplayTrafficParticipantPolicy, obj, track)
         policy.act()
 
-    def spawn_cyclist(self, oid, bbox, track, state):
-        if self.episode_step < bbox.first_frame or self.episode_step > bbox.last_frame:
-            return
+    # def spawn_cyclist(self, oid, bbox, track, state):
+    #     if self.episode_step < bbox.first_frame or self.episode_step > bbox.last_frame:
+    #         return
         
-        state = parse_object_state(track, self.episode_step, include_z_position=False)
+    #     state = parse_object_state(track, self.episode_step, include_z_position=False)
 
-        obj_name = scenario_id if self.engine.global_config["force_reuse_object_name"] else None
-        cls = Cyclist
+    #     obj_name = scenario_id if self.engine.global_config["force_reuse_object_name"] else None
+    #     cls = Cyclist
 
-        position = list(state["position"])
-        obj = self.spawn_object(
-            cls,
-            name=obj_name,
-            position=position,
-            heading_theta=state["heading"],
-            width=state["width"],
-            length=state["length"],
-            height=state["height"],
-        )
-        self._scenario_id_to_obj_id[scenario_id] = obj.name
-        self._obj_id_to_scenario_id[obj.name] = scenario_id
-        policy = self.add_policy(obj.name, ReplayTrafficParticipantPolicy, obj, track)
-        policy.act()
+    #     position = list(state["position"])
+    #     obj = self.spawn_object(
+    #         cls,
+    #         name=obj_name,
+    #         position=position,
+    #         heading_theta=state["heading"],
+    #         width=state["width"],
+    #         length=state["length"],
+    #         height=state["height"],
+    #     )
+    #     self._scenario_id_to_obj_id[scenario_id] = obj.name
+    #     self._obj_id_to_scenario_id[obj.name] = scenario_id
+    #     policy = self.add_policy(obj.name, ReplayTrafficParticipantPolicy, obj, track)
+    #     policy.act()
 
     def get_state(self):
         # Record mapping from original_id to new_id

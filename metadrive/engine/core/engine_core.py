@@ -4,6 +4,7 @@ import sys
 import time
 from typing import Optional, Union, Tuple
 import gltf
+from panda3d.core import AntialiasAttrib, loadPrcFileData, LineSegs, PythonCallbackObject, Vec3, NodePath
 from metadrive.third_party.simplepbr import init
 
 from metadrive.component.sensors.base_sensor import BaseSensor
@@ -13,8 +14,6 @@ from metadrive.engine.asset_loader import initialize_asset_loader, close_asset_l
 from metadrive.engine.core.collision_callback import collision_callback
 from metadrive.engine.core.draw import ColorLineNodePath, ColorSphereNodePath
 from metadrive.engine.core.force_fps import ForceFPS
-from metadrive.engine.core.image_buffer import ImageBuffer
-from metadrive.engine.core.light import Light
 from metadrive.engine.core.onscreen_message import ScreenMessage
 from metadrive.engine.core.physics_world import PhysicsWorld
 from metadrive.engine.core.pssm import PSSM
@@ -41,35 +40,35 @@ def _suppress_warning():
     logging.getLogger('shapely.geos').setLevel(logging.CRITICAL)
 
 
-def _free_warning():
-    loadPrcFileData("", "notify-level-glgsg debug")
-    # loadPrcFileData("", "notify-level-pgraph debug")  # press 4 to use toggle analyze to do this
-    loadPrcFileData("", "notify-level-display debug")  # press 4 to use toggle analyze to do this
-    loadPrcFileData("", "notify-level-pnmimage debug")
-    loadPrcFileData("", "notify-level-thread debug")
+# def _free_warning():
+#     loadPrcFileData("", "notify-level-glgsg debug")
+#     # loadPrcFileData("", "notify-level-pgraph debug")  # press 4 to use toggle analyze to do this
+#     loadPrcFileData("", "notify-level-display debug")  # press 4 to use toggle analyze to do this
+#     loadPrcFileData("", "notify-level-pnmimage debug")
+#     loadPrcFileData("", "notify-level-thread debug")
 
 
-def attach_cover_image(window_width, window_height):
-    cover_file_path = randomize_cover()
-    image = OnscreenImage(image=cover_file_path, pos=(0, 0, 0), scale=(1, 1, 1))
-    if window_width > window_height:
-        scale = window_width / window_height
-    else:
-        scale = window_height / window_width
-    image.set_scale((scale, 1, scale))
-    image.setTransparency(True)
-    return image
+# def attach_cover_image(window_width, window_height):
+#     cover_file_path = randomize_cover()
+#     image = OnscreenImage(image=cover_file_path, pos=(0, 0, 0), scale=(1, 1, 1))
+#     if window_width > window_height:
+#         scale = window_width / window_height
+#     else:
+#         scale = window_height / window_width
+#     image.set_scale((scale, 1, scale))
+#     image.setTransparency(True)
+#     return image
 
 
-def attach_logo(engine):
-    cover_file_path = get_logo_file()
-    image = OnscreenImage(image=cover_file_path)
-    scale = 0.075
-    image.set_scale((scale * 3, 1, scale))
-    image.set_pos((0.8325 * engine.w_scale, 0, -0.94 * engine.h_scale))
-    image.set_antialias(AntialiasAttrib.MMultisample)
-    image.setTransparency(True)
-    return image
+# def attach_logo(engine):
+#     cover_file_path = get_logo_file()
+#     image = OnscreenImage(image=cover_file_path)
+#     scale = 0.075
+#     image.set_scale((scale * 3, 1, scale))
+#     image.set_pos((0.8325 * engine.w_scale, 0, -0.94 * engine.h_scale))
+#     image.set_antialias(AntialiasAttrib.MMultisample)
+#     image.setTransparency(True)
+#     return image
 
 
 class EngineCore:
@@ -113,15 +112,17 @@ class EngineCore:
         #     pass
         if self.global_config["debug"]:
             # debug setting
-            EngineCore.DEBUG = True
-            if self.global_config["debug_panda3d"]:
-                _free_warning()
-            setup_logger(debug=True)
-            self.accept("1", self.toggleDebug)
-            self.accept("2", self.toggleWireframe)
-            self.accept("3", self.toggleTexture)
-            self.accept("4", self.toggleAnalyze)
-            self.accept("5", self.reload_shader)
+            # EngineCore.DEBUG = True
+            # if self.global_config["debug_panda3d"]:
+            #     _free_warning()
+            # setup_logger(debug=True)
+            # self.accept("1", self.toggleDebug)
+            # self.accept("2", self.toggleWireframe)
+            # self.accept("3", self.toggleTexture)
+            # self.accept("4", self.toggleAnalyze)
+            # self.accept("5", self.reload_shader)
+            pass
+
         else:
             # only report fatal error when debug is False
             _suppress_warning()
@@ -131,57 +132,22 @@ class EngineCore:
                 self.accept("4", self.toggleAnalyze)
 
         super(EngineCore, self).__init__(windowType=self.mode)
-        logger.info("Known Pipes: CUDARasterizer")
-        if self.main_window_disabled and self.mode != RENDER_MODE_NONE:
-            self.win.setActive(False)
 
-        if self.use_render_pipeline and self.mode != RENDER_MODE_NONE:
-            self.render_pipeline.create(self)
+        # if not self.global_config["debug_physics_world"] \
+        #         and (self.mode in [RENDER_MODE_ONSCREEN, RENDER_MODE_OFFSCREEN]):
+        #     initialize_asset_loader(self)
 
-        # main_window_position = (0, 0)
-        if self.mode == RENDER_MODE_ONSCREEN:
-            h = self.pipe.getDisplayHeight()
-            w = self.pipe.getDisplayWidth()
-            if self.global_config["window_size"][0] > 0.9 * w or self.global_config["window_size"][1] > 0.9 * h:
-                old_scale = self.global_config["window_size"][0] / self.global_config["window_size"][1]
-                new_w = int(min(0.9 * w, 0.9 * h * old_scale))
-                new_h = int(min(0.9 * h, 0.9 * w / old_scale))
-                self.global_config["window_size"] = tuple([new_w, new_h])
-                from panda3d.core import WindowProperties
-                props = WindowProperties()
-                props.setSize(self.global_config["window_size"][0], self.global_config["window_size"][1])
-                self.win.requestProperties(props)
-                logger.warning(
-                    "Since your screen is too small ({}, {}), we resize the window to {}.".format(
-                        w, h, self.global_config["window_size"]
-                    )
-                )
-            # main_window_position = (
-            #     (w - self.global_config["window_size"][0]) / 2, (h - self.global_config["window_size"][1]) / 2
-            # )
-
-        # screen scale factor
-        self.w_scale = max(self.global_config["window_size"][0] / self.global_config["window_size"][1], 1)
-        self.h_scale = max(self.global_config["window_size"][1] / self.global_config["window_size"][0], 1)
-
-        if self.mode == RENDER_MODE_ONSCREEN:
-            self.disableMouse()
-
-        if not self.global_config["debug_physics_world"] \
-                and (self.mode in [RENDER_MODE_ONSCREEN, RENDER_MODE_OFFSCREEN]):
-            initialize_asset_loader(self)
-
-            if not self.use_render_pipeline:
-                # Display logo
-                if self.mode == RENDER_MODE_ONSCREEN and (not self.global_config["debug"]):
-                    if self.global_config["show_logo"]:
-                        self._window_logo = attach_logo(self)
-                        self._loading_logo = attach_cover_image(
-                            window_width=self.get_size()[0], window_height=self.get_size()[1]
-                        )
-                        for i in range(5):
-                            self.graphicsEngine.renderFrame()
-                        self.taskMgr.add(self.remove_logo, "remove _loading_logo in first frame")
+        #     if not self.use_render_pipeline:
+        #         # Display logo
+        #         if self.mode == RENDER_MODE_ONSCREEN and (not self.global_config["debug"]):
+        #             if self.global_config["show_logo"]:
+        #                 self._window_logo = attach_logo(self)
+        #                 self._loading_logo = attach_cover_image(
+        #                     window_width=self.get_size()[0], window_height=self.get_size()[1]
+        #                 )
+        #                 for i in range(5):
+        #                     self.graphicsEngine.renderFrame()
+        #                 self.taskMgr.add(self.remove_logo, "remove _loading_logo in first frame")
 
         self.closed = False
 

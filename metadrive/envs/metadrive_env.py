@@ -1,5 +1,4 @@
 import copy
-from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
 from typing import Union
 
 import numpy as np
@@ -10,7 +9,6 @@ from metadrive.component.map.pg_map import parse_map_config, MapGenerateMethod
 from metadrive.component.pgblock.first_block import FirstPGBlock
 from metadrive.constants import DEFAULT_AGENT, TerminationState
 from metadrive.envs.base_env import BaseEnv
-from metadrive.manager.traffic_manager import TrafficMode
 from metadrive.utils import clip, Config
 
 METADRIVE_DEFAULT_CONFIG = dict(
@@ -36,7 +34,6 @@ METADRIVE_DEFAULT_CONFIG = dict(
     # ===== Traffic =====
     traffic_density=0.1,
     need_inverse_traffic=False,
-    traffic_mode=TrafficMode.Trigger,  # "Respawn", "Trigger"
     random_traffic=False,  # Traffic is randomized at default.
     # this will update the vehicle_config and set to traffic
     traffic_vehicle_config=dict(
@@ -59,7 +56,7 @@ METADRIVE_DEFAULT_CONFIG = dict(
 
     # ===== Agent =====
     random_spawn_lane_index=True,
-    vehicle_config=dict(navigation_module=NodeNetworkNavigation),
+    vehicle_config=dict(),
     agent_configs={
         DEFAULT_AGENT: dict(
             use_special_color=True,

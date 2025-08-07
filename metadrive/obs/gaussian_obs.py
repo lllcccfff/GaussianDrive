@@ -1,11 +1,8 @@
 import gymnasium as gym
-from metadrive.component.sensors.base_camera import BaseCamera
-from metadrive.component.sensors.point_cloud_lidar import PointCloudLidar
 import numpy as np
 
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.obs.observation_base import BaseObservation
-from metadrive.obs.state_obs import StateObservation
 
 import torch
 
@@ -21,19 +18,18 @@ class GaussianStateObservation(BaseObservation):
     def __init__(self, config):
         super().__init__(config)
         self.img_obs = GaussianObservation(config, config["vehicle_config"]["image_source"], config["norm_pixel"])
-        self.state_obs = StateObservation(config)
 
     @property
     def observation_space(self):
         return gym.spaces.Dict(
             {
                 self.IMAGE: self.img_obs.observation_space,
-                self.STATE: self.state_obs.observation_space
+                self.STATE: None
             }
         )
 
     def observe(self, frame, camera_poses, vehicle: BaseVehicle):
-        return {self.IMAGE: self.img_obs.observe(frame, camera_poses), self.STATE: self.state_obs.observe(vehicle)}
+        return {self.IMAGE: self.img_obs.observe(frame, camera_poses), self.STATE: None}
 
     def destroy(self):
         super().destroy()
@@ -47,18 +43,17 @@ class GaussianObservation(BaseObservation):
     """
     STACK_SIZE = 3  # use continuous 3 image as the input
 
-    def __init__(self, config, cameras, clip_rgb: bool):
+    def __init__(self, config, clip_rgb: bool):
         self.STACK_SIZE = config["stack_size"]
         super().__init__(config)
-        self.sensors = cameras
         self.norm_pixel = clip_rgb
         self.state = {cam_name: np.zeros(self.observation_space.shape, dtype=np.float32) for cam_name in self.sensors.keys()}
 
     @property
     def observation_space(self):
-        sensor_cls = self.config["sensors"][self.image_source][0]
-        assert sensor_cls == "MainCamera" or issubclass(sensor_cls, BaseCamera), "Sensor should be BaseCamera"
-        channel = sensor_cls.num_channels if sensor_cls != "MainCamera" else 3
+        # sensor_cls = self.config["sensors"][self.image_source][0]
+        # assert sensor_cls == "MainCamera" or issubclass(sensor_cls, BaseCamera), "Sensor should be BaseCamera"
+        channel = 3
         shape = (self.config["sensors"][self.image_source][2],
                  self.config["sensors"][self.image_source][1]) + (channel, self.STACK_SIZE)
         shape = shape * len(self.sensors.keys())
@@ -113,6 +108,8 @@ class GaussianObservation(BaseObservation):
         :param vehicle: BaseVehicle
         :return: None
         """
+        self.sensors = self.engine.data_manager.get_current_scenario_data()['camera_objects']
+
         self.state = {cam_name: np.zeros(self.observation_space.shape, dtype=np.float32) for cam_name in self.sensors.keys()}
 
     def destroy(self):

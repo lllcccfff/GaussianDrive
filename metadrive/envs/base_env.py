@@ -8,24 +8,21 @@ import numpy as np
 from panda3d.core import PNMImage
 
 from metadrive import constants
-from metadrive.component.sensors.base_camera import BaseCamera
-from metadrive.component.sensors.dashboard import DashBoard
 from metadrive.component.sensors.distance_detector import LaneLineDetector, SideDetector
-from metadrive.component.sensors.lidar import Lidar
 from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
 from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
-from metadrive.constants import RENDER_MODE_ONSCREEN, RENDER_MODE_OFFSCREEN
 from metadrive.constants import TerminationState, TerrainProperty
 from metadrive.engine.engine_utils import initialize_engine, close_engine, \
     engine_initialized, set_global_random_seed, initialize_global_config, get_global_config
 from metadrive.engine.logger import get_logger, set_log_level
 from metadrive.manager.agent_manager import VehicleAgentManager
-from metadrive.manager.record_manager import RecordManager
-from metadrive.manager.replay_manager import ReplayManager
-from metadrive.obs.image_obs import ImageStateObservation
+# from metadrive.manager.record_manager import RecordManager
+# from metadrive.manager.replay_manager import ReplayManager
+# from metadrive.obs.image_obs import ImageStateObservation
 from metadrive.obs.observation_base import BaseObservation
-from metadrive.obs.observation_base import DummyObservation
-from metadrive.obs.state_obs import LidarStateObservation
+from metadrive.obs.gaussian_obs import GaussianObservation
+# from metadrive.obs.observation_base import DummyObservation
+# from metadrive.obs.state_obs import LidarStateObservation
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.scenario.utils import convert_recorded_scenario_exported
 from metadrive.utils import merge_dicts, get_np_random, concat_step_infos
@@ -181,7 +178,7 @@ BASE_DEFAULT_CONFIG = dict(
     ),
 
     # ===== Sensors =====
-    sensors=dict(lidar=(Lidar, ), side_detector=(SideDetector, ), lane_line_detector=(LaneLineDetector, )),
+    sensors=dict(),
 
     # ===== Engine Core config =====
     # If true pop a window to render
@@ -193,8 +190,6 @@ BASE_DEFAULT_CONFIG = dict(
     decision_repeat=5,
     # This is an advanced feature for accessing image without moving them to ram!
     image_on_cuda=False,
-    # Don't set this config. We will determine the render mode automatically, it runs at physics-only mode by default.
-    _render_mode=RENDER_MODE_NONE,
     # If set to None: the program will run as fast as possible. Otherwise, the fps will be limited under this value
     force_render_fps=None,
     # We will maintain a set of buffers in the engine to store the used objects and can reuse them when possible
@@ -292,8 +287,9 @@ class BaseEnv(gym.Env):
             config = Config()
         self.logger = get_logger()
         set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
-        merged_config = self.default_config().merge_from(config, replace_keys=["agent_configs", "sensors"])
-        global_config = self._post_process_config(merged_config)
+        default_config = self.default_config()
+        default_config.merge_from(config, replace_keys=["agent_configs"])
+        global_config = self._post_process_config(default_config)
 
         self.config = global_config
         initialize_global_config(self.config)
@@ -319,68 +315,48 @@ class BaseEnv(gym.Env):
         # Cancel interface panel
         self.logger.info("Environment: {}".format(self.__class__.__name__))
         self.logger.info("MetaDrive version: {}".format(VERSION))
-        if not config["show_interface"]:
-            config["interface_panel"] = []
 
         # Adjust terrain
-        n = config["map_region_size"]
-        assert (n & (n - 1)) == 0 and 512 <= n <= 4096, "map_region_size should be pow of 2 and < 2048."
-        TerrainProperty.map_region_size = config["map_region_size"]
+        # n = config["map_region_size"]
+        # assert (n & (n - 1)) == 0 and 512 <= n <= 4096, "map_region_size should be pow of 2 and < 2048."
+        # TerrainProperty.map_region_size = config["map_region_size"]
 
         # Multi-Thread
         # if config["image_on_cuda"]:
         #     self.logger.info("Turn Off Multi-thread rendering due to image_on_cuda=True")
         #     config["multi_thread_render"] = False
 
-        # Optimize sensor creation in none-screen mode
-        if not config["use_render"] and not config["image_observation"]:
-            filtered = {}
-            for id, cfg in config["sensors"].items():
-                if len(cfg) > 0 and not issubclass(cfg[0], BaseCamera) and id != "main_camera":
-                    filtered[id] = cfg
-            config["sensors"] = filtered
-            config["interface_panel"] = []
+        # # Optimize sensor creation in none-screen mode
+        # if not config["use_render"] and not config["image_observation"]:
+        #     filtered = {}
+        #     for id, cfg in config["sensors"].items():
+        #         if len(cfg) > 0 and not issubclass(cfg[0], BaseCamera) and id != "main_camera":
+        #             filtered[id] = cfg
+        #     config["sensors"] = filtered
+        #     config["interface_panel"] = []
 
-        # Check sensor existence
-        if config["use_render"] or "main_camera" in config["sensors"]:
-            config["sensors"]["main_camera"] = ("MainCamera", *config["window_size"])
+        # # Check sensor existence
+        # if config["use_render"] or "main_camera" in config["sensors"]:
+        #     config["sensors"]["main_camera"] = ("MainCamera", *config["window_size"])
 
-        # Merge dashboard config with sensors
-        to_use = []
-        if not config["render_pipeline"] and config["show_interface"] and "main_camera" in config["sensors"]:
-            for panel in config["interface_panel"]:
-                if panel == "dashboard":
-                    config["sensors"]["dashboard"] = (DashBoard, )
-                if panel not in config["sensors"]:
-                    self.logger.warning(
-                        "Fail to add sensor: {} to the interface. Remove it from panel list!".format(panel)
-                    )
-                elif panel == "main_camera":
-                    self.logger.warning("main_camera can not be added to interface_panel, remove")
-                else:
-                    to_use.append(panel)
-        config["interface_panel"] = to_use
+        # # Merge dashboard config with sensors
+        # to_use = []
+        # if not config["render_pipeline"] and config["show_interface"] and "main_camera" in config["sensors"]:
+        #     for panel in config["interface_panel"]:
+        #         if panel == "dashboard":
+        #             config["sensors"]["dashboard"] = (DashBoard, )
+        #         if panel not in config["sensors"]:
+        #             self.logger.warning(
+        #                 "Fail to add sensor: {} to the interface. Remove it from panel list!".format(panel)
+        #             )
+        #         elif panel == "main_camera":
+        #             self.logger.warning("main_camera can not be added to interface_panel, remove")
+        #         else:
+        #             to_use.append(panel)
+        # config["interface_panel"] = to_use
 
 
         # show sensor lists
-        _str = "Sensors: [{}]"
-        sensors_str = ""
-        for _id, cfg in config["sensors"].items():
-            sensors_str += "{}: {}{}, ".format(_id, cfg[0] if isinstance(cfg[0], str) else cfg[0].__name__, cfg[1:])
-        self.logger.info(_str.format(sensors_str[:-2]))
-
-        # determine render mode automatically
-        if config["use_render"]:
-            assert "main_camera" in config["sensors"]
-            config["_render_mode"] = RENDER_MODE_ONSCREEN
-        else:
-            config["_render_mode"] = RENDER_MODE_NONE
-            for sensor in config["sensors"].values():
-                if sensor[0] == "MainCamera" or (issubclass(sensor[0], BaseCamera) and sensor[0] != DashBoard):
-                    config["_render_mode"] = RENDER_MODE_OFFSCREEN
-                    break
-        self.logger.info("Render Mode: {}".format(config["_render_mode"]))
-        self.logger.info("Horizon (Max steps per agent): {}".format(config["horizon"]))
         if config["truncate_as_terminate"]:
             self.logger.warning(
                 "When reaching max steps, both 'terminate' and 'truncate will be True."
@@ -430,7 +406,7 @@ class BaseEnv(gym.Env):
     def _preprocess_actions(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray], int]) \
             -> Union[np.ndarray, Dict[AnyStr, np.ndarray], int]:
         if not self.is_multi_agent:
-            actions = {v_id: actions for v_id in self.agents.keys()}
+            actions = actions
         else:
             if self.config["action_check"]:
                 # Check whether some actions are not provided.
@@ -563,12 +539,12 @@ class BaseEnv(gym.Env):
         self.episode_rewards += rewards
         done_function_result, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
-        self.dones = done_function_result or self.dones[]
+        self.dones = done_function_result or self.dones
         obses = self.agent_manager.get_observations()
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
-        truncateds = {k: step_infos[k].get(TerminationState.MAX_STEP, False) for k in self.agents.keys()}
-        terminateds = {k: self.dones[k] for k in self.agents.keys()}
+        truncateds = step_infos[k].get(TerminationState.MAX_STEP, False)
+        terminateds = self.dones
 
         # For extreme scenario only. Force to terminate all agents if the environmental step exceeds 5 times horizon.
         if self.config["horizon"] and self.episode_step > 5 * self.config["horizon"]:
@@ -618,7 +594,7 @@ class BaseEnv(gym.Env):
                 o = self.config["agent_observation"](self.config)
             else:
                 img_obs = self.config["image_observation"]
-                o = ImageStateObservation(self.config) if img_obs else LidarStateObservation(self.config)
+                o = GaussianObservation(self.config)
         return o
 
     def _wrap_as_single_agent(self, data):
@@ -718,8 +694,8 @@ class BaseEnv(gym.Env):
         self.engine.accept("]", self.next_seed_reset)
         self.engine.accept("[", self.last_seed_reset)
         self.engine.register_manager("agent_manager", self.agent_manager)
-        self.engine.register_manager("record_manager", RecordManager())
-        self.engine.register_manager("replay_manager", ReplayManager())
+        # self.engine.register_manager("record_manager", RecordManager())
+        # self.engine.register_manager("replay_manager", ReplayManager())
 
     @property
     def current_map(self):

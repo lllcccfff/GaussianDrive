@@ -1,6 +1,5 @@
 import copy
 
-from metadrive.component.map.scenario_map import ScenarioMap
 from metadrive.component.ground import GroundPlane
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager

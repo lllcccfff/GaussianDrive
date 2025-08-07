@@ -12,7 +12,7 @@ from metadrive.component.lane.abs_lane import AbstractLane
 from metadrive.component.lane.circular_lane import CircularLane
 from metadrive.component.lane.point_lane import PointLane
 from metadrive.component.lane.straight_lane import StraightLane
-from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
+# from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
 from metadrive.component.pg_space import VehicleParameterSpace, ParameterSpace
 from metadrive.constants import CamMask, get_color_palette
 from metadrive.constants import MetaDriveType, CollisionGroup
@@ -24,7 +24,6 @@ from metadrive.engine.physics_node import BaseRigidBodyNode
 from metadrive.utils import Config, safe_clip_for_small_array
 from metadrive.utils.math import get_vertical_vector, norm, clip
 from metadrive.utils.math import wrap_to_pi
-from metadrive.utils.pg.utils import rect_region_detection
 from metadrive.utils.utils import get_object_from_node
 
 logger = get_logger()

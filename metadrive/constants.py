@@ -6,7 +6,6 @@ import numpy as np
 from panda3d.bullet import BulletWorld
 from panda3d.core import Vec3
 from panda3d.core import Vec4, BitMask32
-from shapely.geometry import Polygon
 
 from metadrive.type import MetaDriveType
 from metadrive.version import VERSION

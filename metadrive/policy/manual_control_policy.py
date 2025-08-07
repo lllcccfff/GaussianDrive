@@ -1,7 +1,6 @@
 from metadrive.engine.core.manual_controller import KeyboardController, SteeringWheelController, XboxController
 from metadrive.engine.engine_utils import get_global_config
 from metadrive.engine.logger import get_logger
-from metadrive.examples import expert
 from metadrive.policy.env_input_policy import EnvInputPolicy
 
 logger = get_logger()
@@ -71,15 +70,14 @@ class ManualControlPolicy(EnvInputPolicy):
 
         try:
             if self.engine.current_track_agent.expert_takeover and self.enable_expert:
-                return expert(self.engine.current_track_agent)
+                # return expert(self.engine.current_track_agent)
+                raise ValueError
         except (ValueError, AssertionError):
             # if observation doesn't match, fall back to manual control
             print("Current observation does not match the format that expert can accept.")
             self.toggle_takeover()
 
-        is_track_vehicle = self.engine.agent_manager.get_agent(agent_id) is self.engine.current_track_agent
-        not_in_native_bev = (self.engine.main_camera is None) or (not self.engine.main_camera.is_bird_view_camera())
-        if self.engine.global_config["manual_control"] and is_track_vehicle and not_in_native_bev:
+        if self.engine.global_config["manual_control"]:
             action = self.controller.process_input(self.engine.current_track_agent)
             self.action_info["manual_control"] = True
         else:

@@ -12,10 +12,7 @@ from metadrive.engine.core.engine_core import EngineCore
 from metadrive.engine.interface import Interface
 from metadrive.engine.logger import get_logger, reset_logger
 
-from metadrive.pull_asset import pull_asset
 from metadrive.utils import concat_step_infos
-from metadrive.utils.utils import is_map_related_class
-from metadrive.version import VERSION, asset_version
 
 logger = get_logger()
 
@@ -509,24 +506,6 @@ class BaseEngine(EngineCore, Randomizable):
         # whether to froze other managers
         return {"replay_manager": self.replay_manager} if self.replay_episode and not \
             self.only_reset_when_replay else self._managers
-
-    def object_to_agent(self, obj_name):
-        if self.replay_episode:
-            return self.replay_manager.current_frame.object_to_agent(obj_name)
-        else:
-            return self.agent_manager.object_to_agent(obj_name)
-
-    def agent_to_object(self, agent_name):
-        if self.replay_episode:
-            return self.replay_manager.current_frame.agent_to_object(agent_name)
-        else:
-            return self.agent_manager.agent_to_object(agent_name)
-
-    def render_topdown(self, text, *args, **kwargs):
-        if self.top_down_renderer is None:
-            from metadrive.engine.top_down_renderer import TopDownRenderer
-            self.top_down_renderer = TopDownRenderer(*args, **kwargs)
-        return self.top_down_renderer.render(text, *args, **kwargs)
 
     def _get_window_image(self, return_bytes=False):
         window_count = self.graphicsEngine.getNumWindows() - 1

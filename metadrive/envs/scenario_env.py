@@ -5,17 +5,14 @@ This environment can load all scenarios exported from other environments via env
 import numpy as np
 
 import torch
-from metadrive.component.navigation_module.trajectory_navigation import TrajectoryNavigation
 from metadrive.constants import TerminationState
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.base_env import BaseEnv
 from metadrive.manager.scenario_agent_manager import ScenarioAgentManager
 from metadrive.manager.scenario_curriculum_manager import ScenarioCurriculumManager
 from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
-from metadrive.manager.scenario_light_manager import ScenarioLightManager
 from metadrive.manager.scenario_map_manager import ScenarioMapManager
 from metadrive.manager.scenario_traffic_manager import ScenarioTrafficManager
-from metadrive.policy.replay_policy import ReplayEgoCarPolicy
 from metadrive.policy.waypoint_policy import WaypointPolicy
 from metadrive.utils import get_np_random
 from metadrive.utils.math import wrap_to_pi
@@ -59,8 +56,6 @@ SCENARIO_ENV_CONFIG = dict(
 
     # ===== Agent config =====
     vehicle_config=dict(
-        navigation_module=TrajectoryNavigation,
-        lidar=dict(num_lasers=120, distance=50),
         lane_line_detector=dict(num_lasers=0, distance=50),
         side_detector=dict(num_lasers=12, distance=50),
     ),
