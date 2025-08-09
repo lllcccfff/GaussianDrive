@@ -16,7 +16,6 @@ class BaseManager(Randomizable):
     def __init__(self):
         from metadrive.engine.engine_utils import get_engine, engine_initialized
         assert engine_initialized(), "You should not create manager before the initialization of BaseEngine"
-        # self.engine = get_engine()
         Randomizable.__init__(self, get_engine().global_random_seed)
         self.spawned_objects = {}
         self._object_policies = {}
@@ -49,7 +48,8 @@ class BaseManager(Randomizable):
         """
         Update episode level config to this manager and clean element or detach element
         """
-        self.clear_objects([object_id for object_id in self.spawned_objects.keys()])
+        for obj_id in self.spawned_objects.keys():
+            self.clear_object(obj_id)
         self.spawned_objects = {}
 
     def reset(self):

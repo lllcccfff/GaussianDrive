@@ -86,23 +86,7 @@ class EngineCore:
 
         self.pid = os.getpid()
         EngineCore.global_config = global_config
-        self.mode = global_config["_render_mode"]
         self.pstats_process = None
-
-        # Setup onscreen render
-        if self.global_config["use_render"]:
-            assert self.mode == RENDER_MODE_ONSCREEN, "Render mode error"
-            # Warning it may cause memory leak, Pand3d Official has fixed this in their master branch.
-            # You can enable it if your panda version is latest.
-        else:
-            self.global_config["show_coordinates"] = False
-            if self.global_config["image_observation"]:
-                assert self.mode == RENDER_MODE_OFFSCREEN, "Render mode error"
-            else:
-                assert self.mode == RENDER_MODE_NONE, "Render mode error"
-                if self.global_config["show_interface"]:
-                    # Disable useless camera capturing in none mode
-                    self.global_config["show_interface"] = False
 
         # Setup some debug options
         # if self.global_config["headless_machine_render"]:
@@ -131,7 +115,6 @@ class EngineCore:
                 self.accept("1", self.toggleDebug)
                 self.accept("4", self.toggleAnalyze)
 
-        super(EngineCore, self).__init__(windowType=self.mode)
 
         # if not self.global_config["debug_physics_world"] \
         #         and (self.mode in [RENDER_MODE_ONSCREEN, RENDER_MODE_OFFSCREEN]):
@@ -160,7 +143,7 @@ class EngineCore:
         self.physics_world.dynamic_world.setContactAddedCallback(PythonCallbackObject(collision_callback))
 
         # for real time simulation
-        self.force_fps = ForceFPS(self)
+        # self.force_fps = ForceFPS(self)
 
 
 

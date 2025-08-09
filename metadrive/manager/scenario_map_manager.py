@@ -6,7 +6,7 @@ from metadrive.manager.base_manager import BaseManager
 from metadrive.engine.logger import get_logger, set_log_level
 
 from easydrive.engine import MODELS
-
+from easydrive.utils.base_utils import dotdict
 logger = get_logger()
 
 
@@ -25,22 +25,27 @@ class ScenarioMapManager(BaseManager):
         self.sdc_dest_point = None
         self.current_sdc_route = None
 
+        self.ground = None
+
     def reset(self):
         seed = self.engine.global_random_seed
 
         self.current_sdc_route = None
         self.sdc_dest_point = None
 
-        scene_data = self.engine.data_manager.get_scenario(seed, should_copy=False)
+        scene_data = self.engine.data_manager.get_current_scenario_data()
         self.model = MODELS.build(
             cfg=scene_data['config'].model_cfg,
             render_mode='gui',
             renderer_cfg=scene_data['config'].renderer_cfg
         )
-        self.model.model_setup(scene_data['camera_objects'], scene_data['bounding_box_objects'])
-        self.model.load_model(**scene_data['config'].model_path)
+        self.model.model_setup(
+            scene_data['CameraBasedDataset'],
+            scene_data['BoundingBoxDataset']
+        )
+        self.model.load_model(**scene_data['config'].visualizer_cfg.model_path)
 
-        self.ground = GroundPlane([0,0,1.], scene_data['ground_height'])
+        self.ground = GroundPlane([0,0,1.], scene_data['ground_height'], random_seed=self.random_seed)
         # self.update_route()
 
     def update_route(self):

@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--reactive_traffic", action="store_true")
     parser.add_argument("--waymo", action="store_true")
     parser.add_argument("--add_sensor", action="store_true")
+    parser.add_argument("-c", "--scene_config_directory", type=str)
     parser.add_argument('--host', type=str, default='localhost', help='Server IP')
     parser.add_argument('--port', type=int, default=56789, help='Server port')
     args = parser.parse_args()
@@ -35,6 +36,7 @@ if __name__ == "__main__":
         "manual_control": True,
         "sequential_seed": True,
         "reactive_traffic": True if args.reactive_traffic else False,
+        "scene_config_directory": args.scene_config_directory,
     }
     if args.add_sensor:
         additional_cfg = {

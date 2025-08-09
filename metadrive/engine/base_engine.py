@@ -51,7 +51,7 @@ class BaseEngine(EngineCore, Randomizable):
     def __init__(self, global_config):
         self.c_id = dict()
         self.id_c = dict()
-        # self.try_pull_asset()
+
         EngineCore.__init__(self, global_config)
         Randomizable.__init__(self, self.global_random_seed)
         self.episode_step = 0
@@ -87,106 +87,9 @@ class BaseEngine(EngineCore, Randomizable):
         self._current_level = 0
         self._num_scenarios_per_level = int(self.global_config.get("num_scenarios", 1) / self._max_level)
 
-    def render(self, *kwargs):
-        rendered = self.managers['map_manager'].model.render(*kwargs)
+    def render(self, **kwargs):
+        rendered = self.managers['map_manager'].model.render(**kwargs)
         return rendered
-
-    def get_objects(self, filter: Optional[Union[Callable, List]] = None):
-        """
-        Return objects spawned, default all objects. Filter_func will be applied on all objects.
-        It can be a id list or a function
-        Since we don't expect a iterator, and the number of objects is not so large, we don't use built-in filter()
-        :param filter: a filter function, only return objects satisfying this condition
-        :return: return all objects or objects satisfying the filter_func
-        """
-        if filter is None:
-            return self._spawned_objects
-        elif isinstance(filter, (list, tuple)):
-            return {id: self._spawned_objects[id] for id in filter}
-        elif callable(filter):
-            res = dict()
-            for id, obj in self._spawned_objects.items():
-                if filter(obj):
-                    res[id] = obj
-            return res
-        else:
-            raise ValueError("filter should be a list or a function")
-
-    def get_policies(self):
-        """
-        Return a mapping from object ID to policy instance.
-        """
-        return self._object_policies
-
-    def get_object(self, object_id):
-        return self.get_objects([object_id])
-
-    def clear_objects(self, filter: Optional[Union[Callable, List]], force_destroy=False, record=True):
-        """
-        Destroy all self-generated objects or objects satisfying the filter condition
-        Since we don't expect a iterator, and the number of objects is not so large, we don't use built-in filter()
-        If force_destroy=True, we will destroy this element instead of storing them for next time using
-
-        filter: A list of object ids or a function returning a list of object id
-        """
-        """
-        In addition, we need to remove a color mapping whenever an object is destructed.
-        
-        """
-        force_destroy_this_obj = True if force_destroy or self.global_config["force_destroy"] else False
-
-        if isinstance(filter, (list, tuple)):
-            exclude_objects = {obj_id: self._spawned_objects[obj_id] for obj_id in filter}
-        elif callable(filter):
-            exclude_objects = dict()
-            for id, obj in self._spawned_objects.items():
-                if filter(obj):
-                    exclude_objects[id] = obj
-        else:
-            raise ValueError("filter should be a list or a function")
-        for id, obj in exclude_objects.items():
-            self._clean_color(id)
-            self._spawned_objects.pop(id)
-            if id in self._object_tasks:
-                self._object_tasks.pop(id)
-            if id in self._object_policies:
-                policy = self._object_policies.pop(id)
-                policy.destroy()
-            if force_destroy_this_obj:
-                #self._clean_color(obj.id)
-                obj.destroy()
-            else:
-                obj.detach_from_world(self.physics_world)
-
-                # We might want to remove some episode-relevant information when recycling some objects
-                if hasattr(obj, "before_reset"):
-                    obj.before_reset()
-
-                if obj.class_name not in self._dying_objects:
-                    self._dying_objects[obj.class_name] = []
-                # We have a limit for buffering objects
-                if len(self._dying_objects[obj.class_name]) < self.global_config["num_buffering_objects"]:
-                    self._dying_objects[obj.class_name].append(obj)
-                else:
-                    #self._clean_color(obj.id)
-                    obj.destroy()
-            if self.global_config["record_episode"] and not self.replay_episode and record:
-                self.record_manager.add_clear_info(obj)
-        return exclude_objects.keys()
-
-    def clear_object_if_possible(self, obj, force_destroy):
-        if isinstance(obj, dict):
-            return
-        if obj in self._spawned_objects:
-            self.clear_objects([obj], force_destroy=force_destroy)
-        if force_destroy and \
-                obj.class_name in self._dying_objects and \
-                obj in self._dying_objects[obj.class_name]:
-            self._dying_objects[obj.class_name].remove(obj)
-            if hasattr(obj, "destroy"):
-                self._clean_color(obj.id)
-                obj.destroy()
-        del obj
 
     def reset(self):
         """
@@ -230,7 +133,6 @@ class BaseEngine(EngineCore, Randomizable):
             #     if lm - cm != 0:
             #         print("{}: Before Reset! Mem Change {:.3f}MB".format(manager_name, (lm - cm) / 1e6))
             #     cm = lm
-        self.terrain.before_reset()
         self._object_clean_check()
 
         for manager_name, manager in self.managers.items():
@@ -265,20 +167,20 @@ class BaseEngine(EngineCore, Randomizable):
         # reset colors
         BaseEngine.COLORS_FREE = set(COLOR_SPACE)
         BaseEngine.COLORS_OCCUPIED = set()
-        new_i2c = {}
-        new_c2i = {}
-        # print("rest objects", len(self.get_objects()))
-        for object in self.get_objects().values():
-            if object.id in self.id_c.keys():
-                id = object.id
-                color = self.id_c[object.id]
-                BaseEngine.COLORS_OCCUPIED.add(color)
-                BaseEngine.COLORS_FREE.remove(color)
-                new_i2c[id] = color
-                new_c2i[color] = id
-        # print(len(BaseEngine.COLORS_FREE), len(BaseEngine.COLORS_OCCUPIED))
-        self.c_id = new_c2i
-        self.id_c = new_i2c
+        # new_i2c = {}
+        # new_c2i = {}
+        # # print("rest objects", len(self.get_objects()))
+        # for object in self.get_objects().values():
+        #     if object.id in self.id_c.keys():
+        #         id = object.id
+        #         color = self.id_c[object.id]
+        #         BaseEngine.COLORS_OCCUPIED.add(color)
+        #         BaseEngine.COLORS_FREE.remove(color)
+        #         new_i2c[id] = color
+        #         new_c2i[color] = id
+        # # print(len(BaseEngine.COLORS_FREE), len(BaseEngine.COLORS_OCCUPIED))
+        # self.c_id = new_c2i
+        # self.id_c = new_i2c
         return step_infos
 
     def before_step(self, external_actions: Dict[AnyStr, np.array]):
@@ -457,13 +359,6 @@ class BaseEngine(EngineCore, Randomizable):
         for manager in self._managers.values():
             assert len(manager.spawned_objects) == 0
 
-        objs_need_to_release = self.get_objects(
-            filter=lambda obj: isinstance(obj, BaseVehicle) or isinstance(obj, TrafficObject)
-        )
-        assert len(
-            objs_need_to_release) == 0, "You should clear all generated objects by using engine.clear_objects " \
-                                        "in each manager.before_step()"
-
         # rigid body check
         bodies = []
         for world in [self.physics_world.dynamic_world, self.physics_world.static_world]:
@@ -481,9 +376,6 @@ class BaseEngine(EngineCore, Randomizable):
             filtered.append(body)
         assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
                                    "Uncleared bodies: {}".format(filtered)
-
-        children = self.worldNP.getChildren()
-        assert len(children) == 0, "NodePath are not cleaned thoroughly. Remaining NodePath: {}".format(children)
 
     def update_manager(self, manager_name: str, manager, destroy_previous_manager=True):
         """
@@ -530,6 +422,25 @@ class BaseEngine(EngineCore, Randomizable):
         img = img[..., ::-1]  # Correct the colors
 
         return img
+
+    def register_manager(self, manager_name: str, manager):
+        """
+        Add a manager to BaseEngine, then all objects can communicate with this class
+        :param manager_name: name shouldn't exist in self._managers and not be same as any class attribute
+        :param manager: subclass of BaseManager
+        """
+        assert manager_name not in self._managers, "Manager {} already exists in BaseEngine, Use update_manager() to " \
+                                                   "overwrite".format(manager_name)
+        assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEngine"
+        self._managers[manager_name] = manager
+        setattr(self, manager_name, manager)
+        # self._managers = OrderedDict(sorted(self._managers.items(), key=lambda k_v: k_v[-1].PRIORITY))
+
+    def seed(self, random_seed):
+        self.global_random_seed = random_seed
+        super(BaseEngine, self).seed(random_seed)
+        for mgr in self._managers.values():
+            mgr.seed(random_seed)
 
     def warmup(self):
         """

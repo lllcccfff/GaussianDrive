@@ -29,7 +29,7 @@ class BaseObservation(ABC):
     def observe(self, *args, **kwargs):
         raise NotImplementedError
 
-    def reset(self, env, vehicle=None):
+    def reset(self, vehicle=None):
         pass
 
     def destroy(self):

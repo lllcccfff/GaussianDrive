@@ -39,7 +39,8 @@ assert sys.version_info.major == 3 and sys.version_info.minor >= 6, \
 install_requires = [
     "lxml",
     "mediapy",
-    "shapely"
+    "shapely",
+    "pygame"
 ]
 
 gym_requirement = [

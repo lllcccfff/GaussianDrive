@@ -1,7 +1,7 @@
 import math
 import os
 from collections import deque
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 import numpy as np
 from panda3d.bullet import BulletVehicle, BulletBoxShape, ZUp
@@ -143,7 +143,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.last_current_action = deque([(0.0, 0.0), (0.0, 0.0)], maxlen=2)
         self.last_position = (0, 0)
         self.last_velocity = 0
-        self.last_heading_dir = self.heading
+        self.last_heading = 0
         self.dist_to_left_side = None
         self.dist_to_right_side = None
 
@@ -232,7 +232,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         self.last_position = self.position  # 2D vector
         self.last_velocity = self.velocity  # 2D vector
-        self.last_heading_dir = self.heading
+        self.last_heading_theta = self.heading_theta
         if action is not None:
             self.last_current_action.append(action)  # the real step of physics world is implemented in taskMgr.step()
         # if self.increment_steering:
@@ -281,10 +281,10 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         """
         Check States and filter to update info
         """
-        result_1 = self.engine.physics_world.static_world.contactTest(self.body, True)
-        result_2 = self.engine.physics_world.dynamic_world.contactTest(self.body, True)
+        # result_1 = self.engine.physics_world.static_world.contactTest(self.body, True)
+        result_2 = self.engine.physics_world.dynamic_world.contactTest(self.body, False)
         contacts = set()
-        for contact in result_1.getContacts() + result_2.getContacts():
+        for contact in result_2.getContacts():
             node0 = contact.getNode0()
             node1 = contact.getNode1()
             node = node0 if node1.getName() == MetaDriveType.VEHICLE else node1
@@ -395,23 +395,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     """-------------------------------------- for vehicle making ------------------------------------------"""
 
-    @property
-    def LENGTH(self):
-        raise NotImplementedError()
-
-    @property
-    def HEIGHT(self):
-        raise NotImplementedError()
-
-    @property
-    def WIDTH(self):
-        raise NotImplementedError()
-
     def _create_vehicle_chassis(self):
-        # self.LENGTH = type(self).LENGTH
-        # self.WIDTH = type(self).WIDTH
-        # self.HEIGHT = type(self).HEIGHT
-
         # assert self.LENGTH < BaseVehicle.MAX_LENGTH, "Vehicle is too large!"
         # assert self.WIDTH < BaseVehicle.MAX_WIDTH, "Vehicle is too large!"
 
@@ -425,7 +409,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         physics_world = get_engine().physics_world
         vehicle_chassis = BulletVehicle(physics_world.dynamic_world, chassis)
-        vehicle_chassis.setCoordinatechassis(ZUp)
+        vehicle_chassis.setCoordinateSystem(ZUp)
         return vehicle_chassis, chassis
     
     def _create_wheel(self):
@@ -468,9 +452,17 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         super(BaseVehicle, self).set_velocity(velocity)
         self.last_velocity = self.velocity
 
-    def set_position(self, position, height=None):
-        super(BaseVehicle, self).set_position(position, height)
+    def set_position(self, position : List[float], height=None):
+        if height is None:
+            height = self.position[-1]
+        if len(position) == 2:
+            position.append(height)
+        super(BaseVehicle, self).set_position(position)
         self.last_position = self.position
+
+    def set_heading_theta(self, heading):
+        super(BaseVehicle, self).set_heading_theta(heading)
+        self.last_heading = self.heading_theta
 
     def get_state(self):
         """

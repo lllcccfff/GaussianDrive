@@ -23,14 +23,14 @@ logger = get_logger()
 
 class BaseObject(BaseRunnable, MetaDriveType, ABC):
     """
-    BaseObject is something interacting with game engine. If something is expected to have an origin in the world or have
+    BaseObject is something interacting with game engine. If something is expected to have an body in the world or have
     appearance in the world, it must be a subclass of BaseObject.
 
     It is created with name/config/randomEngine and can make decision in the world. Besides the random engine can help
     sample some special configs for it ,Properties and parameters in PARAMETER_SPACE of the object are fixed after
     calling __init__().
     """
-    MASS = None  # if object has an origin, the mass will be set automatically
+    MASS = None  # if object has an body, the mass will be set automatically
     COLLISION_MASK = None
     SEMANTIC_LABEL = Semantics.UNLABELED.label
 
@@ -49,15 +49,15 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         self.body: BaseRigidBodyNode = None
 
         if size:
-            self.WIDTH, self.LENGTH, self.HEIGHT = size[0], size[1], size[2]
+            self.WIDTH, self.LENGTH, self.HEIGHT = size
 
     # @property
     # def z(self):
-    #     return self.origin.getPos()[-1]
+    #     return self.body.getPos()[-1]
 
     # def get_z(self):
     #     """Get the z coordinate (height) of the object"""
-    #     return self.origin.getPos()[-1]
+    #     return self.body.getPos()[-1]
 
     def destroy(self):
         """
@@ -99,21 +99,21 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     
     def set_transform(self, mat44):
         self.body.setTransform(TransformState.makeMat(LMatrix4(
-            mat44[0, 0], mat44[0, 1], mat44[0, 2], mat44[0, 3],
-            mat44[1, 0], mat44[1, 1], mat44[1, 2], mat44[1, 3],
-            mat44[2, 0], mat44[2, 1], mat44[2, 2], mat44[2, 3],
-            mat44[3, 0], mat44[3, 1], mat44[3, 2], mat44[3, 3]
+            mat44[0, 0], mat44[1, 0], mat44[2, 0], mat44[3, 0],
+            mat44[0, 1], mat44[1, 1], mat44[2, 1], mat44[3, 1],
+            mat44[0, 2], mat44[1, 2], mat44[2, 2], mat44[3, 2],
+            mat44[0, 3], mat44[1, 3], mat44[2, 3], mat44[3, 3]
         )))
 
     @property
     def transform(self):
         mat = self.body.getTransform().getMat()
         return np.array([
-            [mat[0, 0], mat[0, 1], mat[0, 2], mat[0, 3]],
-            [mat[1, 0], mat[1, 1], mat[1, 2], mat[1, 3]],
-            [mat[2, 0], mat[2, 1], mat[2, 2], mat[2, 3]],
-            [mat[3, 0], mat[3, 1], mat[3, 2], mat[3, 3]]
-        ])
+            [mat[0][0], mat[1][0], mat[2][0], mat[3][0]],
+            [mat[0][1], mat[1][1], mat[2][1], mat[3][1]],
+            [mat[0][2], mat[1][2], mat[2][2], mat[3][2]],
+            [mat[0][3], mat[1][3], mat[2][3], mat[3][3]]
+        ], dtype=np.float32)
 
     def set_velocity(self, velocity):
         """
@@ -124,7 +124,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         :param in_local_frame: True, apply speed to local fram
         """
         self.body.setLinearVelocity(
-            LVector3(velocity[0], velocity[1], self.origin.getLinearVelocity()[-1])
+            LVector3(velocity[0], velocity[1], self.body.getLinearVelocity()[-1])
         )
 
     @property
@@ -176,15 +176,15 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         return self.speed * 3.6
 
 
-    # @property
-    # def heading(self):
-    #     """
-    #     Heading is a vector = [cos(heading_theta), sin(heading_theta)]
-    #     """
-    #     real_heading = self.heading_theta
-    #     # heading = np.array([math.cos(real_heading), math.sin(real_heading)])
-    #     heading = Vector((math.cos(real_heading), math.sin(real_heading)))
-    #     return heading
+    @property
+    def heading(self):
+        """
+        Heading is a vector = [cos(heading_theta), sin(heading_theta)]
+        """
+        real_heading = self.heading_theta
+        # heading = np.array([math.cos(real_heading), math.sin(real_heading)])
+        heading = (math.cos(real_heading), math.sin(real_heading))
+        return heading
 
     # @property
     # def roll(self):
@@ -232,7 +232,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     def rename(self, new_name):
         super(BaseObject, self).rename(new_name)
         
-        physics_node = self.origin.getPythonTag(self.origin.getName())
+        physics_node = self.body.getPythonTag(self.body.getName())
         if isinstance(physics_node, BaseGhostBodyNode) or isinstance(physics_node, BaseRigidBodyNode):
             physics_node.rename(new_name)
 
@@ -241,13 +241,13 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
 
     def attachDyWld(self, obj=None):
         if not obj:
-            self.engine.physics_world.dynamic_world.attach(self.origin)
+            self.engine.physics_world.dynamic_world.attach(self.body)
         else:
             self.engine.physics_world.dynamic_world.attach(obj)
     
     def detachDyWld(self, obj=None):
         if not obj:
-            self.engine.physics_world.dynamic_world.remove(self.origin)
+            self.engine.physics_world.dynamic_world.remove(self.body)
         else:
             self.engine.physics_world.dynamic_world.remove(obj)
 

@@ -17,7 +17,7 @@ class GaussianStateObservation(BaseObservation):
 
     def __init__(self, config):
         super().__init__(config)
-        self.img_obs = GaussianObservation(config, config["vehicle_config"]["image_source"], config["norm_pixel"])
+        self.img_obs = GaussianObservation(config, config["clip_rgb"])
 
     @property
     def observation_space(self):
@@ -28,13 +28,16 @@ class GaussianStateObservation(BaseObservation):
             }
         )
 
-    def observe(self, frame, camera_poses, vehicle: BaseVehicle):
-        return {self.IMAGE: self.img_obs.observe(frame, camera_poses), self.STATE: None}
+    def observe(self, frame, camera_poses, extra_boxes=None):
+        return {self.IMAGE: self.img_obs.observe(frame, camera_poses, extra_boxes), self.STATE: None}
+
+    def reset(self):
+        self.img_obs.reset()
 
     def destroy(self):
         super().destroy()
         self.img_obs.destroy()
-        self.state_obs.destroy()
+        # self.state_obs.destroy()
 
 
 class GaussianObservation(BaseObservation):
@@ -46,28 +49,31 @@ class GaussianObservation(BaseObservation):
     def __init__(self, config, clip_rgb: bool):
         self.STACK_SIZE = config["stack_size"]
         super().__init__(config)
-        self.norm_pixel = clip_rgb
-        self.state = {cam_name: np.zeros(self.observation_space.shape, dtype=np.float32) for cam_name in self.sensors.keys()}
+        self.clip_rgb = clip_rgb
 
     @property
     def observation_space(self):
         # sensor_cls = self.config["sensors"][self.image_source][0]
         # assert sensor_cls == "MainCamera" or issubclass(sensor_cls, BaseCamera), "Sensor should be BaseCamera"
-        channel = 3
-        shape = (self.config["sensors"][self.image_source][2],
-                 self.config["sensors"][self.image_source][1]) + (channel, self.STACK_SIZE)
-        shape = shape * len(self.sensors.keys())
-        if self.norm_pixel:
-            return gym.spaces.Box(-0.0, 1.0, shape=shape, dtype=np.float32)
-        else:
-            return gym.spaces.Box(0, 255, shape=shape, dtype=np.uint8)
+        
+        space = {}
+        for sname, sensor in self.sensors.items():
+            shape = self.an_observation_shape(sensor.image_height, sensor.image_width)
+            if self.clip_rgb:
+                space[sname] = gym.spaces.Box(-0.0, 1.0, shape=shape, dtype=np.float32)
+            else:
+                space[sname] = gym.spaces.Box(0, 255, shape=shape, dtype=np.uint8)
+        return space
 
-    def observe(self, frame, camera_poses, position=None, hpr=None):
+    def an_observation_shape(self, h, w):
+        return (self.STACK_SIZE, h, w, 3)
+ 
+    def observe(self, frame, camera_poses, extra_boxes=None):
         """
         Get the image Observation. By setting new_parent_node and the reset parameters, it can capture a new image from
         a different position and pose
         """
-        for cam_name, camera_pose in camera_poses:
+        for cam_name, camera_pose in camera_poses.items():
             w2c = torch.tensor(camera_pose).cuda().contiguous()
             camera_center = w2c.inverse()[:3, 3]
 
@@ -91,17 +97,15 @@ class GaussianObservation(BaseObservation):
             ret = self.engine.render(
                 frame=frame,
                 camera_params=camera_params,
-                ray_batch=ray_batch
-            )['rgb']
+                ray_batch=ray_batch,
+                extra_boxes=extra_boxes
+            )['vis_rgb']
     
-            self.state[cam_name] = np.roll(self.state[cam_name], -1, axis=-1)
-            self.state[cam_name][..., -1] = ret
+            self.state[cam_name] = np.roll(self.state[cam_name], -1, axis=0)
+            self.state[cam_name][-1] = ret
         return self.state
 
-    def get_image(self):
-        return self.state.copy()[:, :, -1]
-
-    def reset(self, env, vehicle=None):
+    def reset(self, vehicle=None):
         """
         Clear stack
         :param env: MetaDrive
@@ -109,8 +113,8 @@ class GaussianObservation(BaseObservation):
         :return: None
         """
         self.sensors = self.engine.data_manager.get_current_scenario_data()['camera_objects']
+        self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.float32) for cam_name, cam in self.sensors.items()}
 
-        self.state = {cam_name: np.zeros(self.observation_space.shape, dtype=np.float32) for cam_name in self.sensors.keys()}
 
     def destroy(self):
         """

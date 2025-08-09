@@ -147,7 +147,7 @@ class ScenarioEnv(BaseEnv):
         # self.engine.register_manager("curriculum_manager", ScenarioCurriculumManager()) 
 
     def done_function(self):
-        vehicle = self.agent
+        vehicle = self.agent_object
         done = False
         is_max_step = self.config["max_step"] is not None and self.episode_lengths >= self.config["max_step"]
         done_info = {
@@ -157,7 +157,7 @@ class ScenarioEnv(BaseEnv):
             TerminationState.CRASH_HUMAN: vehicle.crash_human,
             TerminationState.CRASH_SIDEWALK: vehicle.crash_sidewalk,
             TerminationState.OUT_OF_ROAD: self._is_out_of_road(vehicle),
-            TerminationState.SUCCESS: self._is_arrive_destination(vehicle),
+            TerminationState.SUCCESS: self._is_arrive_destination(),
             TerminationState.MAX_STEP: is_max_step,
             TerminationState.ENV_SEED: self.current_seed,
             # TerminationState.CURRENT_BLOCK: self.agent.navigation.current_road.block_ID(),
@@ -200,7 +200,7 @@ class ScenarioEnv(BaseEnv):
         return done, done_info
 
     def cost_function(self):
-        vehicle = self.agent
+        vehicle = self.agent_object
         step_info = dict(num_crash_object=0, num_crash_human=0, num_crash_vehicle=0, num_on_line=0)
         step_info["cost"] = 0
         if self._is_out_of_road(vehicle):
@@ -220,10 +220,11 @@ class ScenarioEnv(BaseEnv):
         :param vehicle_id: id of BaseVehicle
         :return: reward
         """
-        vehicle = self.agent
+        vehicle = self.agent_object
         step_info = dict()
 
         # crash penalty
+        reward = 0
         if vehicle.crash_vehicle:
             reward = -self.config["crash_vehicle_penalty"]
         if vehicle.crash_human:
@@ -240,7 +241,7 @@ class ScenarioEnv(BaseEnv):
         return reward, step_info
 
     def _is_arrive_destination(self):
-        return self.engine.agent_manager.is_arrive()
+        return self.agent_manager.is_arrive()
 
     def _is_out_of_road(self, vehicle):
         ego_position = vehicle.position
@@ -250,7 +251,7 @@ class ScenarioEnv(BaseEnv):
         if isinstance(ego_poses, torch.Tensor):
             expert_positions = ego_poses[:, :2, 3]
         else:
-            expert_positions = torch.stack([pose[:2, 3] for pose in ego_poses])
+            expert_positions = torch.stack([pose[:2, 3] for pose in ego_poses.values()])
 
         distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
         min_distance = torch.min(distances).item()
@@ -261,10 +262,7 @@ class ScenarioEnv(BaseEnv):
         if force_seed is not None:
             current_seed = force_seed
         else:
-            current_seed = get_np_random(None).randint(
-                self.config["start_scenario_index"],
-                self.config["start_scenario_index"] + int(self.config["num_scenarios"])
-            )
+            current_seed = get_np_random(None).randint(0, 0xffffffff)
 
         set_global_random_seed(current_seed)
 
@@ -373,8 +371,8 @@ if __name__ == "__main__":
         for t in range(10000):
             o, r, tm, tc, info = env.step([0, 0])
             assert env.observation_space.contains(o)
-            c_lane = env.agent.lane
-            long, lat, = c_lane.local_coordinates(env.agent.position)
+            c_lane = env.agent_object.lane
+            long, lat, = c_lane.local_coordinates(env.agent_object.position)
             # if env.config["use_render"]:
             env.render(
                 text={

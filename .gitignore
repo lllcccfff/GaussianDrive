@@ -57,3 +57,7 @@
 # ignore documentation build output
 **/filtered_dataset
 **/semantics.png
+
+output*
+data
+configs

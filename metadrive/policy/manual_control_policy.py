@@ -46,10 +46,7 @@ class ManualControlPolicy(EnvInputPolicy):
         config = self.engine.global_config
         self.enable_expert = enable_expert
 
-        if config["manual_control"] and config["use_render"]:
-            self.engine.accept("t", self.toggle_takeover)
-            pygame_control = False
-        elif config["manual_control"]:
+        if config["manual_control"]:
             # Use pygame to accept key strike.
             pygame_control = True
         else:
@@ -64,26 +61,21 @@ class ManualControlPolicy(EnvInputPolicy):
         else:
             self.controller = None
 
-    def act(self, agent_id):
+    def act(self):
 
         self.controller.process_others(takeover_callback=self.toggle_takeover)
 
-        try:
-            if self.engine.current_track_agent.expert_takeover and self.enable_expert:
-                # return expert(self.engine.current_track_agent)
-                raise ValueError
-        except (ValueError, AssertionError):
-            # if observation doesn't match, fall back to manual control
-            print("Current observation does not match the format that expert can accept.")
-            self.toggle_takeover()
+        # try:
+        #     if self.engine.current_track_agent.expert_takeover and self.enable_expert:
+        #         # return expert(self.engine.current_track_agent)
+        #         raise ValueError
+        # except (ValueError, AssertionError):
+        #     # if observation doesn't match, fall back to manual control
+        #     print("Current observation does not match the format that expert can accept.")
+        #     self.toggle_takeover()
 
-        if self.engine.global_config["manual_control"]:
-            action = self.controller.process_input(self.engine.current_track_agent)
-            self.action_info["manual_control"] = True
-        else:
-            action = super(ManualControlPolicy, self).act(agent_id)
-            self.action_info["manual_control"] = False
-
+        action = self.controller.process_input()
+        self.action_info["manual_control"] = True
         self.action_info["action"] = action
         return action
 

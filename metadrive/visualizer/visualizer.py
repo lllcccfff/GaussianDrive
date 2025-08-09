@@ -37,7 +37,6 @@ class Visualizer:
         elif self.mode == 'server':
             self.lock = threading.Lock()
             self.server = WebSocketServer(host=host, port=port, lock=self.lock)
-            self.sensor_controller.pause = True # frame, time is controlled by frontend
             self.server.run()
             
         self.window_title = 'Simple Visualizer'

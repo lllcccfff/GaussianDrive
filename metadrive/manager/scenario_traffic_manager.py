@@ -13,7 +13,6 @@ from metadrive.engine.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.idm_policy import TrajectoryIDMPolicy
 from metadrive.policy.replay_policy import ReplayTrafficParticipantPolicy
-from metadrive.scenario.parse_object_state import parse_object_state, get_idm_route, get_max_valid_indicis
 from metadrive.scenario.scenario_description import ScenarioDescription as SD
 from metadrive.type import MetaDriveType
 from metadrive.utils.math import norm
@@ -55,7 +54,6 @@ class ScenarioTrafficManager(BaseManager):
             raise DeprecationWarning("even_sample_vehicle_class is deprecated!")
 
         self.need_default_vehicle = self.engine.global_config["default_vehicle_in_traffic"]
-        self.is_ego_vehicle_replay = self.engine.global_config["agent_policy"] == ReplayEgoCarPolicy
         self._filter_overlapping_car = self.engine.global_config["filter_overlapping_car"]
 
         # config
@@ -85,35 +83,32 @@ class ScenarioTrafficManager(BaseManager):
     def after_step(self, *args, **kwargs):
         self.traffic_poses = {}
 
-        if self.episode_step < self.current_scenario_length:
-            replay_done = False
-            self._try_spawning()
+        self._try_spawning()
 
-            for obj_id, obj in self.spawned_objects.items():
-                if isinstance(self._object_policies[obj_id], ReplayTrafficParticipantPolicy):
-                    # static object will not be cleaned!
-                    policy = self._object_policies[obj_id]
-                    if policy.is_current_step_valid(self.episode_step):
-                        policy.act()
-                    else:
-                        self._obj_to_clean_this_frame.append(obj_id)
+        for obj_id, obj in self.spawned_objects.items():
+            if isinstance(self._object_policies[obj_id], ReplayTrafficParticipantPolicy):
+                # static object will not be cleaned!
+                policy = self._object_policies[obj_id]
+                if policy.is_current_step_valid(self.current_frame):
+                    policy.act()
+                else:
+                    self._obj_to_clean_this_frame.append(obj_id)
 
-                if obj_id not in self._obj_to_clean_this_frame:
-                    self.traffic_poses[obj_id] = obj.ego_pose
+            if obj_id not in self._obj_to_clean_this_frame:
+                self.traffic_poses[obj_id] = obj.ego_pose
 
         for obj_id in self._obj_to_clean_this_frame:
             self.clear_object(obj_id)
-        return dict(default_agent=dict(replay_done=replay_done))
+        return {}
 
     def _try_spawning(self):
-        boundingboxes = self.scenario_data['bounding_box_objects']
-        trajectories = self.scenario_data['trajectory_policy_data']
-        object_states = self.scenario_data['object_state']
+        scenario_data = self.engine.data_manager.get_current_scenario_data()
+        boundingboxes = scenario_data['bounding_box_objects']
+        trajectories = scenario_data['trajectory_policy_data']
+        object_states = scenario_data['object_state']
         for id, bbox in boundingboxes.items():
-            if id in self.spawned_object:
+            if self.current_frame != bbox.first_frame:
                 continue
-            if self.episode_step < bbox.first_frame or self.episode_step > bbox.last_frame:
-                return
             
             if bbox.object_type == 'rigid':
                 self.spawn_vehicle(id, bbox, trajectories[id], object_states[id])
@@ -125,13 +120,10 @@ class ScenarioTrafficManager(BaseManager):
             #     self.spawn_cyclist(scenario_id, track)
 
     @property
-    def scenario_data(self):
-        return self.engine.data_manager.get_current_scenario_data()
-
-    @property
-    def current_scenario_length(self):
-        return self.engine.data_manager.current_scenario_length
-
+    def current_frame(self):
+        frame_range = self.engine.data_manager.get_current_scenario_data()['frame_range']
+        return self.episode_step + frame_range[0]
+        
     @property
     def vehicles(self):
         return list(self.engine.get_objects(filter=lambda o: isinstance(o, BaseVehicle)).values())
@@ -175,7 +167,6 @@ class ScenarioTrafficManager(BaseManager):
     #     if self.episode_step < bbox.first_frame or self.episode_step > bbox.last_frame:
     #         return
         
-    #     state = parse_object_state(track, self.episode_step, include_z_position=False)
 
     #     obj_name = scenario_id if self.engine.global_config["force_reuse_object_name"] else None
     #     cls = Cyclist

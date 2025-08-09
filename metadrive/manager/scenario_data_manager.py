@@ -1,7 +1,7 @@
 import copy
 import os
 import numpy as np
-
+import torch
 from metadrive.manager.base_manager import BaseManager
 from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
 from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
@@ -10,6 +10,8 @@ from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_o
 from easydrive.engine import config, DATALOADERS
 from easydrive.dataloader.dataset.bounding_box_dataset import BoundingBoxDataset
 from easydrive.dataloader.dataset.camera_based_dataset import CameraBasedDataset
+from easydrive.dataloader.dataloader import EasyDriveDataLoader
+from easydrive.models.scenes.street_gs_scene import StreetGaussianScene
 
 class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
@@ -19,12 +21,12 @@ class ScenarioDataManager(BaseManager):
         from metadrive.engine.engine_utils import get_engine
         engine = get_engine()
 
-        self.store_data = engine.global_config["store_data"]
+        # self.store_data = engine.global_config["store_data"]
         self.directory = engine.global_config["scene_config_directory"]
 
         # for multi-worker
         self.worker_index = self.engine.global_config["worker_index"]
-        self._scenarios = {}
+        # self._scenarios = {}
 
         # Read summary file first:
         self.read_metadata()
@@ -32,48 +34,55 @@ class ScenarioDataManager(BaseManager):
 
         # sort scenario for curriculum training
         self.scenario_difficulty = None
-        self.sort_scenarios()
+        # self.sort_scenarios()
 
 
         # stat
-        self.coverage = [0 for _ in range(self.num_scenarios)]
+        # self.coverage = [0 for _ in range(self.num_scenarios)]
 
     def read_metadata(self):
         self.metadata, self.idx2scene = {}, []
         self.num_scenarios = 0
-        for config_file in enumerate(self.directory):
+        for config_file in os.listdir(self.directory):
             self.num_scenarios += 1
-            cfg = config.Config(filename=config_file)
+            cfg = config.Config.fromfile(filename=os.path.join(self.directory, config_file))
             dataloader = DATALOADERS.build(
                 cfg=cfg.dataloader_cfg,
                 shuffle=False,
                 data_involved="all",
                 visualize=False,
+                load_media=False
             )
             scene_name = cfg.dataloader_cfg.dataset_cfg.scene_name
-            camera_data = dataloader.dataset.sensors
-            ego_poses = dataloader.load_dataset('EgoPoseDataset').ego_poses
-            tracking_labels = dataloader.load_dataset('BoundingBoxDataset').bounding_boxes
+            camera_dataset = dataloader.dataset
+            ego_poses = dataloader.load_dataset('EgoPoseData').ego_poses
+            boundingbox_dataset = dataloader.load_dataset('BoundingBoxDataset')
             ground_height = dataloader.load_dataset('PointCloudDataset').ground_height
             self.metadata[scene_name] = ScenarioDataManager.restructure_metadata(
                 config=cfg,
-                cameras=camera_data,
+                camera_dataset=camera_dataset,
                 ego_poses=ego_poses,
-                trackings=tracking_labels,
+                boundingbox_dataset=boundingbox_dataset,
                 ground_height=ground_height
             )
             self.idx2scene.append(scene_name)
 
     @staticmethod
-    def restructure_metadata(config, cameras, ego_poses, trackings, ground_height):        
-        init_state = parse_object_state(ego_poses, 0, check_last_state=False, include_z_position=True)
-        last_state = parse_object_state(ego_poses, -1, check_last_state=True)
+    def restructure_metadata(config, camera_dataset, ego_poses, boundingbox_dataset, ground_height):
+        trackings = boundingbox_dataset.bounding_boxes
+        cameras = camera_dataset.sensors
+        start_frame, end_frame = config.dataloader_cfg.dataset_cfg.frame_length
+
+        init_state = parse_object_state(ego_poses, start_frame, start_frame, check_last_state=False)
+        last_state = parse_object_state(ego_poses, -1, start_frame, check_last_state=True)
         agent_state = dict(
             spawn_position=list(init_state["position"]),
-            spawn_heading=init_state["heading"],
+            spawn_heading=init_state["heading_theta"],
             spawn_velocity=init_state["velocity"],
+            spawn_angular_velocity=init_state["angular_velocity"],
             destination=last_state["position"]
         )
+        ego_poses = {frame: torch.tensor(pose) for frame, pose in ego_poses.items()}
 
         trajectory_policy_data = {}
         object_state = {}
@@ -84,27 +93,30 @@ class ScenarioDataManager(BaseManager):
             
             parsed_data = {}
             for frame in range(tracking.first_frame, tracking.last_frame):
-                parsed_data[frame] = parse_object_state(traj, frame)
+                parsed_data[frame] = parse_object_state(traj, frame, start_frame, include_z_position=True)
             
             trajectory_policy_data[object_id] = parsed_data
             object_state[object_id] = parsed_data[tracking.first_frame]
 
         return {
             'config': config,
-            'cameras_objects':cameras,
+            'CameraBasedDataset': camera_dataset,
+            'BoundingBoxDataset': boundingbox_dataset,
+            'camera_objects':cameras,
             'bounding_box_objects': trackings,
             'ground_height': ground_height,
             'ego_poses': ego_poses,
             'agent_state': agent_state,
             'trajectory_policy_data': trajectory_policy_data,
-            'object_state': object_state
+            'object_state': object_state,
+            'frame_range': (start_frame, end_frame)
         }
 
 
     def before_reset(self):
-        if not self.store_data:
-            assert len(self._scenarios) <= 1, "It seems you access multiple scenarios in one episode"
-            self._scenarios = {}
+        # if not self.store_data:
+        #     assert len(self._scenarios) <= 1, "It seems you access multiple scenarios in one episode"
+        #     self._scenarios = {}
         self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
 
     def get_scenario_data(self, i, should_copy=False):
@@ -115,6 +127,11 @@ class ScenarioDataManager(BaseManager):
 
     def get_current_scenario_data(self):
         return self.get_scenario_data(self.current_scenario_id)
+
+    @property
+    def current_scenario_length(self):
+        frame_range = self.get_current_scenario_data()['frame_range']
+        return frame_range[1] - frame_range[0]
 
     def sort_scenarios(self):
         """
@@ -161,9 +178,9 @@ class ScenarioDataManager(BaseManager):
         return self.scenario_difficulty[self.summary_lookup[self.engine.global_random_seed]
                                         ] if self.scenario_difficulty is not None else 0
 
-    @property
-    def data_coverage(self):
-        return sum(self.coverage) / len(self.coverage) * self.engine.global_config["num_workers"]
+    # @property
+    # def data_coverage(self):
+    #     return sum(self.coverage) / len(self.coverage) * self.engine.global_config["num_workers"]
 
     def destroy(self):
         """

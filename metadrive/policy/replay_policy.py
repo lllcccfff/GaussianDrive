@@ -1,7 +1,6 @@
 import logging
 
 from metadrive.policy.base_policy import BasePolicy
-from metadrive.scenario.parse_object_state import parse_object_state
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,6 +17,7 @@ class ReplayTrafficParticipantPolicy(BasePolicy):
         super(ReplayTrafficParticipantPolicy, self).__init__(control_object=control_object, random_seed=random_seed)
         self.start_index = 0
         self._velocity_local_frame = False
+        
         self.traj_info = self.parse_track_infos(track)
         
         self.control_object.set_kinematic(True)

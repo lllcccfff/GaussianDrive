@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+import torch
 from gymnasium.spaces import Space
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
@@ -28,31 +29,11 @@ class VehicleAgentManager(BaseManager):
         """
         The real init is happened in self.init(), in which super().__init__() will be called
         """
-        super().__init__(self)
         # for getting {agent_id: BaseObject}, use agent_manager.active_agents
-
         # fake init. before creating engine, it is necessary when all objects re-created in runtime
-        self.observations = copy.copy(init_observations)  # its value is map<agent_id, obs> before init() is called
-        self._init_observations = init_observations  # map <agent_id, observation>
-
-        # init spaces before initializing env.engine
-        observation_space = {
-            agent_id: single_obs.observation_space
-            for agent_id, single_obs in init_observations.items()
-        }
-        init_action_space = self._get_action_space()
-        assert isinstance(init_action_space, dict)
-        assert isinstance(observation_space, dict)
-        self._init_observation_spaces = observation_space
-        self._init_action_spaces = init_action_space
-        self.observation_spaces = copy.copy(observation_space)
-        self.action_spaces = copy.copy(init_action_space)
+        self.observations = init_observations  # its value is map<agent_id, obs> before init() is called
         self.episode_created_agents = None
         
-        # For single-agent env
-
-        self._agent_finished_this_frame = None  # for observation space
-        self._dying_countdown = 0
 
     def _create_agent(self, config_dict: dict):
         from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
@@ -66,37 +47,36 @@ class VehicleAgentManager(BaseManager):
         obj_name = agent_id if self.engine.global_config["force_reuse_object_name"] else None
         
         current_metadata = self.engine.data_manager.get_current_scenario_data()
-        cameras, agent_state = current_metadata['cameras_objects'], current_metadata['agent_state']
+        cameras, agent_state = current_metadata['camera_objects'], current_metadata['agent_state']
         ground_height = current_metadata['ground_height']
         
         ego_poses = current_metadata['ego_poses']
-        self.ego2cameras = self._calc_ego2camera(obj, cameras, ego_poses, ground_height)
-
-        p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.HEIGHT / 2]
+        p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.DEFAULT_HEIGHT / 2]
         obj = self.spawn_object(
             v_type, 
             vehicle_config=v_config, 
             name=obj_name,
             position=p,
+            random_seed=self.generate_seed(),
             heading=agent_state['spawn_heading']
         )
         self.init_pos = agent_state['spawn_position']
         self.dest_pos = agent_state['destination']
+        self.ego2cameras = self._calc_ego2camera(obj, cameras, ego_poses)
 
-        policy_cls = self.agent_policy
         args = [obj, self.generate_seed(), ]
-        self.add_policy(obj.id, policy_cls, *args)
+        self.add_policy(obj.id, self.agent_policy, *args)
 
         # Return single agent instead of dictionary
         return obj
 
-    def _calc_ego2camera(self, vehicle_object, cameras, ego_poses, ground_height):
+    def _calc_ego2camera(self, vehicle_object, cameras, ego_poses):
         ego2cameras = {}
-        for cam_name, camera in cameras:
+        for cam_name, camera in cameras.items():
             w2c = camera.world_view_transform[0]
-            ego2world = ego_poses[0]
-            ego2world[2, 3] = ground_height + vehicle_object.HEIGHT / 2
-            ego2cameras[cam_name] = np.linalg.inv(ego2world) @ w2c
+            ego2world = ego_poses[0].cuda()
+            ego2world[2, 3] = vehicle_object.position[-1]
+            ego2cameras[cam_name] = ego2world.inverse() @ w2c
         return ego2cameras
 
     @property
@@ -132,14 +112,14 @@ class VehicleAgentManager(BaseManager):
         Agent manager is really initialized after the BaseObject Instances are created
         """
         self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["agent_configs"])
-        self.observations.reset()
+        self.observations['default_agent'].reset()
 
 
     def after_reset(self):
         # it is used when reset() is called to reset its original agent_id
         self._agent_object = self.episode_created_agent
 
-        assert isinstance(self.action_spaces, Space)
+        assert isinstance(self.get_action_spaces(), Space)
 
     def try_actuate_agent(self, step_infos, stage="before_step"):
         """
@@ -151,19 +131,13 @@ class VehicleAgentManager(BaseManager):
         # Handle single agent
         if self._agent_object:
             agent_id = self._agent_object.id  # Get the single agent
-            policy = self.get_policy(self._agent_to_object[agent_id])
+            policy = self.get_policy(agent_id)
             assert policy is not None, "No policy is set for agent {}".format(agent_id)
-            if isinstance(policy, ReplayTrafficParticipantPolicy):
-                if stage == "after_step":
-                    policy.act(agent_id)
-                    step_infos[agent_id] = policy.get_action_info()
-                else:
-                    step_infos[agent_id] = self._agent_object.before_step([0, 0])
-            else:
-                if stage == "before_step":
-                    action = policy.act(agent_id)
-                    step_infos[agent_id] = policy.get_action_info()
-                    step_infos[agent_id].update(self._agent_object.before_step(action))
+
+            if stage == "before_step":
+                action = policy.act()
+                step_infos[agent_id] = policy.get_action_info()
+                step_infos[agent_id].update(self._agent_object.before_step(action))
 
         return step_infos
 
@@ -178,21 +152,23 @@ class VehicleAgentManager(BaseManager):
         return step_infos
 
     def get_sensor_pose(self):
-        ego_pose = self._agent_object.get_transform()
+        ego_pose = self._agent_object.transform
         camera_pose_in_ego = self.ego2cameras
         sensor_pose = {}
-        for sensor_name, camera_pose in camera_pose_in_ego.items():
-            sensor_pose[sensor_name] = camera_pose @ np.linalg.inv(ego_pose)
+        for sensor_name, ego2camera in camera_pose_in_ego.items():
+            sensor_pose[sensor_name] = ego2camera @ torch.tensor(ego_pose, device='cuda').inverse()
         return sensor_pose
 
-    def get_observations(self, step):
-        return self.observations.observe(step, self.get_sensor_pose(), self._agent_object, self.engine.traffic_manager.traffic_poses)
+    def get_observations(self):
+        step = self.engine.traffic_manager.current_frame
+        traffics = self.engine.traffic_manager.traffic_poses
+        return self.observations['default_agent'].observe(step, self.get_sensor_pose(), traffics)
 
     def get_observation_spaces(self):
-        return self.observation_space
+        return self.observation.observation_space
 
     def get_action_spaces(self):
-        return self.action_spaces
+        return self.agent_policy.get_input_space()
 
     def get_state(self):
         ret = super().get_state()
@@ -217,15 +193,8 @@ class VehicleAgentManager(BaseManager):
         # when new agent joins in the game, we only change this two maps.
         if self.INITIALIZED:
             super().destroy()
-        self._agent_to_object = {}
-        self._object_to_agent = {}
-        self._active_objects = {}
         for obs in self.observations.values():
             obs.destroy()
         self.observations = {}
-        self.observation_spaces = {}
-        self.action_spaces = {}
 
         self.INITIALIZED = False
-
-        self._agents_finished_this_frame = {}

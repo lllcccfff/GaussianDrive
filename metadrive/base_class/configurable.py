@@ -21,18 +21,17 @@ class Configurable:
             return self._config.copy()
         return self._config
 
-    def update_config(self, config: dict, allow_add_new_key=False):
+    def update_config(self, config: dict):
         """
         Merge config and self._config
         """
-        self._config.update(config, allow_add_new_key=allow_add_new_key)
+        self._config.merge_from(config)
 
     def destroy(self):
         """
         Fully delete this element and release the memory
         """
         if self._config is not None:
-            self._config.clear()
             self._config = None
         # if hasattr(self, "engine"):
         #     self.engine = None

@@ -59,7 +59,7 @@ class KeyboardController(Controller):
         self.takeover = False
         self.np_random = np.random.RandomState(None)
 
-    def process_input(self, vehicle):
+    def process_input(self):
         if not self.pygame_control:
             left_key_pressed = right_key_pressed = up_key_pressed = down_key_pressed = False
             if self.inputs.isSet('turnLeft'):
@@ -126,8 +126,8 @@ class KeyboardController(Controller):
 
     def process_others(self, takeover_callback=None):
         """This function allows the outer loop to call callback if some signal is received by the controller."""
-        if (takeover_callback is None) or (not self.pygame_control) or (not pygame.get_init()):
-            return
+        # if (takeover_callback is None) or (not self.pygame_control) or (not pygame.get_init()):
+        #     return
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
                 # Here we allow user to press T for takeover callback.
