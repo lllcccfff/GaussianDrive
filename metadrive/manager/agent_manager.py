@@ -49,7 +49,7 @@ class VehicleAgentManager(BaseManager):
         current_metadata = self.engine.data_manager.get_current_scenario_data()
         cameras, agent_state = current_metadata['camera_objects'], current_metadata['agent_state']
         ground_height = current_metadata['ground_height']
-        
+        print(ground_height)
         ego_poses = current_metadata['ego_poses']
         p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.DEFAULT_HEIGHT / 2]
         obj = self.spawn_object(
@@ -73,10 +73,10 @@ class VehicleAgentManager(BaseManager):
     def _calc_ego2camera(self, vehicle_object, cameras, ego_poses):
         ego2cameras = {}
         for cam_name, camera in cameras.items():
-            w2c = camera.world_view_transform[0]
-            ego2world = ego_poses[0].cuda()
-            ego2world[2, 3] = vehicle_object.position[-1]
-            ego2cameras[cam_name] = ego2world.inverse() @ w2c
+            w2c = camera.world_view_transform[0].T
+            ego2world = torch.from_numpy(vehicle_object.transform).cuda()
+
+            ego2cameras[cam_name] = w2c @ ego2world
         return ego2cameras
 
     @property

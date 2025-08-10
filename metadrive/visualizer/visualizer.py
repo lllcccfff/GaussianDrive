@@ -191,7 +191,7 @@ class Visualizer:
         glfw.set_window_user_pointer(self.window, self)  # set the user, for retrival
 
     def is_running(self):
-        return not glfw.window_should_close(self.window)
+        return not glfw.window_should_close(self.window) if self.mode in ['client', 'local'] else True
     
     def run(self, img : Union[np.ndarray, torch.Tensor] = None):
         if self.mode == 'server':

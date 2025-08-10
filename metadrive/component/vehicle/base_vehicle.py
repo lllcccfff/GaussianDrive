@@ -166,8 +166,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     @staticmethod
     def _preprocess_action(action):
-        if action is None:
-            return None, {"raw_action": None}
         action = safe_clip_for_small_array(action, -1, 1)
         return action, {'raw_action': (action[0], action[1])}
 
@@ -303,8 +301,8 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     def set_steering(self, steering):
         steering = float(steering)
-        self.chassis.setSteeringValue(steering, 0)
-        self.chassis.setSteeringValue(steering, 1)
+        self.vehicle.setSteeringValue(steering, 0)
+        self.vehicle.setSteeringValue(steering, 1)
         self.steering = steering
 
     def set_throttle_brake(self, throttle_brake):
@@ -318,8 +316,8 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         steering = action[0]
         self.throttle_brake = action[1]
         self.steering = steering
-        self.chassis.setSteeringValue(self.steering * self.max_steering, 0)
-        self.chassis.setSteeringValue(self.steering * self.max_steering, 1)
+        self.vehicle.setSteeringValue(self.steering * self.max_steering, 0)
+        self.vehicle.setSteeringValue(self.steering * self.max_steering, 1)
         self._apply_throttle_brake(action[1])
         
     def _apply_throttle_brake(self, throttle_brake):
@@ -327,15 +325,15 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         max_brake_force = self.config["max_brake_force"]
         for wheel_index in range(4):
             if throttle_brake >= 0:
-                self.chassis.setBrake(2.0, wheel_index)
+                self.vehicle.setBrake(2.0, wheel_index)
                 if self.speed_km_h > self.max_speed_km_h:
-                    self.chassis.applyEngineForce(0.0, wheel_index)
+                    self.vehicle.applyEngineForce(0.0, wheel_index)
                 else:
-                    self.chassis.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
+                    self.vehicle.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
             else:
                 if self.enable_reverse:
-                    self.chassis.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
-                    self.chassis.setBrake(0, wheel_index)
+                    self.vehicle.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
+                    self.vehicle.setBrake(0, wheel_index)
                 else:
                     DEADZONE = 0.01
 
@@ -345,11 +343,11 @@ class BaseVehicle(BaseObject, BaseVehicleState):
                     speed_in_heading = velocity[0] * heading[0] + velocity[1] * heading[1]
 
                     if speed_in_heading < DEADZONE:
-                        self.chassis.applyEngineForce(0.0, wheel_index)
-                        self.chassis.setBrake(2, wheel_index)
+                        self.vehicle.applyEngineForce(0.0, wheel_index)
+                        self.vehicle.setBrake(2, wheel_index)
                     else:
-                        self.chassis.applyEngineForce(0.0, wheel_index)
-                        self.chassis.setBrake(abs(throttle_brake) * max_brake_force, wheel_index)
+                        self.vehicle.applyEngineForce(0.0, wheel_index)
+                        self.vehicle.setBrake(abs(throttle_brake) * max_brake_force, wheel_index)
 
     """---------------------------------------- vehicle info ----------------------------------------------"""
 
@@ -445,7 +443,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.detachDyWld(self.vehicle)
         self.origin = None
         self.vehicle = None
-        self.chassis = None
         self.wheels = None
 
     def set_velocity(self, velocity):
@@ -558,18 +555,18 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         """
         Return the roll of this object
         """
-        return np.deg2rad(self.chassis.getR())
+        return np.deg2rad(self.vehicle.getR())
 
     def set_roll(self, roll):
-        self.chassis.setR(roll)
+        self.vehicle.setR(roll)
 
     @property
     def pitch(self):
         """
         Return the pitch of this object
         """
-        return np.deg2rad(self.chassis.getP())
+        return np.deg2rad(self.vehicle.getP())
 
     def set_pitch(self, pitch):
-        self.chassis.setP(pitch)
+        self.vehicle.setP(pitch)
 

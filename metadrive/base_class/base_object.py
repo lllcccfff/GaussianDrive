@@ -78,16 +78,18 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     def position(self):
         return self.body.getTransform().getPos()
 
-    def set_heading_theta(self, heading_theta, in_rad=True) -> None:
+    def set_heading_theta(self, heading_theta, to_deg=True) -> None:
         """
         Set heading theta for this object
         :param heading_theta: float
         :param in_rad: when set to True, heading theta should be in rad, otherwise, in degree
         """
         h = heading_theta
-        if in_rad:
+        if to_deg:
             h = heading_theta * 180 / np.pi
-        self.body.setTransform(self.body.getTransform().setHpr(h))
+        cur_hpr = self.body.getTransform().getHpr()
+        new_hpr = LVector3(h, cur_hpr[1], cur_hpr[2])
+        self.body.setTransform(self.body.getTransform().setHpr(new_hpr))
 
     @property
     def heading_theta(self):
@@ -95,7 +97,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         Get the heading theta of this object, unit [rad]
         :return:  heading in rad
         """
-        return self.body.getTransform().getHpr() / 180 * np.pi
+        return self.body.getTransform().getHpr()[0] / 180 * np.pi
     
     def set_transform(self, mat44):
         self.body.setTransform(TransformState.makeMat(LMatrix4(

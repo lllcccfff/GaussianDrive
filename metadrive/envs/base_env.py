@@ -273,7 +273,7 @@ class BaseEnv(gym.Env):
         obses = self.agent_manager.get_observations()
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
-        truncateds = step_infos[k].get(TerminationState.MAX_STEP, False)
+        truncateds = step_infos.get(TerminationState.MAX_STEP, False)
         terminateds = self.dones
 
         # For extreme scenario only. Force to terminate all agents if the environmental step exceeds 5 times horizon.
@@ -283,16 +283,10 @@ class BaseEnv(gym.Env):
                 if self.config["truncate_as_terminate"]:
                     self.dones[k] = terminateds[k] = True
 
-        for v_id, r in rewards.items():
-            step_infos[v_id]["episode_reward"] = self.episode_rewards[v_id]
-            step_infos[v_id]["episode_length"] = self.episode_lengths[v_id]
+        step_infos["episode_reward"] = self.episode_rewards
+        step_infos["episode_length"] = self.episode_lengths
 
-        if not self.is_multi_agent:
-            return self._wrap_as_single_agent(obses), self._wrap_as_single_agent(rewards), \
-                self._wrap_as_single_agent(terminateds), self._wrap_as_single_agent(
-                truncateds), self._wrap_info_as_single_agent(step_infos)
-        else:
-            return obses, rewards, terminateds, truncateds, step_infos
+        return obses, rewards, terminateds, truncateds, step_infos
 
     def close(self):
         if self.engine is not None:

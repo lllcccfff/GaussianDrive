@@ -7,7 +7,7 @@ from metadrive.constants import HELP_MESSAGE
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.scenario_env import ScenarioEnv
 from metadrive.visualizer.visualizer import Visualizer
-
+import imageio
 
 RENDER_MESSAGE = {
     "Quit": "ESC",
@@ -54,7 +54,9 @@ if __name__ == "__main__":
         o, r, tm, tc, info = env.step([1.0, 0.])
         
         if viser.is_running():
-            viser.run(o)
+            o_for_vis = o['image']['FRONT'][-1]
+            breakpoint()
+            viser.run(o_for_vis)
         
         if tm or tc:
             env.reset()

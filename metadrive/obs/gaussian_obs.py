@@ -75,11 +75,10 @@ class GaussianObservation(BaseObservation):
         """
         for cam_name, camera_pose in camera_poses.items():
             w2c = torch.tensor(camera_pose).cuda().contiguous()
-            camera_center = w2c.inverse()[:3, 3]
+            camera_center = w2c.inverse()[:3, 3].contiguous()
 
             raw_camera = self.sensors[cam_name]
-            full_proj = (w2c @ raw_camera.projection_matrix).contiguous()
-            
+            full_proj = (raw_camera.projection_matrix.T @ w2c).contiguous()
             camera_params = {
                 'world_view_transform': w2c.T,
                 'full_proj_transform': full_proj.T,
@@ -100,7 +99,6 @@ class GaussianObservation(BaseObservation):
                 ray_batch=ray_batch,
                 extra_boxes=extra_boxes
             )['vis_rgb']
-    
             self.state[cam_name] = np.roll(self.state[cam_name], -1, axis=0)
             self.state[cam_name][-1] = ret
         return self.state
@@ -113,7 +111,10 @@ class GaussianObservation(BaseObservation):
         :return: None
         """
         self.sensors = self.engine.data_manager.get_current_scenario_data()['camera_objects']
-        self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.float32) for cam_name, cam in self.sensors.items()}
+        if self.clip_rgb:
+            self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.float32) for cam_name, cam in self.sensors.items()}
+        else:
+            self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.uint8) for cam_name, cam in self.sensors.items()}
 
 
     def destroy(self):

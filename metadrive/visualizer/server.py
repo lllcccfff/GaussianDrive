@@ -77,7 +77,8 @@ class WebSocketServer:
             # self.stream.synchronize()  # waiting for the copy event to complete
             with self.lock:
                 output = self.output
-            if output:
+                self.output = None
+            if output is not None:
                 if isinstance(output, np.ndarray):
                     output = torch.from_numpy(output)
                 output = output.permute(2, 0, 1).cpu() # HWC -> CHW
@@ -85,7 +86,7 @@ class WebSocketServer:
                 await websocket.send(output)
 
             response = await websocket.recv()
-            if response:
+            if response is not None:
                 render_input = zlib.decompress(response)
                 with self.lock:
                     self.input = render_input
