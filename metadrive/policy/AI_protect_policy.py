@@ -1,7 +1,7 @@
-from metadrive.policy.manual_control_policy import ManualControlPolicy
+from metadrive.policy.manual_control_policy import EnvInputPolicy
 
 
-class AIProtectPolicy(ManualControlPolicy):
+class AIProtectPolicy(EnvInputPolicy):
     """
     This policy can protect Manual control and EnvInputControl
     """

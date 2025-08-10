@@ -3,7 +3,7 @@ from metadrive.component.traffic_light.base_traffic_light import BaseTrafficLigh
 from metadrive.component.lane.point_lane import PointLane
 from metadrive.component.vehicle.PID_controller import PIDController
 from metadrive.policy.base_policy import BasePolicy
-from metadrive.policy.manual_control_policy import ManualControlPolicy
+from metadrive.policy.manual_control_policy import EnvInputPolicy
 from metadrive.utils.math import not_zero, wrap_to_pi, norm
 import logging
 
@@ -417,7 +417,7 @@ class ManualControllableIDMPolicy(IDMPolicy):
     def __init__(self, *args, **kwargs):
         super(ManualControllableIDMPolicy, self).__init__(*args, **kwargs)
         self.engine.global_config["manual_control"] = True  # hack
-        self.manual_control_policy = ManualControlPolicy(*args, **kwargs, enable_expert=False)
+        self.manual_control_policy = EnvInputPolicy(*args, **kwargs, enable_expert=False)
         self.engine.global_config["manual_control"] = False  # hack
 
     def act(self, agent_id):

@@ -1,26 +1,36 @@
 import math
 
 import numpy as np
-from direct.controls.InputState import InputState
+import glfw
 
 from metadrive.utils import is_win, is_mac
 
-if (not is_win()) and (not is_mac()):
-    try:
-        import evdev
-        from evdev import ecodes, InputDevice
-    except ImportError:
-        pass
 
-from metadrive.utils import import_pygame
+def get_controller(controller_name, window=None):
+    """Get the controller object.
 
-pygame = None
+    Args:
+        controller_name: The controller name.
+        window: GLFW window handle for keyboard input.
 
+    Returns:
+        The instance of controller or None if error.
+    """
+    controller_name = str(controller_name).lower()
+    if controller_name == "keyboard":
+        return KeyboardController(window)
+    elif controller_name in ["xboxController", "xboxcontroller", "xbox", "gamepad", "joystick", "steering_wheel",
+                             "wheel"]:
+        try:
+            if controller_name in ["steering_wheel", "wheel"]:
+                return SteeringWheelController()
+            else:
+                return XboxController()
+        except Exception:
+            return None
+    else:
+        raise ValueError("No such a controller type: {}".format(controller_name))
 
-def get_pygame():
-    global pygame
-    if not pygame:
-        pygame = import_pygame()
 
 
 class Controller:
@@ -42,45 +52,23 @@ class KeyboardController(Controller):
     BRAKE_INCREMENT = 0.5
     BRAKE_DECAY = 0.5
 
-    def __init__(self, pygame_control):
-        self.pygame_control = pygame_control
-        if self.pygame_control:
-            get_pygame()
-            pygame.init()
-        else:
-            self.inputs = InputState()
-            self.inputs.watchWithModifiers('forward', 'w')
-            self.inputs.watchWithModifiers('reverse', 's')
-            self.inputs.watchWithModifiers('turnLeft', 'a')
-            self.inputs.watchWithModifiers('turnRight', 'd')
-            self.inputs.watchWithModifiers('takeover', 'space')
+    def __init__(self, window=None):
+        self.window = window
         self.steering = 0.
         self.throttle_brake = 0.
         self.takeover = False
         self.np_random = np.random.RandomState(None)
 
     def process_input(self):
-        if not self.pygame_control:
-            left_key_pressed = right_key_pressed = up_key_pressed = down_key_pressed = False
-            if self.inputs.isSet('turnLeft'):
-                left_key_pressed = True
-            if self.inputs.isSet('turnRight'):
-                right_key_pressed = True
-            if self.inputs.isSet('forward'):
-                up_key_pressed = True
-            if self.inputs.isSet('reverse'):
-                down_key_pressed = True
-            if self.inputs.isSet('takeover'):
-                self.takeover = True
-            else:
-                self.takeover = False
-        else:
-            key_press = pygame.key.get_pressed()
-            left_key_pressed = key_press[pygame.K_a]
-            right_key_pressed = key_press[pygame.K_d]
-            up_key_pressed = key_press[pygame.K_w]
-            down_key_pressed = key_press[pygame.K_s]
-            # TODO: We haven't implement takeover event when using Pygame renderer.
+        # Use GLFW to check key states
+        left_key_pressed = right_key_pressed = up_key_pressed = down_key_pressed = False
+
+        if self.window is not None:
+            left_key_pressed = glfw.get_key(self.window, glfw.KEY_A) == glfw.PRESS
+            right_key_pressed = glfw.get_key(self.window, glfw.KEY_D) == glfw.PRESS
+            up_key_pressed = glfw.get_key(self.window, glfw.KEY_W) == glfw.PRESS
+            down_key_pressed = glfw.get_key(self.window, glfw.KEY_S) == glfw.PRESS
+            self.takeover = glfw.get_key(self.window, glfw.KEY_SPACE) == glfw.PRESS
 
         # If no left or right is pressed, steering decays to the center.
         if not (left_key_pressed or right_key_pressed):
@@ -122,15 +110,13 @@ class KeyboardController(Controller):
         self.throttle_brake = min(max(-1., self.throttle_brake), 1.)
         self.steering = min(max(-1., self.steering), 1.)
 
-        return np.array([self.steering, self.throttle_brake], dtype=np.float64)
+        return [self.steering, self.throttle_brake]
 
     def process_others(self, takeover_callback=None):
         """This function allows the outer loop to call callback if some signal is received by the controller."""
-        # if (takeover_callback is None) or (not self.pygame_control) or (not pygame.get_init()):
-        #     return
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
-                # Here we allow user to press T for takeover callback.
+        # Check for takeover key (T) using GLFW
+        if self.window is not None and takeover_callback is not None:
+            if glfw.get_key(self.window, glfw.KEY_T) == glfw.PRESS:
                 takeover_callback()
 
 
@@ -148,9 +134,13 @@ class SteeringWheelController(Controller):
                 "Fail to load evdev, which is required for steering wheel control. "
                 "Install evdev via pip install evdev"
             )
-        get_pygame()
-        pygame.display.init()
-        pygame.joystick.init()
+        try:
+            import pygame
+            pygame.display.init()
+            pygame.joystick.init()
+        except ImportError:
+            print("Pygame is required for steering wheel control")
+            return
         assert not is_win(), "Steering Wheel is supported in linux and mac only"
         assert pygame.joystick.get_count() > 0, "Please connect Steering Wheel or use keyboard input"
         print("Successfully Connect your Steering Wheel!")
@@ -175,6 +165,8 @@ class SteeringWheelController(Controller):
         self.button_left = False
 
     def process_input(self, vehicle):
+        import pygame
+        from evdev import ecodes
         pygame.event.pump()
         steering = -self.joystick.get_axis(0)
         throttle_brake = -self.joystick.get_axis(2) + self.joystick.get_axis(3)
@@ -231,9 +223,13 @@ class XboxController(Controller):
                 "Fail to load evdev, which is required for steering wheel control. "
                 "Install evdev via pip install evdev"
             )
-        get_pygame()
-        pygame.display.init()
-        pygame.joystick.init()
+        try:
+            import pygame
+            pygame.display.init()
+            pygame.joystick.init()
+        except ImportError:
+            print("Pygame is required for Xbox controller")
+            return
         assert not is_win(), "Joystick is supported in linux and mac only"
         assert pygame.joystick.get_count() > 0, "Please connect joystick or use keyboard input"
         print("Successfully Connect your Joystick!")
@@ -252,6 +248,8 @@ class XboxController(Controller):
         self.button_left = False
 
     def process_input(self, vehicle):
+        import pygame
+        import math
         pygame.event.pump()
         steering = -self.joystick.get_axis(self.STEERING_AXIS)
         if abs(steering) < 0.05:

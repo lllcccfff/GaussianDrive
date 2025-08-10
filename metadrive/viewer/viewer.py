@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import threading
+from typing import Union
 
 from cuda import cudart
 import glfw
@@ -12,18 +13,18 @@ import OpenGL.GL as gl
 from imgui_bundle import imgui, imgui_toggle
 from glm import mat4, mat3, mat4x3, vec3
 from easydrive.utils.console_utils import *
-from metadrive.visualizer.client import Client
-from metadrive.visualizer.server import WebSocketServer
-
+from metadrive.viewer.client import Client
+from metadrive.viewer.server import WebSocketServer
+from metadrive.viewer.manual_controller import KeyboardController, get_controller
 import cv2
 
-class Visualizer:
+class Viewer:
     def __init__(
         self, H, W,
         mode = 'local', # client, server, local
         host = None,
         port = None,
-
+        controller = 'keyboard'
     ):
         self.H = H
         self.W = W
@@ -32,7 +33,6 @@ class Visualizer:
         if self.mode == 'client':
             self.lock = threading.Lock()
             self.client = Client(server_ip=host, server_port=port, lock=self.lock)
-            self.client.input = self.sensor_controller.send_params()
             self.client.run()
         elif self.mode == 'server':
             self.lock = threading.Lock()
@@ -47,6 +47,7 @@ class Visualizer:
             self._init_imgui()
             self._init_quad()
             self._bind_callbacks()
+            self.manual_controller = get_controller(controller, self.window)
         
     @property
     def window_address(self):
@@ -126,7 +127,7 @@ class Visualizer:
 
         # Setting up the window
         glfw.make_context_current(window)
-        glfw.swap_interval(self.cfg.use_vsync)  # disable vsync
+        glfw.swap_interval(False)  # disable vsync
         glfw.set_input_mode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
 
         # TODO: set icon
@@ -171,9 +172,9 @@ class Visualizer:
         imgui.backends.opengl3_init(self.glsl_version)
 
         io = imgui.get_io()
-        self.default_font = io.fonts.add_font_from_file_ttf(self.font_default, self.font_size)
-        self.italic_font = io.fonts.add_font_from_file_ttf(self.font_italic, self.font_size)
-        self.bold_font = io.fonts.add_font_from_file_ttf(self.font_bold, self.font_size)
+        # self.default_font = io.fonts.add_font_from_file_ttf(self.font_default, self.font_size)
+        # self.italic_font = io.fonts.add_font_from_file_ttf(self.font_italic, self.font_size)
+        # self.bold_font = io.fonts.add_font_from_file_ttf(self.font_bold, self.font_size)
         io.fonts.build()
 
         # # Markdown initialization
@@ -195,13 +196,17 @@ class Visualizer:
     
     def run(self, img : Union[np.ndarray, torch.Tensor] = None):
         if self.mode == 'server':
-            return self._actuate_server(img)
-        
-        if self.mode == 'client':
-            img = self._actuate_client(img)
-        
-        self._render(img)
-                
+            action = self._actuate_server(img)
+            return action
+        elif self.mode == 'client':
+            action = self.manual_controller.process_input()
+            img = self._actuate_client(action)
+            self._render(img)
+        elif self.mode == 'local':
+            self._render(img)
+            action = self.manual_controller.process_input()
+            return action
+    
     def _render(self, img):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         glfw.poll_events()
@@ -213,7 +218,7 @@ class Visualizer:
         # self.get_fps_and_frame_time()
         # self.get_device_and_memory()
 
-        if img:
+        if img is not None:
             self.quad.copy_to_texture(img)
             self.quad.draw()
 
@@ -222,24 +227,27 @@ class Visualizer:
         
         glfw.swap_buffers(self.window)
 
-    def _actuate_client(self):
-        inputs = None
+    def _actuate_client(self, input):
         with self.lock:
-            self.client.input = inputs
+            self.client.input = input
 
         with self.lock:
             outputs = self.client.output
+            self.client.output = None
         return outputs
     
     def _actuate_server(self, img):
-        with self.lock:
-            inputs = self.server.input
-        
         output = img
         with self.lock:
             # self.server.output = output.to('cpu', non_blocking=True)  # initiate async copy
             self.server.output = output  # initiate async copy
 
+        with self.lock:
+            input_data = self.server.input
+            self.server.input = None
+
+        return input_data if input_data else [0.0, 0.0] 
+        
 
     def shutdown(self):
         imgui.backends.opengl3_shutdown()

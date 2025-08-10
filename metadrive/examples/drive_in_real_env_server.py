@@ -6,7 +6,7 @@ import argparse
 from metadrive.constants import HELP_MESSAGE
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.scenario_env import ScenarioEnv
-from metadrive.visualizer.visualizer import Visualizer
+from metadrive.viewer.viewer import Viewer
 import imageio
 
 RENDER_MESSAGE = {
@@ -48,16 +48,16 @@ if __name__ == "__main__":
     obs, _ = env.reset()
 
     # Start visualizer server when 'o' key is pressed
-    viser = Visualizer(0, 0, mode='server', host=args.host, port=args.port)
+    viser = Viewer(0, 0, mode='server', host=args.host, port=args.port)
+    action = [0, 0]
 
     for i in range(1, 100000):
-        o, r, tm, tc, info = env.step([1.0, 0.])
+        o, r, tm, tc, info = env.step(action)
         
         if viser.is_running():
             o_for_vis = o['image']['FRONT'][-1]
-            breakpoint()
-            viser.run(o_for_vis)
-        
+            action = viser.run(o_for_vis)
+
         if tm or tc:
             env.reset()
     env.close()

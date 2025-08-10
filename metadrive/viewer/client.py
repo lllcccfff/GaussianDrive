@@ -55,12 +55,14 @@ class Client:
             while True:
                 with self.lock:
                     input = self.input
-                if input:
-                    serialized_input = zlib.compress(input)
-                    await websocket.send(serialized_input)
+                    self.input = None
+                if input is not None:
+                    assert isinstance(input, list) and len(input) == 2
+                    action_bytes = np.array(input, dtype=np.float32).tobytes()
+                    await websocket.send(action_bytes)
 
                 buffer = await websocket.recv()
-                if buffer:
+                if buffer is not None:
                     try:
                         # https://github.com/pytorch/vision/issues/4378
                         # Still not fixed even to this day? CUDA 12.1 seems fine

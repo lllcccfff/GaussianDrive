@@ -1,5 +1,5 @@
 import argparse
-from metadrive.visualizer.visualizer import Visualizer
+from metadrive.viewer.viewer import Viewer
 
 
 if __name__ == "__main__":
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(f"Connecting to {args.host}:{args.port}")
-    visualizer = Visualizer(args.width, args.height, mode='client', host=args.host, port=args.port)
+    visualizer = Viewer(args.height, args.width, mode='client', host=args.host, port=args.port)
 
     while visualizer.is_running():
         visualizer.run()

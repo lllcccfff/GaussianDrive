@@ -5,10 +5,7 @@ from gymnasium.spaces import Space
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
-from metadrive.policy.AI_protect_policy import AIProtectPolicy
-from metadrive.policy.idm_policy import TrajectoryIDMPolicy
-from metadrive.policy.manual_control_policy import ManualControlPolicy, TakeoverPolicy, TakeoverPolicyWithoutBrake
-from metadrive.policy.replay_policy import ReplayTrafficParticipantPolicy
+from metadrive.policy.manual_control_policy import EnvInputPolicy
 
 logger = get_logger()
 class VehicleAgentManager(BaseManager):
@@ -91,10 +88,8 @@ class VehicleAgentManager(BaseManager):
         from metadrive.engine.engine_utils import get_global_config
         # Takeover policy shares the control between RL agent (whose action is input via env.step)
         # and external control device (whose action is input via controller).
-        if get_global_config()["agent_policy"] in [TakeoverPolicy, TakeoverPolicyWithoutBrake]:
-            return get_global_config()["agent_policy"]
-        if get_global_config()["manual_control"]:
-            policy = ManualControlPolicy
+        if not get_global_config()["agent_policy"]:
+            policy = EnvInputPolicy
         else:
             policy = get_global_config()["agent_policy"]
         return policy

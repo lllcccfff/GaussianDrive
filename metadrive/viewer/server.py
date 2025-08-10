@@ -87,6 +87,11 @@ class WebSocketServer:
 
             response = await websocket.recv()
             if response is not None:
-                render_input = zlib.decompress(response)
+                try:
+                    action = np.frombuffer(response, dtype=np.float32).tolist()
+                except Exception as e:
+                    print(f"Data corruptted from client: {e}")
+                assert len(action) == 2
+
                 with self.lock:
-                    self.input = render_input
+                    self.input = action
