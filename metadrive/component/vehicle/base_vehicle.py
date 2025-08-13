@@ -124,18 +124,21 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         if size is None:
             size = (self.DEFAULT_WIDTH, self.DEFAULT_LENGTH, self.DEFAULT_HEIGHT)
-        BaseObject.__init__(self, size, name, random_seed, self.engine.global_config["vehicle_config"])
+        BaseObject.__init__(self, size, name, random_seed, vehicle_config)
         BaseVehicleState.__init__(self)
-        self.update_config(vehicle_config)
         self.set_metadrive_type(MetaDriveType.VEHICLE)
 
         # build vehicle physics model
         self.vehicle, self.body = self._create_vehicle_chassis()
         self.wheels = self._create_wheel()
+        self.attachDyWld(self.body)
         self.attachDyWld(self.vehicle)
-
+    
         # powertrain config
+        self.enable_reverse = self.config["enable_reverse"]
         self.max_steering = self.config["max_steering"]
+        self.max_engine_force = self.config["max_engine_force"]
+        self.max_brake_force = self.config["max_brake_force"]
 
         # state info
         self.throttle_brake = 0.0
@@ -321,18 +324,16 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self._apply_throttle_brake(action[1])
         
     def _apply_throttle_brake(self, throttle_brake):
-        max_engine_force = self.config["max_engine_force"]
-        max_brake_force = self.config["max_brake_force"]
         for wheel_index in range(4):
             if throttle_brake >= 0:
                 self.vehicle.setBrake(2.0, wheel_index)
                 if self.speed_km_h > self.max_speed_km_h:
                     self.vehicle.applyEngineForce(0.0, wheel_index)
                 else:
-                    self.vehicle.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
+                    self.vehicle.applyEngineForce(self.max_engine_force * throttle_brake, wheel_index)
             else:
                 if self.enable_reverse:
-                    self.vehicle.applyEngineForce(max_engine_force * throttle_brake, wheel_index)
+                    self.vehicle.applyEngineForce(self.max_engine_force * throttle_brake, wheel_index)
                     self.vehicle.setBrake(0, wheel_index)
                 else:
                     DEADZONE = 0.01
@@ -347,7 +348,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
                         self.vehicle.setBrake(2, wheel_index)
                     else:
                         self.vehicle.applyEngineForce(0.0, wheel_index)
-                        self.vehicle.setBrake(abs(throttle_brake) * max_brake_force, wheel_index)
+                        self.vehicle.setBrake(abs(throttle_brake) * self.max_brake_force, wheel_index)
 
     """---------------------------------------- vehicle info ----------------------------------------------"""
 
@@ -429,11 +430,11 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
             wheel.setWheelRadius(radius)
             wheel.setMaxSuspensionTravelCm(self.SUSPENSION_LENGTH)
-            wheel.setSuspensionStiffness(self.SUSPENSION_STIFFNESS)
+            wheel.setSuspensionStiffness(50)
             wheel.setWheelsDampingRelaxation(4.8)
-            wheel.setWheelsDampingCompression(1.2)
-            wheel_friction = self.config["wheel_friction"] if not self.config["no_wheel_friction"] else 0
-            wheel.setFrictionSlip(wheel_friction)
+            wheel.setWheelsDampingCompression(3.2)
+            wheel_friction = self.config["wheel_friction"]
+            wheel.setFrictionSlip(0.5)
             wheel.setRollInfluence(0.5)
             wheels.append(wheel)
         return wheels
@@ -441,6 +442,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     def destroy(self):
         super(BaseVehicle, self).destroy()
         self.detachDyWld(self.vehicle)
+        self.detachDyWld(self.body)
         self.origin = None
         self.vehicle = None
         self.wheels = None

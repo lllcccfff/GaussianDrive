@@ -73,9 +73,6 @@ class BaseEngine(EngineCore, Randomizable):
         # the clear function is a fake clear, objects cleared is stored for future use
         self._dying_objects = dict()
 
-        # store external actions
-        self.external_actions = None
-
         # topdown renderer
         self.top_down_renderer = None
 
@@ -183,7 +180,7 @@ class BaseEngine(EngineCore, Randomizable):
         # self.id_c = new_i2c
         return step_infos
 
-    def before_step(self, external_actions: Dict[AnyStr, np.array]):
+    def before_step(self, action: np.array):
         """
         Entities make decision here, and prepare for step
         All entities can access this global manager to query or interact with others
@@ -192,7 +189,7 @@ class BaseEngine(EngineCore, Randomizable):
         """
         self.episode_step += 1
         step_infos = {}
-        self.external_actions = external_actions
+        self.cur_action = action
         for manager in self.managers.values():
             new_step_infos = manager.before_step()
             step_infos = concat_step_infos([step_infos, new_step_infos])

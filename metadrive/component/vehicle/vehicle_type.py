@@ -19,7 +19,7 @@ class DefaultVehicle(BaseVehicle):
     LATERAL_TIRE_TO_CENTER = 0.815
     FRONT_WHEELBASE = 1.05234
     REAR_WHEELBASE = 1.4166
-    MASS = 1100
+    MASS = 1000
 
     DEFAULT_LENGTH = 4.515  # meters
     DEFAULT_HEIGHT = 1.19  # meters

@@ -3,7 +3,6 @@ from metadrive.component.traffic_light.base_traffic_light import BaseTrafficLigh
 from metadrive.component.lane.point_lane import PointLane
 from metadrive.component.vehicle.PID_controller import PIDController
 from metadrive.policy.base_policy import BasePolicy
-from metadrive.policy.manual_control_policy import EnvInputPolicy
 from metadrive.utils.math import not_zero, wrap_to_pi, norm
 import logging
 
@@ -411,26 +410,6 @@ class IDMPolicy(BasePolicy):
         # fall back to lane follow
         return lane_follow()
 
-
-class ManualControllableIDMPolicy(IDMPolicy):
-    """If human is not taking over, then use IDM policy."""
-    def __init__(self, *args, **kwargs):
-        super(ManualControllableIDMPolicy, self).__init__(*args, **kwargs)
-        self.engine.global_config["manual_control"] = True  # hack
-        self.manual_control_policy = EnvInputPolicy(*args, **kwargs, enable_expert=False)
-        self.engine.global_config["manual_control"] = False  # hack
-
-    def act(self, agent_id):
-        if self.control_object is self.engine.current_track_agent:
-            self.engine.global_config["manual_control"] = True  # hack
-            action = self.manual_control_policy.act(agent_id)
-            self.engine.global_config["manual_control"] = False  # hack
-            self.action_info["action"] = action
-            self.action_info["manual_control"] = True
-            return action
-        else:
-            self.action_info["manual_control"] = False
-            return super(ManualControllableIDMPolicy, self).act(agent_id)
 
 
 class TrajectoryIDMPolicy(IDMPolicy):

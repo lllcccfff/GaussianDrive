@@ -1,4 +1,4 @@
-from metadrive.policy.manual_control_policy import EnvInputPolicy
+from metadrive.policy.env_input_policy import EnvInputPolicy
 
 
 class AIProtectPolicy(EnvInputPolicy):

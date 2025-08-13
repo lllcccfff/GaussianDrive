@@ -22,7 +22,6 @@ from metadrive.obs.observation_base import BaseObservation
 from metadrive.obs.gaussian_obs import GaussianStateObservation
 from metadrive.obs.observation_base import DummyObservation
 # from metadrive.obs.state_obs import LidarStateObservation
-from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.scenario.utils import convert_recorded_scenario_exported
 from metadrive.utils import merge_dicts, get_np_random, concat_step_infos
 from metadrive.version import VERSION

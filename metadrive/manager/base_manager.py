@@ -48,7 +48,9 @@ class BaseManager(Randomizable):
         """
         Update episode level config to this manager and clean element or detach element
         """
-        for obj_id in self.spawned_objects.keys():
+        id_list = list(self.spawned_objects.keys())
+         
+        for obj_id in id_list:
             self.clear_object(obj_id)
         self.spawned_objects = {}
 

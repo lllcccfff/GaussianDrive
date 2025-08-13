@@ -72,26 +72,42 @@ class WebSocketServer:
         loop.run_until_complete(server)
         loop.run_forever()
 
-    async def server_loop(self, websocket: websockets.WebSocket, path: str):
-        while True:
-            # self.stream.synchronize()  # waiting for the copy event to complete
-            with self.lock:
-                output = self.output
-                self.output = None
-            if output is not None:
-                if isinstance(output, np.ndarray):
-                    output = torch.from_numpy(output)
-                output = output.permute(2, 0, 1).cpu() # HWC -> CHW
-                output = encode_jpeg(output, quality=self.jpeg_quality).numpy().tobytes()
-                await websocket.send(output)
+    async def server_loop(self, websocket: websockets.WebSocket, _path: str):
+        send_task = asyncio.create_task(self._send_outputs(websocket))
+        recv_task = asyncio.create_task(self._recv_inputs(websocket))
+        _done, pending = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION)
+        for task in pending:
+            task.cancel()
 
-            response = await websocket.recv()
-            if response is not None:
-                try:
-                    action = np.frombuffer(response, dtype=np.float32).tolist()
-                except Exception as e:
-                    print(f"Data corruptted from client: {e}")
-                assert len(action) == 2
-
+    async def _send_outputs(self, websocket: websockets.WebSocket):
+        try:
+            while True:
+                # self.stream.synchronize()  # waiting for the copy event to complete
                 with self.lock:
-                    self.input = action
+                    output = self.output
+                    self.output = None
+                if output is not None:
+                    assert isinstance(output, torch.tensor)
+                    output = output.permute(2, 0, 1).cpu()  # HWC -> CHW
+                    data = encode_jpeg(output, quality=self.jpeg_quality).numpy().tobytes()
+                    await websocket.send(data)
+                await asyncio.sleep(0)
+        except websockets.ConnectionClosed:
+            return
+
+    async def _recv_inputs(self, websocket: websockets.WebSocket):
+        try:
+            while True:
+                response = await websocket.recv()
+                if response is not None:
+                    try:
+                        action = np.frombuffer(response, dtype=np.float32).tolist()
+                        assert len(action) == 2
+                    except Exception as e:
+                        print(f"Data corrupted from client: {e}")
+                        continue
+                    
+                    with self.lock:
+                        self.input = action
+        except websockets.ConnectionClosed:
+            return

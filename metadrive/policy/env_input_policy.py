@@ -27,7 +27,6 @@ class EnvInputPolicy(BasePolicy):
         self.enable_expert = enable_expert
 
     def act(self, action):
-
         if self.engine.global_config["action_check"]:
             assert self.get_input_space().contains(action), "Input {} is not compatible with action space {}!".format(action, self.get_input_space())
         if self.discrete_action:

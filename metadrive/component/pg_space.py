@@ -237,7 +237,7 @@ class VehicleParameterSpace:
     BASE_VEHICLE = dict(
         wheel_friction=ConstantSpace(0.9),
         max_engine_force=BoxSpace(750, 850),
-        max_brake_force=BoxSpace(80, 180),
+        max_brake_force=BoxSpace(80, 120),
         max_steering=ConstantSpace(40),
         max_speed_km_h=ConstantSpace(80),
     )

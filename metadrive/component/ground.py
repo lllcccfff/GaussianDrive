@@ -35,3 +35,7 @@ class GroundPlane(BaseObject):
 
     def reset(self, random_seed=None, name=None, *args, **kwargs):
         pass
+    
+    def destroy(self):
+        super(GroundPlane, self).destroy()
+        self.detachDyWld(self.body)

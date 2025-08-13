@@ -45,8 +45,17 @@ class ScenarioMapManager(BaseManager):
         )
         self.model.load_model(**scene_data['config'].visualizer_cfg.model_path)
 
-        self.ground = GroundPlane([0,0,1.], scene_data['ground_height'], random_seed=self.random_seed)
+        self.spawn_object(
+            GroundPlane, 
+            direction=[0,0,1.], 
+            constant=scene_data['ground_height'], 
+            random_seed=self.random_seed
+        )
         # self.update_route()
+
+    def clear_object(self, object_id):
+        obj = self.spawned_objects.pop(object_id)
+        obj.destroy()  
 
     def update_route(self):
         data = self.engine.data_manager.current_scenario
@@ -59,11 +68,6 @@ class ScenarioMapManager(BaseManager):
                     return (start[0].index, end[0].index)
         return None
 
-    def spawn_object(self, object_class, *args, **kwargs):
-        raise ValueError("Please create ScenarioMap instance directly without calling spawn_object function.")
-        # map = self.engine.spawn_object(object_class, auto_fill_random_seed=False, *args, **kwargs)
-        # self.spawned_objects[map.id] = map
-        # return map
 
     def load_map(self, map):
         map.attach_to_world()
@@ -87,18 +91,7 @@ class ScenarioMapManager(BaseManager):
         self.current_sdc_route = None
 
         super(ScenarioMapManager, self).destroy()
-
-    def before_reset(self):
-        # remove map from world before adding
-        if self.current_map is not None:
-            self.unload_map(self.current_map)
-
-        self.sdc_start_point = None
-        self.sdc_destinations = []
-        self.sdc_dest_point = None
-        self.current_sdc_route = None
-        self.current_map = None
-
+    
     def clear_stored_maps(self):
         for m in self._stored_maps.values():
             if m is not None:

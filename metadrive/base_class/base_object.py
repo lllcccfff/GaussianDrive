@@ -34,6 +34,17 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     COLLISION_MASK = None
     SEMANTIC_LABEL = Semantics.UNLABELED.label
 
+    Ego2PandaEgo = np.array([
+        [ 0., 1.,  0.],
+        [ -1.,  0.,  0.],
+        [ 0. , 0.,  1.],
+    ])
+    PandaEgo2Ego = np.array([
+        [ 0., -1.,  0.],
+        [ 1.,  0.,  0.],
+        [ 0. , 0.,  1.],
+    ]) 
+
     def __init__(self, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False):
         """
         Config is a static conception, which specified the parameters of one element.
@@ -87,8 +98,10 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         h = heading_theta
         if to_deg:
             h = heading_theta * 180 / np.pi
+        # Apply panda2ego transform: -90 degrees to convert from ego (+X forward) to panda (+Y forward)
+        h_panda = h - 90.0
         cur_hpr = self.body.getTransform().getHpr()
-        new_hpr = LVector3(h, cur_hpr[1], cur_hpr[2])
+        new_hpr = LVector3(h_panda, cur_hpr[1], cur_hpr[2])
         self.body.setTransform(self.body.getTransform().setHpr(new_hpr))
 
     @property
@@ -97,25 +110,31 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         Get the heading theta of this object, unit [rad]
         :return:  heading in rad
         """
-        return self.body.getTransform().getHpr()[0] / 180 * np.pi
-    
-    def set_transform(self, mat44):
+        h_panda = self.body.getTransform().getHpr()[0]
+        # Apply inverse transform: +90 degrees to convert from panda (+Y forward) to ego (+X forward)
+        h_ego = h_panda + 90.0
+        return wrap_to_pi(h_ego / 180 * np.pi)
+
+    def set_transform(self, m):
+        M = m[:3, :3] @ BaseObject.PandaEgo2Ego
         self.body.setTransform(TransformState.makeMat(LMatrix4(
-            mat44[0, 0], mat44[1, 0], mat44[2, 0], mat44[3, 0],
-            mat44[0, 1], mat44[1, 1], mat44[2, 1], mat44[3, 1],
-            mat44[0, 2], mat44[1, 2], mat44[2, 2], mat44[3, 2],
-            mat44[0, 3], mat44[1, 3], mat44[2, 3], mat44[3, 3]
+            M[0, 0], M[1, 0], M[2, 0], m[3, 0],
+            M[0, 1], M[1, 1], M[2, 1], m[3, 1],
+            M[0, 2], M[1, 2], M[2, 2], m[3, 2],
+            m[0, 3], m[1, 3], m[2, 3], m[3, 3]
         )))
 
     @property
     def transform(self):
         mat = self.body.getTransform().getMat()
-        return np.array([
+        M = np.array([
             [mat[0][0], mat[1][0], mat[2][0], mat[3][0]],
             [mat[0][1], mat[1][1], mat[2][1], mat[3][1]],
             [mat[0][2], mat[1][2], mat[2][2], mat[3][2]],
             [mat[0][3], mat[1][3], mat[2][3], mat[3][3]]
         ], dtype=np.float32)
+        M[:3, :3] = M[:3, :3]  @ BaseObject.Ego2PandaEgo
+        return M
 
     def set_velocity(self, velocity):
         """

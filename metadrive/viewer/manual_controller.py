@@ -68,7 +68,6 @@ class KeyboardController(Controller):
             right_key_pressed = glfw.get_key(self.window, glfw.KEY_D) == glfw.PRESS
             up_key_pressed = glfw.get_key(self.window, glfw.KEY_W) == glfw.PRESS
             down_key_pressed = glfw.get_key(self.window, glfw.KEY_S) == glfw.PRESS
-            self.takeover = glfw.get_key(self.window, glfw.KEY_SPACE) == glfw.PRESS
 
         # If no left or right is pressed, steering decays to the center.
         if not (left_key_pressed or right_key_pressed):

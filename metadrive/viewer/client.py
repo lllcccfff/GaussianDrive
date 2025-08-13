@@ -51,26 +51,41 @@ class Client:
 
     async def client_loop(self):
         async with websockets.connect(self.url) as websocket:
+            send_task = asyncio.create_task(self._send_inputs(websocket))
+            recv_task = asyncio.create_task(self._recv_outputs(websocket))
+            _done, pending = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION)
+            for task in pending:
+                task.cancel()
 
+    async def _send_inputs(self, websocket):
+        try:
             while True:
                 with self.lock:
-                    input = self.input
+                    _input = self.input
                     self.input = None
-                if input is not None:
-                    assert isinstance(input, list) and len(input) == 2
-                    action_bytes = np.array(input, dtype=np.float32).tobytes()
-                    await websocket.send(action_bytes)
+                if _input:
+                    assert isinstance(_input, list) and len(_input) == 2
+                    data = np.array(_input, dtype=np.float32).tobytes()
+                    await websocket.send(data)
+                # Yield control to allow recv task to run
+                await asyncio.sleep(0)
+        except websockets.ConnectionClosed:
+            return
 
+    async def _recv_outputs(self, websocket):
+        try:
+            while True:
                 buffer = await websocket.recv()
                 if buffer is not None:
                     try:
-                        # https://github.com/pytorch/vision/issues/4378
-                        # Still not fixed even to this day? CUDA 12.1 seems fine
-                        buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+                        # https://github.com/pytorch/vision/issues/4378 Still not fixed even to this day? CUDA 12.1 seems fine
+                        tensor = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+                        tensor = tensor.permute(1, 2, 0)
                     except RuntimeError as e:
-                        # buffer = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cpu')  # 10ms for 1080p...
-                        raise e
-                    buffer = buffer.permute(1, 2, 0)
+                        print("Image corruptted.")
+                        continue
 
                     with self.lock:
-                        self.output = buffer
+                        self.output = tensor
+        except websockets.ConnectionClosed:
+            return

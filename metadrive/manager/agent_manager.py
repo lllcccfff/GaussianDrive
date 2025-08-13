@@ -5,7 +5,7 @@ from gymnasium.spaces import Space
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
-from metadrive.policy.manual_control_policy import EnvInputPolicy
+from metadrive.policy.env_input_policy import EnvInputPolicy
 
 logger = get_logger()
 class VehicleAgentManager(BaseManager):
@@ -35,23 +35,22 @@ class VehicleAgentManager(BaseManager):
     def _create_agent(self, config_dict: dict):
         from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
         # Only create one agent - use the first config or default agent
-        agent_id = list(config_dict.keys())[0] if config_dict else "default_agent"
-        v_config = list(config_dict.values())[0] if config_dict else {}
+        agent_id = "default_agent"
 
         v_type = random_vehicle_type(self.np_random) if self.engine.global_config["random_agent_model"] else \
-            vehicle_type[v_config["vehicle_model"] if v_config.get("vehicle_model", False) else "default"]
+            vehicle_type[config_dict["vehicle_model"] if config_dict.get("vehicle_model", False) else "default"]
 
         obj_name = agent_id if self.engine.global_config["force_reuse_object_name"] else None
         
         current_metadata = self.engine.data_manager.get_current_scenario_data()
         cameras, agent_state = current_metadata['camera_objects'], current_metadata['agent_state']
         ground_height = current_metadata['ground_height']
-        print(ground_height)
+                
         ego_poses = current_metadata['ego_poses']
         p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.DEFAULT_HEIGHT / 2]
         obj = self.spawn_object(
             v_type, 
-            vehicle_config=v_config, 
+            vehicle_config=config_dict, 
             name=obj_name,
             position=p,
             random_seed=self.generate_seed(),
@@ -106,7 +105,7 @@ class VehicleAgentManager(BaseManager):
         """
         Agent manager is really initialized after the BaseObject Instances are created
         """
-        self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["agent_configs"])
+        self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["vehicle_config"])
         self.observations['default_agent'].reset()
 
 
@@ -130,7 +129,7 @@ class VehicleAgentManager(BaseManager):
             assert policy is not None, "No policy is set for agent {}".format(agent_id)
 
             if stage == "before_step":
-                action = policy.act()
+                action = policy.act(self.engine.cur_action)
                 step_infos[agent_id] = policy.get_action_info()
                 step_infos[agent_id].update(self._agent_object.before_step(action))
 
@@ -163,7 +162,7 @@ class VehicleAgentManager(BaseManager):
         return self.observation.observation_space
 
     def get_action_spaces(self):
-        return self.agent_policy.get_input_space()
+        return self.get_policy(self._agent_object.id).get_input_space()
 
     def get_state(self):
         ret = super().get_state()

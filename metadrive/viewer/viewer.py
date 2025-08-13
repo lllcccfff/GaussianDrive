@@ -197,10 +197,15 @@ class Viewer:
     def run(self, img : Union[np.ndarray, torch.Tensor] = None):
         if self.mode == 'server':
             action = self._actuate_server(img)
+            action = action if action else [0.0, 0.0] 
             return action
         elif self.mode == 'client':
             action = self.manual_controller.process_input()
             img = self._actuate_client(action)
+            if img is None:
+                img = self.last_image if hasattr(self, 'last_image') else None
+            else:
+                self.last_image = img
             self._render(img)
         elif self.mode == 'local':
             self._render(img)
@@ -245,8 +250,7 @@ class Viewer:
         with self.lock:
             input_data = self.server.input
             self.server.input = None
-
-        return input_data if input_data else [0.0, 0.0] 
+        return input_data
         
 
     def shutdown(self):

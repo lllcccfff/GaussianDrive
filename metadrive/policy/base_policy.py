@@ -46,8 +46,6 @@ class BasePolicy(Randomizable, Configurable):
         """
         Configurable.destroy(self)
         Randomizable.destroy(self)
-        self.control_object = None
-        logging.debug("{} is released".format(self.__class__.__name__))
 
     @property
     def name(self):
