@@ -50,12 +50,19 @@ class Client:
         loop.run_forever()
 
     async def client_loop(self):
-        async with websockets.connect(self.url) as websocket:
-            send_task = asyncio.create_task(self._send_inputs(websocket))
-            recv_task = asyncio.create_task(self._recv_outputs(websocket))
-            _done, pending = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION)
-            for task in pending:
-                task.cancel()
+        # 添加循环等待服务器连接的功能
+        while True:
+            try:
+                async with websockets.connect(self.url) as websocket:
+                    print(f"Connected to server at {self.url}")
+                    send_task = asyncio.create_task(self._send_inputs(websocket))
+                    recv_task = asyncio.create_task(self._recv_outputs(websocket))
+                    _done, pending = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION)
+                    for task in pending:
+                        task.cancel()
+            except (websockets.ConnectionClosed, ConnectionRefusedError, OSError) as e:
+                print(f"Connection failed: {e}. Retrying in 1 seconds...")
+                await asyncio.sleep(1)
 
     async def _send_inputs(self, websocket):
         try:

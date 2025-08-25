@@ -30,7 +30,7 @@ class GroundPlane(BaseObject):
         self.body = BaseRigidBodyNode(self.name, MetaDriveType.GROUND, self.MASS)
         self.body.addShape(BulletPlaneShape(LVector3(*direction), constant))
         self.body.setStatic(True)
-        self.body.setFriction(0.8)
+        self.body.setFriction(0.4)
         self.attachDyWld()
 
     def reset(self, random_seed=None, name=None, *args, **kwargs):

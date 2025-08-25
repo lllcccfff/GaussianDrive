@@ -45,6 +45,8 @@ class ScenarioMapManager(BaseManager):
         )
         self.model.load_model(**scene_data['config'].visualizer_cfg.model_path)
 
+    def after_reset(self):
+        scene_data = self.engine.data_manager.get_current_scenario_data()
         self.spawn_object(
             GroundPlane, 
             direction=[0,0,1.], 

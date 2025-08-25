@@ -29,7 +29,7 @@ class BaseTrafficParticipant(BaseObject):
         
         self.set_body()
 
-        self.set_position(position, self.HEIGHT / 2 if hasattr(self, "HEIGHT") else 0)
+        self.set_position(position)
         self.set_heading_theta(heading_theta)
 
         self.set_metadrive_type(self.TYPE_NAME)
@@ -59,5 +59,5 @@ class BaseTrafficParticipant(BaseObject):
     
     def destroy(self):
         super(BaseTrafficParticipant, self).destroy()
-        self.detachDyWld(self.body.node())
+        self.detachDyWld(self.body)
         self.body = None

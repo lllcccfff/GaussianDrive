@@ -34,16 +34,18 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     COLLISION_MASK = None
     SEMANTIC_LABEL = Semantics.UNLABELED.label
 
-    Ego2PandaEgo = np.array([
+    YFront2X = np.array([
         [ 0., 1.,  0.],
         [ -1.,  0.,  0.],
         [ 0. , 0.,  1.],
     ])
-    PandaEgo2Ego = np.array([
+    XFront2Y = np.array([
         [ 0., -1.,  0.],
         [ 1.,  0.,  0.],
         [ 0. , 0.,  1.],
     ]) 
+    
+    Panda2Real = None
 
     def __init__(self, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False):
         """
@@ -60,7 +62,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         self.body: BaseRigidBodyNode = None
 
         if size:
-            self.WIDTH, self.LENGTH, self.HEIGHT = size
+            self.LENGTH, self.WIDTH, self.HEIGHT = size
 
     # @property
     # def z(self):
@@ -116,7 +118,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         return wrap_to_pi(h_ego / 180 * np.pi)
 
     def set_transform(self, m):
-        M = m[:3, :3] @ BaseObject.PandaEgo2Ego
+        M = m[:3, :3] @ BaseObject.YFront2X
         self.body.setTransform(TransformState.makeMat(LMatrix4(
             M[0, 0], M[1, 0], M[2, 0], m[3, 0],
             M[0, 1], M[1, 1], M[2, 1], m[3, 1],
@@ -133,7 +135,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
             [mat[0][2], mat[1][2], mat[2][2], mat[3][2]],
             [mat[0][3], mat[1][3], mat[2][3], mat[3][3]]
         ], dtype=np.float32)
-        M[:3, :3] = M[:3, :3]  @ BaseObject.Ego2PandaEgo
+        M[:3, :3] = M[:3, :3]  @ BaseObject.XFront2Y
         return M
 
     def set_velocity(self, velocity):

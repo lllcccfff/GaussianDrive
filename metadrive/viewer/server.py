@@ -87,7 +87,8 @@ class WebSocketServer:
                     output = self.output
                     self.output = None
                 if output is not None:
-                    assert isinstance(output, torch.tensor)
+                    if isinstance(output, np.ndarray):
+                        output = torch.from_numpy(output)
                     output = output.permute(2, 0, 1).cpu()  # HWC -> CHW
                     data = encode_jpeg(output, quality=self.jpeg_quality).numpy().tobytes()
                     await websocket.send(data)

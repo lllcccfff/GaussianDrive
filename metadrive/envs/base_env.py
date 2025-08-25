@@ -228,16 +228,12 @@ class BaseEnv(gym.Env):
 
     def _get_reset_return(self, reset_info):
         # TODO: figure out how to get the information of the before step
-        scene_manager_before_step_infos = reset_info
-        scene_manager_after_step_infos = self.engine.after_step()
 
         obses = {}
         done_infos = {}
         cost_infos = {}
         reward_infos = {}
-        engine_info = merge_dicts(
-            scene_manager_after_step_infos, scene_manager_before_step_infos, allow_new_keys=True, without_copy=True
-        )
+        engine_info = reset_info
         obses = self.agent_manager.get_observations()
         _, reward_infos = self.reward_function()
         _, done_infos = self.done_function()

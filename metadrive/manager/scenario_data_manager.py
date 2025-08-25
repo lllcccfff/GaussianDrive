@@ -12,7 +12,8 @@ from easydrive.dataloader.dataset.bounding_box_dataset import BoundingBoxDataset
 from easydrive.dataloader.dataset.camera_based_dataset import CameraBasedDataset
 from easydrive.dataloader.dataloader import EasyDriveDataLoader
 from easydrive.models.scenes.street_gs_scene import StreetGaussianScene
-
+from easydrive.models.scenes.hierachical_scene import HierachyScene
+import json
 class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
     PRIORITY = -10
@@ -57,24 +58,22 @@ class ScenarioDataManager(BaseManager):
             camera_dataset = dataloader.dataset
             ego_poses = dataloader.load_dataset('EgoPoseData').ego_poses
             boundingbox_dataset = dataloader.load_dataset('BoundingBoxDataset')
-            ground_height = dataloader.load_dataset('PointCloudDataset').ground_height
             self.metadata[scene_name] = ScenarioDataManager.restructure_metadata(
                 config=cfg,
                 camera_dataset=camera_dataset,
                 ego_poses=ego_poses,
-                boundingbox_dataset=boundingbox_dataset,
-                ground_height=ground_height
+                boundingbox_dataset=boundingbox_dataset
             )
             self.idx2scene.append(scene_name)
 
     @staticmethod
-    def restructure_metadata(config, camera_dataset, ego_poses, boundingbox_dataset, ground_height):
+    def restructure_metadata(config, camera_dataset, ego_poses, boundingbox_dataset):
         trackings = boundingbox_dataset.bounding_boxes
         cameras = camera_dataset.sensors
         start_frame, end_frame = config.dataloader_cfg.dataset_cfg.frame_length
 
-        init_state = parse_object_state(ego_poses, start_frame, start_frame, check_last_state=False)
-        last_state = parse_object_state(ego_poses, -1, start_frame, check_last_state=True)
+        init_state = parse_object_state(ego_poses, start_frame, start_frame, check_last_state=False, include_z_position=True)
+        last_state = parse_object_state(ego_poses, -1, start_frame, check_last_state=True, include_z_position=True)
         agent_state = dict(
             spawn_position=list(init_state["position"]),
             spawn_heading=init_state["heading_theta"],
@@ -86,14 +85,14 @@ class ScenarioDataManager(BaseManager):
 
         trajectory_policy_data = {}
         object_state = {}
-        for object_id, tracking in trackings:
+        for object_id, tracking in trackings.items():
             traj = {}
             for frame in range(tracking.first_frame, tracking.last_frame):
                 traj[frame] = tracking.get_transform(frame)
             
             parsed_data = {}
             for frame in range(tracking.first_frame, tracking.last_frame):
-                parsed_data[frame] = parse_object_state(traj, frame, start_frame, include_z_position=True)
+                parsed_data[frame] = parse_object_state(traj, frame, tracking.first_frame, include_z_position=True)
             
             trajectory_policy_data[object_id] = parsed_data
             object_state[object_id] = parsed_data[tracking.first_frame]
@@ -104,7 +103,6 @@ class ScenarioDataManager(BaseManager):
             'BoundingBoxDataset': boundingbox_dataset,
             'camera_objects':cameras,
             'bounding_box_objects': trackings,
-            'ground_height': ground_height,
             'ego_poses': ego_poses,
             'agent_state': agent_state,
             'trajectory_policy_data': trajectory_policy_data,

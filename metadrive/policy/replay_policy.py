@@ -19,19 +19,22 @@ class ReplayTrafficParticipantPolicy(BasePolicy):
         self._velocity_local_frame = False
         
         self.traj_info = self.parse_track_infos(track)
-        
         self.control_object.set_kinematic(True)
 
     @property
-    def is_current_step_valid(self):
-        return self.traj_info[self.episode_step] is not None
+    def is_valid(self):
+        return self.current_frame in self.traj_info
+    
+    @property
+    def current_frame(self):
+        return self.engine.traffic_manager.current_frame
 
     def parse_track_infos(self, track):
         return track
 
     def act(self, *args, **kwargs):
 
-        info = self.traj_info[self.episode_step]
+        info = self.traj_info[self.current_frame]
 
         # Before step
         # Warning by LQY: Don't call before step here! Before step should be called by manager

@@ -123,7 +123,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         # self.engine = get_engine()
 
         if size is None:
-            size = (self.DEFAULT_WIDTH, self.DEFAULT_LENGTH, self.DEFAULT_HEIGHT)
+            size = (self.DEFAULT_LENGTH, self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT)
         BaseObject.__init__(self, size, name, random_seed, vehicle_config)
         BaseVehicleState.__init__(self)
         self.set_metadrive_type(MetaDriveType.VEHICLE)
@@ -297,7 +297,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             else:
                 continue
             contacts.add(name)
-
         self.contact_results.update(contacts)
 
     """------------------------------------------- act -------------------------------------------------"""
@@ -395,13 +394,14 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     """-------------------------------------- for vehicle making ------------------------------------------"""
 
     def _create_vehicle_chassis(self):
+
         # assert self.LENGTH < BaseVehicle.MAX_LENGTH, "Vehicle is too large!"
         # assert self.WIDTH < BaseVehicle.MAX_WIDTH, "Vehicle is too large!"
 
         chassis = BaseRigidBodyNode(self.name, MetaDriveType.VEHICLE, self.MASS)
 
         chassis_shape = BulletBoxShape(Vec3(self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2))
-        ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 2))
+        ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 4 ))
         chassis.addShape(chassis_shape, ts)
         chassis.setDeactivationEnabled(False)
         chassis.notifyCollisions(True)  # advance collision check, do callback in pg_collision_callback
@@ -552,23 +552,4 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     def max_speed_m_s(self):
         return self.config["max_speed_km_h"] / 3.6
 
-    @property
-    def roll(self):
-        """
-        Return the roll of this object
-        """
-        return np.deg2rad(self.vehicle.getR())
-
-    def set_roll(self, roll):
-        self.vehicle.setR(roll)
-
-    @property
-    def pitch(self):
-        """
-        Return the pitch of this object
-        """
-        return np.deg2rad(self.vehicle.getP())
-
-    def set_pitch(self, pitch):
-        self.vehicle.setP(pitch)
 

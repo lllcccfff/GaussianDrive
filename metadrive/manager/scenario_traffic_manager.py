@@ -67,11 +67,16 @@ class ScenarioTrafficManager(BaseManager):
         self._static_car_id = set()
         self.spawned_object = {}
         self.idm_policy_count = 0
+        self._obj_to_clean_this_frame = []
         self._try_spawning()
+
+        self.traffic_poses = {}
+        for obj_id, obj in self.spawned_objects.items():
+            self.traffic_poses[obj_id] = obj.transform
     
     def before_step(self, *args, **kwargs):
         self._obj_to_clean_this_frame = []
-        for obj_id, obj in self.spawned_objects.values():
+        for obj_id, obj in self.spawned_objects.items():
             if isinstance(self._object_policies[obj_id], TrajectoryIDMPolicy):
                 p = self._object_policies[obj_id]
                 if p.arrive_destination:
@@ -89,13 +94,13 @@ class ScenarioTrafficManager(BaseManager):
             if isinstance(self._object_policies[obj_id], ReplayTrafficParticipantPolicy):
                 # static object will not be cleaned!
                 policy = self._object_policies[obj_id]
-                if policy.is_current_step_valid(self.current_frame):
+                if policy.is_valid:
                     policy.act()
                 else:
                     self._obj_to_clean_this_frame.append(obj_id)
 
             if obj_id not in self._obj_to_clean_this_frame:
-                self.traffic_poses[obj_id] = obj.ego_pose
+                self.traffic_poses[obj_id] = obj.transform
 
         for obj_id in self._obj_to_clean_this_frame:
             self.clear_object(obj_id)
@@ -107,9 +112,11 @@ class ScenarioTrafficManager(BaseManager):
         trajectories = scenario_data['trajectory_policy_data']
         object_states = scenario_data['object_state']
         for id, bbox in boundingboxes.items():
+            if id in self.spawned_objects:
+                continue
             if self.current_frame != bbox.first_frame:
                 continue
-            
+
             if bbox.object_type == 'rigid':
                 self.spawn_vehicle(id, bbox, trajectories[id], object_states[id])
             elif bbox.object_type == 'nonrigid':
@@ -122,7 +129,7 @@ class ScenarioTrafficManager(BaseManager):
     @property
     def current_frame(self):
         frame_range = self.engine.data_manager.get_current_scenario_data()['frame_range']
-        return self.episode_step + frame_range[0]
+        return self.episode_step //3  + frame_range[0]
         
     @property
     def vehicles(self):
@@ -133,7 +140,13 @@ class ScenarioTrafficManager(BaseManager):
         vehicle_class = get_vehicle_type(bbox.size[1], False)
         obj_name = oid
         v = self.spawn_object(
-            vehicle_class, position=state['position'], heading=state["heading"], name=obj_name, size=bbox.size
+            vehicle_class, 
+            random_seed=self.generate_seed(),
+            vehicle_config=self.engine.global_config["vehicle_config"],
+            position=state['position'], 
+            heading=state["heading_theta"], 
+            name=obj_name, 
+            size=bbox.size.tolist()
         )
 
         # add policy
@@ -156,9 +169,10 @@ class ScenarioTrafficManager(BaseManager):
         obj = self.spawn_object(
             Pedestrian,
             name=obj_name,
+            random_seed=self.generate_seed(),
             position=state["position"],
-            heading_theta=state["heading"],
-            size=bbox.size
+            heading_theta=state["heading_theta"],
+            size=bbox.size.tolist()
         )
         policy = self.add_policy(obj.name, ReplayTrafficParticipantPolicy, obj, track)
         policy.act()

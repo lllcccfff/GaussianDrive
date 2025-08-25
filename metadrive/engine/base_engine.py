@@ -163,7 +163,7 @@ class BaseEngine(EngineCore, Randomizable):
 
         # reset colors
         BaseEngine.COLORS_FREE = set(COLOR_SPACE)
-        BaseEngine.COLORS_OCCUPIED = set()
+        BaseEngine.COLORS_OCCUPIED = set() 
         # new_i2c = {}
         # new_c2i = {}
         # # print("rest objects", len(self.get_objects()))
@@ -354,7 +354,7 @@ class BaseEngine(EngineCore, Randomizable):
         from metadrive.component.vehicle.base_vehicle import BaseVehicle
         from metadrive.component.static_object.traffic_object import TrafficObject
         for manager in self._managers.values():
-            assert len(manager.spawned_objects) == 0
+            assert len(manager.spawned_objects) == 0, manager
 
         # rigid body check
         bodies = []
@@ -368,8 +368,8 @@ class BaseEngine(EngineCore, Randomizable):
 
         filtered = []
         for body in bodies:
-            if body.getName() in ["detector_mask", "debug"]:
-                continue
+            # if body.getName() in ["detector_mask", "debug"]:
+            #     continue
             filtered.append(body)
         assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
                                    "Uncleared bodies: {}".format(filtered)

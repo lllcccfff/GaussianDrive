@@ -6,7 +6,8 @@ from metadrive.constants import DEFAULT_AGENT
 from metadrive.engine.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.env_input_policy import EnvInputPolicy
-
+from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
+from metadrive.base_class.base_object import BaseObject
 logger = get_logger()
 class VehicleAgentManager(BaseManager):
     """
@@ -29,36 +30,62 @@ class VehicleAgentManager(BaseManager):
         # for getting {agent_id: BaseObject}, use agent_manager.active_agents
         # fake init. before creating engine, it is necessary when all objects re-created in runtime
         self.observations = init_observations  # its value is map<agent_id, obs> before init() is called
-        self.episode_created_agents = None
+
+    def before_reset(self):
+        if not self.INITIALIZED:
+            super().__init__()
+            self.INITIALIZED = True
+        super().before_reset()
+        self.v_type = None
         
 
+    def reset(self):
+        # define the transform from panda coordinate to 3dgs world coordinate
+        current_metadata = self.engine.data_manager.get_current_scenario_data()
+        
+        config_dict=self.engine.global_config["vehicle_config"]
+        self.v_type = random_vehicle_type(self.np_random) if self.engine.global_config["random_agent_model"] else \
+            vehicle_type[config_dict["vehicle_model"] if config_dict.get("vehicle_model", False) else "default"]
+        
+        start_frame, end_frame = current_metadata['frame_range']
+                
+        ego_poses = current_metadata['ego_poses']
+        ground_height = ego_poses[start_frame][2, 3] - self.v_type.DEFAULT_HEIGHT / 2
+        current_metadata['ground_height'] = ground_height
+
+    def after_reset(self):
+        """
+        Agent manager is really initialized after the BaseObject Instances are created
+        """
+        self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["vehicle_config"])
+        self.observations['default_agent'].reset()
+        # it is used when reset() is called to reset its original agent_id
+        self._agent_object = self.episode_created_agent
+
+        assert isinstance(self.get_action_spaces(), Space)
+        
     def _create_agent(self, config_dict: dict):
-        from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
         # Only create one agent - use the first config or default agent
         agent_id = "default_agent"
-
-        v_type = random_vehicle_type(self.np_random) if self.engine.global_config["random_agent_model"] else \
-            vehicle_type[config_dict["vehicle_model"] if config_dict.get("vehicle_model", False) else "default"]
 
         obj_name = agent_id if self.engine.global_config["force_reuse_object_name"] else None
         
         current_metadata = self.engine.data_manager.get_current_scenario_data()
         cameras, agent_state = current_metadata['camera_objects'], current_metadata['agent_state']
-        ground_height = current_metadata['ground_height']
+        start_frame, end_frame = current_metadata['frame_range']
                 
         ego_poses = current_metadata['ego_poses']
-        p = [agent_state['spawn_position'][0], agent_state['spawn_position'][1], ground_height + v_type.DEFAULT_HEIGHT / 2]
         obj = self.spawn_object(
-            v_type, 
+            self.v_type, 
             vehicle_config=config_dict, 
             name=obj_name,
-            position=p,
+            position=agent_state['spawn_position'],
             random_seed=self.generate_seed(),
             heading=agent_state['spawn_heading']
         )
         self.init_pos = agent_state['spawn_position']
         self.dest_pos = agent_state['destination']
-        self.ego2cameras = self._calc_ego2camera(obj, cameras, ego_poses)
+        self.ego2cameras = self._calc_ego2camera(obj, cameras, ego_poses, start_frame)
 
         args = [obj, self.generate_seed(), ]
         self.add_policy(obj.id, self.agent_policy, *args)
@@ -66,15 +93,14 @@ class VehicleAgentManager(BaseManager):
         # Return single agent instead of dictionary
         return obj
 
-    def _calc_ego2camera(self, vehicle_object, cameras, ego_poses):
+    def _calc_ego2camera(self, vehicle_object, cameras, ego_poses, start_frame):
         ego2cameras = {}
+        ego2world = ego_poses[start_frame].cuda()
         for cam_name, camera in cameras.items():
-            w2c = camera.world_view_transform[0].T
-            ego2world = torch.from_numpy(vehicle_object.transform).cuda()
-
+            w2c = camera.world_view_transform[start_frame].T
             ego2cameras[cam_name] = w2c @ ego2world
         return ego2cameras
-
+    
     @property
     def agent_policy(self):
         """Get the agent policy class
@@ -93,27 +119,15 @@ class VehicleAgentManager(BaseManager):
             policy = get_global_config()["agent_policy"]
         return policy
 
-    def before_reset(self):
-        if not self.INITIALIZED:
-            super().__init__()
-            self.INITIALIZED = True
-        self.episode_created_agents = None
+    def before_step(self):
+        # not in replay mode
+        step_infos = self.try_actuate_agent(dict(), stage="before_step")
+        return step_infos
 
-        super().before_reset()
-
-    def reset(self):
-        """
-        Agent manager is really initialized after the BaseObject Instances are created
-        """
-        self.episode_created_agent = self._create_agent(config_dict=self.engine.global_config["vehicle_config"])
-        self.observations['default_agent'].reset()
-
-
-    def after_reset(self):
-        # it is used when reset() is called to reset its original agent_id
-        self._agent_object = self.episode_created_agent
-
-        assert isinstance(self.get_action_spaces(), Space)
+    def after_step(self, *args, **kwargs):
+        step_infos = self.try_actuate_agent({}, stage="after_step")
+        step_infos.update({'after_step': self._agent_object.after_step()})
+        return step_infos
 
     def try_actuate_agent(self, step_infos, stage="before_step"):
         """
@@ -135,15 +149,10 @@ class VehicleAgentManager(BaseManager):
 
         return step_infos
 
-    def before_step(self):
-        # not in replay mode
-        step_infos = self.try_actuate_agent(dict(), stage="before_step")
-        return step_infos
-
-    def after_step(self, *args, **kwargs):
-        step_infos = self.try_actuate_agent({}, stage="after_step")
-        step_infos.update({'after_step': self._agent_object.after_step()})
-        return step_infos
+    def get_observations(self):
+        step = self.engine.traffic_manager.current_frame
+        traffics = self.engine.traffic_manager.traffic_poses
+        return self.observations['default_agent'].observe(step, self.get_sensor_pose(), traffics)
 
     def get_sensor_pose(self):
         ego_pose = self._agent_object.transform
@@ -153,11 +162,6 @@ class VehicleAgentManager(BaseManager):
             sensor_pose[sensor_name] = ego2camera @ torch.tensor(ego_pose, device='cuda').inverse()
         return sensor_pose
 
-    def get_observations(self):
-        step = self.engine.traffic_manager.current_frame
-        traffics = self.engine.traffic_manager.traffic_poses
-        return self.observations['default_agent'].observe(step, self.get_sensor_pose(), traffics)
-
     def get_observation_spaces(self):
         return self.observation.observation_space
 
@@ -166,7 +170,7 @@ class VehicleAgentManager(BaseManager):
 
     def get_state(self):
         ret = super().get_state()
-        ret["created_agents"] = self.episode_created_agent.name
+        ret["created_agents"] = self._agent_object.name
         return ret
 
     def is_arrive(self):

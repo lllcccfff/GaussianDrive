@@ -48,11 +48,7 @@ class BaseManager(Randomizable):
         """
         Update episode level config to this manager and clean element or detach element
         """
-        id_list = list(self.spawned_objects.keys())
-         
-        for obj_id in id_list:
-            self.clear_object(obj_id)
-        self.spawned_objects = {}
+        self.clear_all_objects()
 
     def reset(self):
         """
@@ -73,7 +69,7 @@ class BaseManager(Randomizable):
         """
         # self.engine = None
         super(BaseManager, self).destroy()
-        self.clear_objects(list(self.spawned_objects.keys()), force_destroy=True)
+        self.clear_all_objects(list(self.spawned_objects.keys()), force_destroy=True)
         self.spawned_objects = None
 
     def spawn_object(self, object_class, **kwargs):
@@ -85,11 +81,21 @@ class BaseManager(Randomizable):
         return object
 
     def clear_object(self, object_id):
-        policy = self._object_policies.pop(object_id)
-        policy.destroy()
+        try:
+            policy = self._object_policies.pop(object_id)
+            policy.destroy()
+        except Exception as e:
+            breakpoint()
         obj = self.spawned_objects.pop(object_id)
         obj.destroy()
         return obj
+
+    def clear_all_objects(self):
+        id_list = list(self.spawned_objects.keys())
+         
+        for obj_id in id_list:
+            self.clear_object(obj_id)
+        self.spawned_objects = {}
 
     def add_policy(self, object_id, policy_class, *policy_args, **policy_kwargs):
         policy = policy_class(*policy_args, **policy_kwargs)
