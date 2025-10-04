@@ -104,7 +104,7 @@ def parse_full_trajectory(object_dict):
     return trajectory
 
 
-def parse_object_state(matrix_list, frame_idx, start_idx, check_last_state=False, sim_time_interval=0.1, include_z_position=False):
+def parse_object_state(matrix_list, frame_idx, start_idx, check_last_state=True, sim_time_interval=0.1, include_z_position=False):
     """
     Parse object state from 4x4 ego-to-world transformation matrices
     matrix_list: List of 4x4 numpy arrays representing ego2world transforms

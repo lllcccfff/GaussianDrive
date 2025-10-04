@@ -15,9 +15,12 @@ class GaussianStateObservation(BaseObservation):
     IMAGE = "image"
     STATE = "state"
 
-    def __init__(self, config):
+    def __init__(self, config, controller):
         super().__init__(config)
-        self.img_obs = GaussianObservation(config, config["clip_rgb"])
+        self.img_obs = GaussianObservation(config)
+
+    def reset(self, **kwargs):
+        self.img_obs.reset(**kwargs)
 
     @property
     def observation_space(self):
@@ -28,8 +31,8 @@ class GaussianStateObservation(BaseObservation):
             }
         )
 
-    def observe(self, frame, camera_poses, extra_boxes=None):
-        return {self.IMAGE: self.img_obs.observe(frame, camera_poses, extra_boxes), self.STATE: None}
+    def observe(self):
+        return {self.IMAGE: self.img_obs.observe(), self.STATE: None}
 
     def reset(self):
         self.img_obs.reset()
@@ -46,10 +49,28 @@ class GaussianObservation(BaseObservation):
     """
     STACK_SIZE = 3  # use continuous 3 image as the input
 
-    def __init__(self, config, clip_rgb: bool):
-        self.STACK_SIZE = config["stack_size"]
+    def __init__(self, config, controller, render_fn, camera_params):
         super().__init__(config)
-        self.clip_rgb = clip_rgb
+        self.STACK_SIZE = config["stack_size"]
+        self.clip_rgb = config['clip_rgb']
+
+    def reset(self, controller, render_fn, camera_params, **kwargs):
+        """
+        Clear stack
+        :param env: MetaDrive
+        :param vehicle: BaseVehicle
+        :return: None
+        """
+        
+        self.controller = controller
+        self.render_fn = render_fn
+        self.params = camera_params
+
+        if self.clip_rgb:
+            self.state = {cam_name: np.zeros(self.an_observation_shape(self.params['H'], self.params['W']), dtype=np.float32) for cam_name, cam in self.params.items()}
+        else:
+            self.state = {cam_name: np.zeros(self.an_observation_shape(self.params['H'], self.params['W']), dtype=np.uint8) for cam_name, cam in self.params.items()}
+
 
     @property
     def observation_space(self):
@@ -57,64 +78,36 @@ class GaussianObservation(BaseObservation):
         # assert sensor_cls == "MainCamera" or issubclass(sensor_cls, BaseCamera), "Sensor should be BaseCamera"
         
         space = {}
-        for sname, sensor in self.sensors.items():
-            shape = self.an_observation_shape(sensor.image_height, sensor.image_width)
+        for name, sensor in self.params.items():
+            shape = self.an_observation_shape(sensor['H'], sensor['W'])
             if self.clip_rgb:
-                space[sname] = gym.spaces.Box(-0.0, 1.0, shape=shape, dtype=np.float32)
+                space[name] = gym.spaces.Box(-0.0, 1.0, shape=shape, dtype=np.float32)
             else:
-                space[sname] = gym.spaces.Box(0, 255, shape=shape, dtype=np.uint8)
+                space[name] = gym.spaces.Box(0, 255, shape=shape, dtype=np.uint8)
         return space
 
     def an_observation_shape(self, h, w):
         return (self.STACK_SIZE, h, w, 3)
  
-    def observe(self, frame, camera_poses, extra_boxes=None):
+    def observe(self):
         """
         Get the image Observation. By setting new_parent_node and the reset parameters, it can capture a new image from
         a different position and pose
         """
-        for cam_name, camera_pose in camera_poses.items():
-            w2c = torch.tensor(camera_pose).cuda().contiguous()
-            camera_center = w2c.inverse()[:3, 3].contiguous()
-
-            raw_camera = self.sensors[cam_name]
-            full_proj = (raw_camera.projection_matrix.T @ w2c).contiguous()
-            camera_params = {
-                'world_view_transform': w2c.T,
-                'full_proj_transform': full_proj.T,
-                'camera_center': camera_center,
-                'image_height': raw_camera.image_height,
-                'image_width': raw_camera.image_width,
-                'FoVx': raw_camera.FoVx,
-                'FoVy': raw_camera.FoVy
-            }    
-
-            ray_batch = raw_camera.gen_rays(
-                R=w2c[:3, :3].T, T=w2c[:3, 3], K=raw_camera.K,
-                image_height=raw_camera.image_height, image_width=raw_camera.image_width
+        ego_pose = torch.tensor(self.controller.transform, device='cuda').inverse()
+        for cam_name, params in self.params.items():
+            extrinsics = params['camera2ego'] @ ego_pose
+            ret = self.render_fn(
+                K=['K'],
+                H=['H'],
+                W=['W'],
+                extrinsics=extrinsics,
             )
-            ret = self.engine.render(
-                frame=frame,
-                camera_params=camera_params,
-                ray_batch=ray_batch,
-                extra_boxes=extra_boxes
-            )['vis_rgb']
             self.state[cam_name] = np.roll(self.state[cam_name], -1, axis=0)
             self.state[cam_name][-1] = ret
-        return self.state
 
-    def reset(self, vehicle=None):
-        """
-        Clear stack
-        :param env: MetaDrive
-        :param vehicle: BaseVehicle
-        :return: None
-        """
-        self.sensors = self.engine.data_manager.get_current_scenario_data()['camera_objects']
-        if self.clip_rgb:
-            self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.float32) for cam_name, cam in self.sensors.items()}
-        else:
-            self.state = {cam_name: np.zeros(self.an_observation_shape(cam.image_height, cam.image_width), dtype=np.uint8) for cam_name, cam in self.sensors.items()}
+
+        return self.state
 
 
     def destroy(self):

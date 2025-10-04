@@ -1,5 +1,5 @@
 from metadrive.engine.engine_utils import get_global_config
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.policy.base_policy import BasePolicy
 import gymnasium as gym
 import numpy as np
@@ -15,19 +15,18 @@ class EnvInputPolicy(BasePolicy):
 
     DEBUG_MARK_COLOR = (252, 244, 3, 255)
 
-    def __init__(self, obj, seed, enable_expert=True):
-        super(EnvInputPolicy, self).__init__(obj, seed)
-        self.discrete_action = self.engine.global_config["discrete_action"]
-        self.discrete_steering_dim = self.engine.global_config["discrete_steering_dim"]
-        self.discrete_throttle_dim = self.engine.global_config["discrete_throttle_dim"]
+    def __init__(self, step_manager, config=None, enable_expert=True):
+        super(EnvInputPolicy, self).__init__(step_manager, config)
+        self.discrete_action = self.config["discrete_action"]
+        self.discrete_steering_dim = self.config["discrete_steering_dim"]
+        self.discrete_throttle_dim = self.config["discrete_throttle_dim"]
         self.steering_unit = 2.0 / (self.discrete_steering_dim - 1)
         self.throttle_unit = 2.0 / (self.discrete_throttle_dim - 1)
 
-        config = self.engine.global_config
         self.enable_expert = enable_expert
 
-    def act(self, action):
-        if self.engine.global_config["action_check"]:
+    def act(self, action, *args, **kwargs):
+        if self.config["action_check"]:
             assert self.get_input_space().contains(action), "Input {} is not compatible with action space {}!".format(action, self.get_input_space())
         if self.discrete_action:
             action=self._convert_to_continuous_action(action)

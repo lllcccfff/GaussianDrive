@@ -19,7 +19,7 @@ from metadrive.constants import CamMask, Semantics, MapTerrainSemanticColor
 from metadrive.constants import MetaDriveType, CollisionGroup
 from metadrive.constants import TerrainProperty, CameraTagStateKey
 from metadrive.engine.asset_loader import AssetLoader
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.third_party.diamond_square import diamond_square
 from metadrive.utils.utils import is_win
 

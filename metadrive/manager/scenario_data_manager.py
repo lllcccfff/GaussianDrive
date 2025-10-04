@@ -6,32 +6,42 @@ from metadrive.manager.base_manager import BaseManager
 from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
 from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
 from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state, get_idm_route
+from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
 
-from easydrive.engine import config, DATALOADERS
-from easydrive.dataloader.dataset.bounding_box_dataset import BoundingBoxDataset
-from easydrive.dataloader.dataset.camera_based_dataset import CameraBasedDataset
-from easydrive.dataloader.dataloader import EasyDriveDataLoader
-from easydrive.models.scenes.street_gs_scene import StreetGaussianScene
-from easydrive.models.scenes.hierachical_scene import HierachyScene
 import json
+
+
+from easydrive.engine.config import Config
+from metadrive.default_config import BASE_DEFAULT_CONFIG
+
 class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
     PRIORITY = -10
-    def __init__(self):
-        super(ScenarioDataManager, self).__init__()
-        from metadrive.engine.engine_utils import get_engine
-        engine = get_engine()
+
+    @classmethod
+    def default_config(cls) -> Config:
+        return Config(BASE_DEFAULT_CONFIG)
+
+    def __init__(self, loader):
+        
+        super(ScenarioDataManager, self).__init__()        
+        if config is None:
+            config = Config()
+        default_config = self.default_config()
+        default_config.merge_from(config, replace_keys=["agent_configs"])
+        global_config = self._post_process_config(default_config)
+        self.base_config = global_config
 
         # self.store_data = engine.global_config["store_data"]
-        self.directory = engine.global_config["scene_config_directory"]
+        self.directory = self.base_config["scene_config_directory"]
 
         # for multi-worker
-        self.worker_index = self.engine.global_config["worker_index"]
+        self.worker_index = self.base_config["worker_index"]
         # self._scenarios = {}
 
         # Read summary file first:
-        self.read_metadata()
-        engine.global_config["num_scenarios"] = self.num_scenarios
+        self.read_metadata(loader)
+        self.base_config["num_scenarios"] = self.num_scenarios
 
         # sort scenario for curriculum training
         self.scenario_difficulty = None
@@ -40,91 +50,106 @@ class ScenarioDataManager(BaseManager):
 
         # stat
         # self.coverage = [0 for _ in range(self.num_scenarios)]
+    def _post_process_config(self, config):
+        pass
 
-    def read_metadata(self):
+    def read_metadata(self, loader):
         self.metadata, self.idx2scene = {}, []
         self.num_scenarios = 0
         for config_file in os.listdir(self.directory):
             self.num_scenarios += 1
-            cfg = config.Config.fromfile(filename=os.path.join(self.directory, config_file))
-            dataloader = DATALOADERS.build(
-                cfg=cfg.dataloader_cfg,
-                shuffle=False,
-                data_involved="all",
-                visualize=False,
-                load_media=False
-            )
-            scene_name = cfg.dataloader_cfg.dataset_cfg.scene_name
-            camera_dataset = dataloader.dataset
-            ego_poses = dataloader.load_dataset('EgoPoseData').ego_poses
-            boundingbox_dataset = dataloader.load_dataset('BoundingBoxDataset')
+            cfg = Config.fromfile(filename=os.path.join(self.directory, config_file))
+
+            scene_name, frame_range, camera_params, ego_poses, participants = loader(cfg)
+            # frame_range : list|tuple [2]
+            # camera params : 
+            #     "camera_name" :
+            #         "K" : list[3][3]
+            #         "H" : int
+            #         "W" : int
+            #         "ego2camera" : list[4][4]
+            # ego poses : 
+            #     1 : list[4][4]
+            #     ...
+            #     n : list[4][4]            
+            # participants :
+            #     "unique_name" : 
+            #         "size" :
+            #         "type" :
+            #         "transforms" :
+            #             1 : list[4][4]
+            #             ...
+            #             n : list[4][4]
+
             self.metadata[scene_name] = ScenarioDataManager.restructure_metadata(
                 config=cfg,
-                camera_dataset=camera_dataset,
+                frame_range=frame_range,
+                camera_params=camera_params,
                 ego_poses=ego_poses,
-                boundingbox_dataset=boundingbox_dataset
+                participants=participants
             )
             self.idx2scene.append(scene_name)
 
     @staticmethod
-    def restructure_metadata(config, camera_dataset, ego_poses, boundingbox_dataset):
-        trackings = boundingbox_dataset.bounding_boxes
-        cameras = camera_dataset.sensors
-        start_frame, end_frame = config.dataloader_cfg.dataset_cfg.frame_length
-
-        init_state = parse_object_state(ego_poses, start_frame, start_frame, check_last_state=False, include_z_position=True)
-        last_state = parse_object_state(ego_poses, -1, start_frame, check_last_state=True, include_z_position=True)
-        agent_state = dict(
-            spawn_position=list(init_state["position"]),
-            spawn_heading=init_state["heading_theta"],
-            spawn_velocity=init_state["velocity"],
-            spawn_angular_velocity=init_state["angular_velocity"],
-            destination=last_state["position"]
-        )
-        ego_poses = {frame: torch.tensor(pose) for frame, pose in ego_poses.items()}
-
-        trajectory_policy_data = {}
-        object_state = {}
-        for object_id, tracking in trackings.items():
-            traj = {}
-            for frame in range(tracking.first_frame, tracking.last_frame):
-                traj[frame] = tracking.get_transform(frame)
+    def restructure_metadata(config, frame_range, camera_params, ego_poses, participants):
+        init_state, agent_poses = {}, {}
+        for name, tracking in (participants | {'actor': ego_poses}).items():
+            if name == 'actor':
+                frame_list = range(*frame_range)
+                traj = ego_poses
+            else:
+                frame_list = sorted(tracking['transforms'].keys())
+                traj = {frame : tracking['transforms'][frame] for frame in frame_list}
             
+            first_frame, last_frame = frame_list[0], frame_list[-1]
             parsed_data = {}
-            for frame in range(tracking.first_frame, tracking.last_frame):
-                parsed_data[frame] = parse_object_state(traj, frame, tracking.first_frame, include_z_position=True)
+            for frame in frame_list:
+                parsed_data[frame] = parse_object_state(traj, frame, first_frame, include_z_position=True)
             
-            trajectory_policy_data[object_id] = parsed_data
-            object_state[object_id] = parsed_data[tracking.first_frame]
+            first_state, last_state = parsed_data[first_frame], parsed_data[last_frame]
+            init_state[name] = dict(
+                spawn_position=list(first_state["position"]),
+                spawn_heading=first_state["heading_theta"],
+                spawn_velocity=first_state["velocity"],
+                spawn_angular_velocity=first_state["angular_velocity"],
+                destination=last_state["position"]
+            )
+            agent_poses[name] = parsed_data
 
         return {
             'config': config,
-            'CameraBasedDataset': camera_dataset,
-            'BoundingBoxDataset': boundingbox_dataset,
-            'camera_objects':cameras,
-            'bounding_box_objects': trackings,
+            'camera_params':camera_params,
             'ego_poses': ego_poses,
-            'agent_state': agent_state,
-            'trajectory_policy_data': trajectory_policy_data,
-            'object_state': object_state,
-            'frame_range': (start_frame, end_frame)
+            'participants': participants,
+            'init_state': init_state,
+            "agent_poses": agent_poses,
+            'frame_range': frame_range
         }
 
-
-    def before_reset(self):
+    def reset(self):
         # if not self.store_data:
         #     assert len(self._scenarios) <= 1, "It seems you access multiple scenarios in one episode"
         #     self._scenarios = {}
         self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
+        self.current_config = self.base_confg.copy()
+
+        config_dict=self.current_config["vehicle_config"]
+        config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
+
+        current_metadata = self.get_current_scenario_data()
+        start_frame, end_frame = current_metadata['frame_range']
+        ego_poses = current_metadata['ego_poses']
+        ground_height = ego_poses[start_frame][2, 3] - self.v_type.DEFAULT_HEIGHT / 2
+        current_metadata['ground_height'] = ground_height
+
+    def get_current_scenario_data(self):
+        return self.get_scenario_data(self.current_scenario_id)
 
     def get_scenario_data(self, i, should_copy=False):
         assert 0 <= i < self.num_scenarios, \
             "scenario index exceeds range, scenario index: {}, worker_index: {}".format(i, self.worker_index)
         scenario_name = self.idx2scene[i]
         return self.metadata[scenario_name]
-
-    def get_current_scenario_data(self):
-        return self.get_scenario_data(self.current_scenario_id)
 
     @property
     def current_scenario_length(self):

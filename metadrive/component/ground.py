@@ -18,13 +18,14 @@ class GroundPlane(BaseObject):
 
     def __init__(
             self,
+            physics_world,
             direction: Sequence[float], 
             constant: float = 0., 
             random_seed=None, 
             name=None, 
             config=None
         ):
-        super(GroundPlane, self).__init__(random_seed=random_seed, name=name, config=config)
+        super(GroundPlane, self).__init__(physics_world, random_seed=random_seed, name=name, config=config)
         
         self.set_metadrive_type(MetaDriveType.GROUND)
         self.body = BaseRigidBodyNode(self.name, MetaDriveType.GROUND, self.MASS)

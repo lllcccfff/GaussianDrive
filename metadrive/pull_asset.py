@@ -11,7 +11,7 @@ import progressbar
 from filelock import Timeout
 
 from metadrive.constants import VERSION
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.version import asset_version
 
 ROOT_DIR = Path(__file__).parent

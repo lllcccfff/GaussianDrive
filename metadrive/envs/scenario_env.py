@@ -12,7 +12,7 @@ from metadrive.manager.scenario_agent_manager import ScenarioAgentManager
 from metadrive.manager.scenario_curriculum_manager import ScenarioCurriculumManager
 from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
 from metadrive.manager.scenario_map_manager import ScenarioMapManager
-from metadrive.manager.scenario_traffic_manager import ScenarioTrafficManager
+from metadrive.manager.participant_manager import ParticipantManager
 from metadrive.policy.waypoint_policy import WaypointPolicy
 from metadrive.utils import get_np_random
 from metadrive.utils.math import wrap_to_pi
@@ -118,8 +118,8 @@ class ScenarioEnv(BaseEnv):
         config.update(SCENARIO_ENV_CONFIG)
         return config
 
-    def __init__(self, config=None):
-        super(ScenarioEnv, self).__init__(config)
+    def __init__(self, model, config=None):
+        super(ScenarioEnv, self).__init__(model, config)
         if self.config["curriculum_level"] > 1:
             assert self.config["num_scenarios"] % self.config["curriculum_level"] == 0, \
                 "Each level should have the same number of scenarios"
@@ -136,14 +136,12 @@ class ScenarioEnv(BaseEnv):
         return config
 
     def _init_agent_manager(self):
-        return ScenarioAgentManager(init_observations=self._get_observations())
+        return ScenarioAgentManager(self.config['actor_config'])
 
-    def setup_engine(self):
-        super(ScenarioEnv, self).setup_engine()
-        self.engine.register_manager("data_manager", ScenarioDataManager())
-        self.engine.register_manager("map_manager", ScenarioMapManager())
+    def _setup(self):
+        super(ScenarioEnv, self)._setup()
         if not self.config["no_traffic"]:
-            self.engine.register_manager("traffic_manager", ScenarioTrafficManager())
+            self.engine.register_manager("traffic_manager", ParticipantManager())
         # self.engine.register_manager("curriculum_manager", ScenarioCurriculumManager()) 
 
     def done_function(self):
@@ -241,7 +239,7 @@ class ScenarioEnv(BaseEnv):
         return reward, step_info
 
     def _is_arrive_destination(self):
-        return self.agent_manager.is_arrive()
+        return self.actor_manager.is_arrive()
 
     def _is_out_of_road(self, vehicle):
         ego_position = vehicle.position
@@ -285,9 +283,9 @@ class ScenarioOnlineEnv(ScenarioEnv):
         assert self.config["store_map"] is False, \
             "ScenarioOnlineEnv should not store map. Please set store_map=False in config"
 
-    def setup_engine(self):
+    def _setup(self):
         """Overwrite the data_manager by ScenarioOnlineDataManager"""
-        super().setup_engine()
+        super()._setup()
         self.engine.update_manager("data_manager", ScenarioOnlineDataManager())
 
     def set_scenario(self, scenario_data):

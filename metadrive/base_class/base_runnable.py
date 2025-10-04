@@ -102,8 +102,3 @@ class BaseRunnable(Configurable, Nameable, Randomizable):
         Randomizable.destroy(self)
         Nameable.destroy(self)
         self.PARAMETER_SPACE.destroy()
-
-    @property
-    def engine(self):
-        from metadrive.engine.engine_utils import get_engine
-        return get_engine()

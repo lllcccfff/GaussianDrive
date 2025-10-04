@@ -33,8 +33,6 @@ class Configurable:
         """
         if self._config is not None:
             self._config = None
-        # if hasattr(self, "engine"):
-        #     self.engine = None
 
     @property
     def config(self):

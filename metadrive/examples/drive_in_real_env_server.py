@@ -6,6 +6,7 @@ import argparse
 from metadrive.constants import HELP_MESSAGE
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.scenario_env import ScenarioEnv
+from easydrive.models.scenes.simulator_interface import SimulatorInterface
 from metadrive.viewer.viewer import Viewer
 import imageio
 
@@ -43,8 +44,10 @@ if __name__ == "__main__":
             'image_observation': True,
         }
         cfg.update(additional_cfg)
+    
+    model = SimulatorInterface()
 
-    env = ScenarioEnv(cfg)
+    env = ScenarioEnv(model, cfg)
     obs, _ = env.reset()
 
     # Start visualizer server when 'o' key is pressed

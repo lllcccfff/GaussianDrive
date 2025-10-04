@@ -97,16 +97,6 @@ class BaseManager(Randomizable):
             self.clear_object(obj_id)
         self.spawned_objects = {}
 
-    def add_policy(self, object_id, policy_class, *policy_args, **policy_kwargs):
-        policy = policy_class(*policy_args, **policy_kwargs)
-        self._object_policies[object_id] = policy
-        return policy
-
-    def get_policy(self, object_id):
-        return self._object_policies[object_id]
-
-    def has_policy(self, object_id, policy_cls=None):
-        return object_id in self._object_policies
 
     def get_state(self):
         """This function will be called by RecordManager to collect manager state, usually some mappings"""

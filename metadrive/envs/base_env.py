@@ -2,6 +2,7 @@ import logging
 import time
 from collections import defaultdict
 from typing import Union, Dict, AnyStr, Optional, Tuple, Callable
+from collections import OrderedDict
 
 import gymnasium as gym
 import numpy as np
@@ -11,10 +12,8 @@ from metadrive import constants
 from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
 from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
 from metadrive.constants import TerminationState, TerrainProperty
-from metadrive.engine.engine_utils import initialize_engine, close_engine, \
-    engine_initialized, set_global_random_seed, initialize_global_config, get_global_config
-from metadrive.engine.logger import get_logger, set_log_level
-from metadrive.manager.agent_manager import VehicleAgentManager
+from metadrive.utils.logger import get_logger, set_log_level
+from metadrive.manager.agent_manager import AgentManager
 # from metadrive.manager.record_manager import RecordManager
 # from metadrive.manager.replay_manager import ReplayManager
 # from metadrive.obs.image_obs import ImageStateObservation
@@ -24,36 +23,28 @@ from metadrive.obs.observation_base import DummyObservation
 # from metadrive.obs.state_obs import LidarStateObservation
 from metadrive.scenario.utils import convert_recorded_scenario_exported
 from metadrive.utils import merge_dicts, get_np_random, concat_step_infos
+from metadrive.utils.logger import get_logger, reset_logger
+from metadrive.engine.core.physics_world import PhysicsWorld
+from metadrive.engine.step_counter import StepCounter
+from metadrive.engine.core.collision_callback import collision_callback
+from panda3d.core import AntialiasAttrib, loadPrcFileData, LineSegs, PythonCallbackObject, Vec3, NodePath
 from metadrive.version import VERSION
+from metadrive.component.traffic_participants.cyclist import Cyclist
+from metadrive.component.traffic_participants.pedestrian import Pedestrian
+from metadrive.component.vehicle.vehicle_type import get_vehicle_type
+from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
+from metadrive.manager.scenario_map_manager import ScenarioMapManager
 
 from easydrive.engine.config import Config
 from metadrive.default_config import BASE_DEFAULT_CONFIG
 
 class BaseEnv(gym.Env):
     # Force to use this seed if necessary. Note that the recipient of the forced seed should be explicitly implemented.
-    _DEBUG_RANDOM_SEED: Union[int, None] = None
 
-    @classmethod
-    def default_config(cls) -> Config:
-        return Config(BASE_DEFAULT_CONFIG)
 
-    # ===== Intialization =====
-    def __init__(self, config: Config = None):
-        if config is None:
-            config = Config()
+    def __init__(self, model, config: Config = None):
         self.logger = get_logger()
-        set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
-        default_config = self.default_config()
-        default_config.merge_from(config, replace_keys=["agent_configs"])
-        global_config = self._post_process_config(default_config)
-        self.config = global_config
-        initialize_global_config(self.config)
-
-        # observation and action space
-        self.agent_manager = self._init_agent_manager()
-
-        # lazy initialization, create the main simulation in the lazy_init() func
-        # self.engine: Optional[BaseEngine] = None
+        # set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
 
         # In MARL envs with respawn mechanism, varying episode lengths might happen.
         self.episode_rewards = defaultdict(float)
@@ -65,65 +56,30 @@ class BaseEnv(gym.Env):
         # scenarios
         self.start_index = 0
 
-    def _post_process_config(self, config):
-        """Add more special process to merged config"""
-        # Cancel interface panel
-        self.logger.info("Environment: {}".format(self.__class__.__name__))
-        self.logger.info("MetaDrive version: {}".format(VERSION))
+        self.model = model
 
-        # Adjust terrain
-        # n = config["map_region_size"]
-        # assert (n & (n - 1)) == 0 and 512 <= n <= 4096, "map_region_size should be pow of 2 and < 2048."
-        # TerrainProperty.map_region_size = config["map_region_size"]
+        self.lazy_init()
 
-        # Multi-Thread
-        # if config["image_on_cuda"]:
-        #     self.logger.info("Turn Off Multi-thread rendering due to image_on_cuda=True")
-        #     config["multi_thread_render"] = False
+    # def _post_process_config(self, config):
+    #     """Add more special process to merged config"""
+    #     # Cancel interface panel
+    #     self.logger.info("Environment: {}".format(self.__class__.__name__))
+    #     self.logger.info("MetaDrive version: {}".format(VERSION))
 
-        # # Optimize sensor creation in none-screen mode
-        # if not config["use_render"] and not config["image_observation"]:
-        #     filtered = {}
-        #     for id, cfg in config["sensors"].items():
-        #         if len(cfg) > 0 and not issubclass(cfg[0], BaseCamera) and id != "main_camera":
-        #             filtered[id] = cfg
-        #     config["sensors"] = filtered
-        #     config["interface_panel"] = []
+    #     # show sensor lists
+    #     if config["truncate_as_terminate"]:
+    #         self.logger.warning(
+    #             "When reaching max steps, both 'terminate' and 'truncate will be True."
+    #             "Generally, only the `truncate` should be `True`."
+    #         )
+    #     return config
 
-        # # Check sensor existence
-        # if config["use_render"] or "main_camera" in config["sensors"]:
-        #     config["sensors"]["main_camera"] = ("MainCamera", *config["window_size"])
-
-        # # Merge dashboard config with sensors
-        # to_use = []
-        # if not config["render_pipeline"] and config["show_interface"] and "main_camera" in config["sensors"]:
-        #     for panel in config["interface_panel"]:
-        #         if panel == "dashboard":
-        #             config["sensors"]["dashboard"] = (DashBoard, )
-        #         if panel not in config["sensors"]:
-        #             self.logger.warning(
-        #                 "Fail to add sensor: {} to the interface. Remove it from panel list!".format(panel)
-        #             )
-        #         elif panel == "main_camera":
-        #             self.logger.warning("main_camera can not be added to interface_panel, remove")
-        #         else:
-        #             to_use.append(panel)
-        # config["interface_panel"] = to_use
-
-
-        # show sensor lists
-        if config["truncate_as_terminate"]:
-            self.logger.warning(
-                "When reaching max steps, both 'terminate' and 'truncate will be True."
-                "Generally, only the `truncate` should be `True`."
-            )
-        return config
-
-    def _get_observations(self) -> Dict[str, "BaseObservation"]:
-        return {DEFAULT_AGENT: self.get_single_observation()}
-
-    def _get_agent_manager(self):
-        return VehicleAgentManager(init_observations=self._get_observations())
+    @property
+    def config(self):
+        if hasattr(self.data_manager, "current_config"):
+            self.data_manager.current_config
+        else:
+            self.data_manager.base_config
 
     def lazy_init(self):
         """
@@ -131,110 +87,156 @@ class BaseEnv(gym.Env):
         :return: None
         """
         # It is the true init() func to create the main vehicle and its module, to avoid incompatible with ray
-        initialize_engine(self.config)
         # engine setup
-        self.setup_engine()
-        # other optional initialization
-        self._after_lazy_init()
-        # self.logger.info(
-        #     "Start Scenario Index: {}, Num Scenarios : {}".format(
-        #         self.engine.data_manager.current_scenario_id, self.config["num_scenarios"]
-        #     )
-        # )
+        self._setup()
 
-    @property
-    def engine(self):
-        from metadrive.engine.engine_utils import get_engine
-        return get_engine()
+    def _setup(self):
+        """
+        Engine setting after launching
+        """
+        self.agent_managers = {}
+        self.agent_managers['actor'] = self._init_agent_manager()
 
-    def _after_lazy_init(self):
-        pass
+        self._register_manager("data_manager", ScenarioDataManager(self.model.load_metadata))
+        self._register_manager("map_manager", ScenarioMapManager(self.model.load_model))
+        # self._register_manager("record_manager", RecordManager())
+        # self._register_manager("replay_manager", ReplayManager())
 
-    # ===== Run-time =====
-    def step(self, actions: Union[Union[np.ndarray, list], Dict[AnyStr, Union[list, np.ndarray]], int]):
-        engine_info = self._step_simulator(actions)  # step the simulation
-        while self.in_stop:
-            self.engine.taskMgr.step()  # pause simulation
-        return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
-
-
-    def _step_simulator(self, actions):
-        # prepare for stepping the simulation
-        scene_manager_before_step_infos = self.engine.before_step(actions)
-        # step all entities and the simulator
-        self.engine.step(self.config["decision_repeat"])
-        # update states, if restore from episode data, position and heading will be force set in update_state() function
-        scene_manager_after_step_infos = self.engine.after_step()
-
-        # Note that we use shallow update for info dict in this function! This will accelerate system.
-        return merge_dicts(
-            scene_manager_after_step_infos, scene_manager_before_step_infos, allow_new_keys=True, without_copy=True
+        
+        # physics world
+        self.physics_world = PhysicsWorld(
+            self.config["debug_static_world"], disable_collision=self.config["disable_collision"]
         )
 
-    def reward_function(self, object_id: str) -> Tuple[float, Dict]:
+        # collision callback
+        self.physics_world.dynamic_world.setContactAddedCallback(PythonCallbackObject(collision_callback))
+
+        self.step_manager = StepCounter()
+    
+    def _init_agent_manager(self):
+        raise NotImplementedError
+
+    def _register_manager(self, manager_name: str, manager):
         """
-        Override this func to get a new reward function
-        :param object_id: name of this object
-        :return: reward, reward info
+        Add a manager to BaseEnv, then all objects can communicate with this class
+        :param manager_name: name shouldn't exist in self.managers and not be same as any class attribute
+        :param manager: subclass of BaseManager
         """
-        self.logger.warning("Reward function is not implemented. Return reward = 0", extra={"log_once": True})
-        return 0, {}
-
-    def cost_function(self, object_id: str) -> Tuple[float, Dict]:
-        self.logger.warning("Cost function is not implemented. Return cost = 0", extra={"log_once": True})
-        return 0, {}
-
-    def done_function(self, object_id: str) -> Tuple[bool, Dict]:
-        self.logger.warning("Done function is not implemented. Return Done = False", extra={"log_once": True})
-        return False, {}
-
+        assert manager_name not in self.managers, "Manager {} already exists in BaseEnv, Use update_manager() to " \
+                                                   "overwrite".format(manager_name)
+        assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEnv"
+        self.managers[manager_name] = manager
+        setattr(self, manager_name, manager)
 
     def reset(self, seed: Union[None, int] = None):
+        # Update record replay
+        self.replay_episode = True if self.config["replay_episode"] is not None else False
+        self.record_episode = self.config["record_episode"]
+        self.only_reset_when_replay = self.config["only_reset_when_replay"]
         """
         Reset the env, scene can be restored and replayed by giving episode_data
         Reset the environment or load an episode from episode data to recover is
         :param seed: The seed to set the env. It is actually the scenario index you intend to choose
         :return: None
         """
-        if self.logger is None:
-            self.logger = get_logger()
-            log_level = self.config.get("log_level", logging.DEBUG if self.config.get("debug", False) else logging.INFO)
-            set_log_level(log_level)
-
-        if not engine_initialized():
-            self.lazy_init()  # it only works the first time when reset() is called to avoid the error when render
-
-        self._reset_global_seed(seed)
-        if self.engine is None:
-            raise ValueError(
-                "Current MetaDrive instance is broken. Please make sure there is only one active MetaDrive "
-                "environment exists in one process. You can try to call env.close() and then call "
-                "env.reset() to rescue this environment. However, a better and safer solution is to check the "
-                "singleton of MetaDrive and restart your program."
-            )
-        reset_info = self.engine.reset()
-        # render the scene
-        # self.engine.taskMgr.step()
-        # if self.top_down_renderer is not None:
-        #     self.top_down_renderer.clear()
-        #     self.engine.top_down_renderer = None
+        # reset_logger()
+        # if self.logger is None:
+        #     self.logger = get_logger()
+        #     log_level = self.config.get("log_level", logging.DEBUG if self.config.get("debug", False) else logging.INFO)
+        #     set_log_level(log_level)
 
         self.dones = False
         self.episode_rewards = 0
         self.episode_lengths = 0
 
-        assert self.config is self.engine.global_config is get_global_config(), "Inconsistent config may bring errors!"
-        return self._get_reset_return(reset_info)
+        self._reset_global_seed(seed)
+
+        step_infos = {}
+
+        # reset manager
+        for manager_name, manager in [self.map_manager] + self.agent_managers.values():
+            manager.clear_objects()
+        self._object_clean_check()
+        
+        all_agent = self.agent_managers.keys()
+        for n in all_agent:
+            if n != 'actor':
+                self.agent_managers[n].destroy()
+                self.agent_managers.pop(n)
+
+        for manager_name, manager in [self.data_manager, self.map_manager, self.step_manager]:
+            new_step_infos = manager.reset()
+            step_infos = concat_step_infos([step_infos, new_step_infos])
+
+        self._update_participants()
+        for manager_name, manager in self.agent_managers :
+            new_step_infos = manager.reset(self.physics_world)
+            step_infos = concat_step_infos([step_infos, new_step_infos])
+
+        return self._get_reset_return(step_infos)
+    
+    def _update_participants(self):
+        scenario_data = self.data_manager.get_current_scenario_data()
+        camera_params = scenario_data['camera_params']
+        for name, init_state in scenario_data['init_state'].items():
+            if name != 'actor':
+                tracking = scenario_data['participants'][name]
+                cfg = self.config['participant_config'].copy()
+                cfg['controler_config']['size'] = tracking['size'][1]
+                if tracking['type'] == 'vehicle':
+                    cfg['controller'] = get_vehicle_type(tracking['size'][1], False)
+                elif tracking['type'] == 'pedestrian':
+                    cfg['controller'] = Pedestrian
+                elif tracking['type'] == 'cyclist':
+                    cfg['controller'] = Cyclist
+                
+                self.agent_managers[name] = AgentManager(cfg, self.step_manager)
+            
+            self.agent_managers[name].reset(
+                physics_world=self.physics_world,
+                render_fn=self.model.render,
+                camera_params=camera_params,
+                init_state=init_state,
+                tracking=tracking,
+                frame_range=scenario_data['frame_range']
+            )
+
+    def _reset_global_seed(self, force_seed=None):
+        if force_seed is not None:
+            current_seed = force_seed
+        else:
+            current_seed = get_np_random(None).randint(0, 0xffffffff)
+        self.global_random_seed = current_seed
+        for mgr in self.managers.values():
+            mgr.seed(current_seed)
+
+    def _object_clean_check(self):
+        # rigid body check
+        bodies = []
+        for world in [self.physics_world.dynamic_world, self.physics_world.static_world]:
+            bodies += world.getRigidBodies()
+            bodies += world.getSoftBodies()
+            bodies += world.getGhosts()
+            bodies += world.getVehicles()
+            bodies += world.getCharacters()
+            # bodies += world.getManifolds()
+
+        filtered = []
+        for body in bodies:
+            # if body.getName() in ["detector_mask", "debug"]:
+            #     continue
+            filtered.append(body)
+        assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
+                                   "Uncleared bodies: {}".format(filtered)
 
     def _get_reset_return(self, reset_info):
         # TODO: figure out how to get the information of the before step
-
         obses = {}
         done_infos = {}
         cost_infos = {}
         reward_infos = {}
         engine_info = reset_info
-        obses = self.agent_manager.get_observations()
+        obses = self.actor_manager.get_observations()
         _, reward_infos = self.reward_function()
         _, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
@@ -243,13 +245,48 @@ class BaseEnv(gym.Env):
 
         return obses, step_infos
 
-    def _wrap_info_as_single_agent(self, data):
-        """
-        Wrap to single agent info
-        """
-        agent_info = data.pop(next(iter(self.agents.keys())))
-        data.update(agent_info)
-        return data
+    # ===== Run-time =====
+    def step(self, actions: Union[Union[np.ndarray, list], Dict[AnyStr, Union[list, np.ndarray]], int]):
+        engine_info = self._step_simulator(actions)  # step the simulation
+        self.step_manager.step()
+        return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
+
+    def _step_simulator(self, action):
+        # prepare for stepping the simulation
+        before_step_infos = {}
+
+        for i in range(self.config["decision_repeat"]):
+            # simulate or replay
+            for manager in self.agent_managers.values():
+                manager.step()
+
+            self.step_physics_world()
+            # the recording should happen after step physics world
+            # if "record_manager" in self.managers and i < self.config["decision_repeat"] - 1:
+            #     self.record_manager.step()
+
+        # to get new pose and update gaussian model
+        new_object_poses = {}
+        for name, mgr in self.agent_managers.items():
+            if name == 'actor': continue
+            if mgr.is_spawned and not mgr.is_arrive:
+                new_object_poses[name] = mgr.get_pose()
+        self.model.update_scene(self.step_manager.current_frame, new_object_poses)
+
+
+        after_step_infos = {}
+        for manager in self.managers.values():
+            new_step_info = manager.observe()
+            after_step_infos = concat_step_infos([after_step_infos, new_step_info])
+
+        # Note that we use shallow update for info dict in this function! This will accelerate system.
+        return merge_dicts(
+            after_step_infos, before_step_infos, allow_new_keys=True, without_copy=True
+        )
+
+    def step_physics_world(self):
+        dt = self.config["physics_world_step_size"]
+        self.physics_world.dynamic_world.doPhysics(dt, 1, dt)
 
     def _get_step_return(self, actions, engine_info):
         # update obs, dones, rewards, costs, calculate done at first !
@@ -265,7 +302,7 @@ class BaseEnv(gym.Env):
         done_function_result, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
         self.dones = done_function_result or self.dones
-        obses = self.agent_manager.get_observations()
+        obses = self.actor_manager.get_observations()
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
         truncateds = step_infos.get(TerminationState.MAX_STEP, False)
@@ -283,15 +320,17 @@ class BaseEnv(gym.Env):
 
         return obses, rewards, terminateds, truncateds, step_infos
 
-    def close(self):
-        if self.engine is not None:
-            close_engine()
+    def reward_function(self, object_id: str) -> Tuple[float, Dict]:
+        raise NotImplementedError
 
-    def force_close(self):
-        print("Closing environment ... Please wait")
-        self.close()
-        time.sleep(2)  # Sleep two seconds
-        raise KeyboardInterrupt("'Esc' is pressed. MetaDrive exits now.")
+    def cost_function(self, object_id: str) -> Tuple[float, Dict]:
+        raise NotImplementedError
+
+    def done_function(self, object_id: str) -> Tuple[bool, Dict]:
+        raise NotImplementedError
+    
+    def close(self):
+        raise NotImplementedError
 
     def capture(self, file_name=None):
         if not hasattr(self, "_capture_img"):
@@ -301,22 +340,6 @@ class BaseEnv(gym.Env):
             file_name = "main_index_{}_step_{}_{}.png".format(self.current_seed, self.engine.episode_step, time.time())
         self._capture_img.write(file_name)
         self.logger.info("Image is saved at: {}".format(file_name))
-
-    def get_single_observation(self):
-        """
-        Get the observation for one object
-        """
-        if self.__class__ is BaseEnv:
-            o = DummyObservation()
-        else:
-            if self.config["agent_observation"]:
-                o = self.config["agent_observation"](self.config)
-            else:
-                o = GaussianStateObservation(self.config)
-        return o
-
-    def _wrap_as_single_agent(self, data):
-        return data[next(iter(self.agents.keys()))]
 
     @property
     def current_seed(self):
@@ -340,7 +363,7 @@ class BaseEnv(gym.Env):
         Return observation spaces of active and controllable agents
         :return: Dict
         """
-        ret = self.agent_manager.get_observation_spaces()
+        ret = self.actor_manager.get_observation_spaces()
         if not self.is_multi_agent:
             return next(iter(ret.values()))
         else:
@@ -353,7 +376,7 @@ class BaseEnv(gym.Env):
         still overwrite this function to define the action space for the environment.
         :return: Dict
         """
-        ret = self.agent_manager.get_action_spaces()
+        ret = self.actor_manager.get_action_spaces()
         if not self.is_multi_agent:
             return next(iter(ret.values()))
         else:
@@ -379,33 +402,7 @@ class BaseEnv(gym.Env):
         Return all active agents
         :return: Dict[agent_id:agent]
         """
-        return self.agent_manager._agent_object
-
-
-    @property
-    def agents_including_just_terminated(self):
-        """
-        Return all agents that occupy some space in current environments
-        :return: Dict[agent_id:vehicle]
-        """
-        ret = self.agent_manager.active_agents
-        ret.update(self.agent_manager.just_terminated_agents)
-        return ret
-
-    def setup_engine(self):
-        """
-        Engine setting after launching
-        """
-        # self.engine.accept("r", self.reset)
-        # self.engine.accept("c", self.capture)
-        # self.engine.accept("p", self.stop)
-        # self.engine.accept("b", self.switch_to_top_down_view)
-        # self.engine.accept("q", self.switch_to_third_person_view)
-        # self.engine.accept("]", self.next_seed_reset)
-        # self.engine.accept("[", self.last_seed_reset)
-        self.engine.register_manager("agent_manager", self.agent_manager)
-        # self.engine.register_manager("record_manager", RecordManager())
-        # self.engine.register_manager("replay_manager", ReplayManager())
+        return self.actor_manager._agent_object
 
     @property
     def current_map(self):
@@ -425,14 +422,6 @@ class BaseEnv(gym.Env):
     @property
     def current_track_agent(self):
         return self.engine.current_track_agent
-
-    @property
-    def top_down_renderer(self):
-        return self.engine.top_down_renderer
-
-    @property
-    def episode_step(self):
-        return self.engine.episode_step if self.engine is not None else 0
 
     def export_scenarios(
         self,
@@ -500,32 +489,6 @@ class BaseEnv(gym.Env):
     def stop(self):
         self.in_stop = not self.in_stop
 
-    def switch_to_top_down_view(self):
-        self.main_camera.stop_track()
-
-    def switch_to_third_person_view(self):
-        if self.main_camera is None:
-            return
-        self.main_camera.reset()
-        if self.config["prefer_track_agent"] is not None and self.config["prefer_track_agent"] in self.agents.keys():
-            new_v = self.agents[self.config["prefer_track_agent"]]
-            current_track_agent = new_v
-        else:
-            if self.main_camera.is_bird_view_camera():
-                current_track_agent = self.current_track_agent
-            else:
-                agents = list(self.engine.agents.values())
-                if len(agents) <= 1:
-                    return
-                if self.current_track_agent in agents:
-                    agents.remove(self.current_track_agent)
-                new_v = get_np_random().choice(agents)
-                current_track_agent = new_v
-        self.main_camera.track(current_track_agent)
-        for name, sensor in self.engine.sensors.items():
-            if hasattr(sensor, "track") and name != "main_camera":
-                sensor.track(current_track_agent.origin, constants.DEFAULT_SENSOR_OFFSET, DEFAULT_SENSOR_HPR)
-        return
 
     def next_seed_reset(self):
         if self.current_seed + 1 < self.start_index + self.num_scenarios:
@@ -544,14 +507,6 @@ class BaseEnv(gym.Env):
                 "Can't load last scenario! Current seed is already the min scenario index"
                 "Allowed index: {}-{}".format(self.start_index, self.start_index + self.num_scenarios - 1)
             )
-
-    def _reset_global_seed(self, force_seed=None):
-        current_seed = force_seed if force_seed is not None else \
-            get_np_random(self._DEBUG_RANDOM_SEED).randint(self.start_index, self.start_index + self.num_scenarios)
-        assert self.start_index <= current_seed < self.start_index + self.num_scenarios, \
-            "scenario_index (seed) should be in [{}:{})".format(self.start_index, self.start_index + self.num_scenarios)
-        self.seed(current_seed)
-
 
 if __name__ == '__main__':
     cfg = {"use_render": True}

@@ -2,7 +2,7 @@ from abc import ABC
 import numpy as np
 import gymnasium as gym
 from copy import deepcopy
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.utils.config import Config
 
 logger = get_logger()
@@ -18,18 +18,13 @@ class BaseObservation(ABC):
         self.current_observation = None
 
     @property
-    def engine(self):
-        from metadrive.engine.engine_utils import get_engine
-        return get_engine()
-
-    @property
     def observation_space(self):
         raise NotImplementedError
 
     def observe(self, *args, **kwargs):
         raise NotImplementedError
 
-    def reset(self, vehicle=None):
+    def reset(self, *args, **kwargs):
         pass
 
     def destroy(self):

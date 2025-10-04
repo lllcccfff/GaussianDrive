@@ -19,7 +19,7 @@ from metadrive.constants import MetaDriveType, CollisionGroup
 from metadrive.constants import Semantics
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.engine.engine_utils import get_engine, engine_initialized
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.engine.physics_node import BaseRigidBodyNode
 from metadrive.utils import Config, safe_clip_for_small_array
 from metadrive.utils.math import get_vertical_vector, norm, clip
@@ -101,6 +101,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     def __init__(
         self,
+        physics_world,
         size=None,
         vehicle_config: Union[dict, Config] = None,
         name: str = None,
@@ -124,7 +125,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         if size is None:
             size = (self.DEFAULT_LENGTH, self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT)
-        BaseObject.__init__(self, size, name, random_seed, vehicle_config)
+        BaseObject.__init__(self, physics_world, size, name, random_seed, vehicle_config)
         BaseVehicleState.__init__(self)
         self.set_metadrive_type(MetaDriveType.VEHICLE)
 
@@ -172,6 +173,10 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         action = safe_clip_for_small_array(action, -1, 1)
         return action, {'raw_action': (action[0], action[1])}
 
+    def attachDyWld(self):
+        self.physics_world.dynamic_world.attach(self.body)
+        self.physics_world.dynamic_world.attach(self.vehicle)
+
     def reset(
         self,
         name=None,
@@ -196,8 +201,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             self.seed(random_seed)
             self.sample_parameters()
 
-        from metadrive.component.vehicle.vehicle_type import vehicle_class_to_type
-        self.config["vehicle_model"] = vehicle_class_to_type[self.__class__]
 
         self.set_heading_theta(heading)
         # self.set_wheel_friction(self.config["wheel_friction"])
@@ -220,7 +223,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         # self.add_light()
 
-    def before_step(self, action=None):
+    def move(self, action=None, state_info=None):
         """
         Save info and make decision before action
         """
@@ -229,17 +232,26 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         #     action = [0, 0]
 
         self._init_step_info()
-        action, step_info = self._preprocess_action(action)
-
         self.last_position = self.position  # 2D vector
         self.last_velocity = self.velocity  # 2D vector
         self.last_heading_theta = self.heading_theta
-        if action is not None:
+
+        if state_info:
+            if "transform" in state_info:
+                self.set_transform(state_info["transform"])
+            else:
+                self.set_position(state_info["position"])
+                self.set_heading_theta(state_info["heading"])
+
+            self.set_velocity(state_info["velocity"])
+            self.set_angular_velocity(state_info["angular_velocity"])
+        else:
+            action, step_info = self._preprocess_action(action)
             self.last_current_action.append(action)  # the real step of physics world is implemented in taskMgr.step()
-        # if self.increment_steering:
-        #     self._set_incremental_action(action)
-        # else:
-        self._set_action(action)
+            # if self.increment_steering:
+            #     self._set_incremental_action(action)
+            # else:
+            self._set_action(action)
         return step_info
 
     def after_step(self):

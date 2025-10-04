@@ -3,7 +3,7 @@ import copy
 from metadrive.component.ground import GroundPlane
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager
-from metadrive.engine.logger import get_logger, set_log_level
+from metadrive.utils.logger import get_logger, set_log_level
 
 from easydrive.engine import MODELS
 from easydrive.utils.base_utils import dotdict
@@ -14,7 +14,7 @@ class ScenarioMapManager(BaseManager):
     PRIORITY = 0  # Map update has the most high priority
     DEFAULT_DATA_BUFFER_SIZE = 200
 
-    def __init__(self):
+    def __init__(self, loader):
         super(ScenarioMapManager, self).__init__()
         self.store_map = self.engine.global_config.get("store_map", False)
         self.current_map = None
@@ -25,6 +25,7 @@ class ScenarioMapManager(BaseManager):
         self.sdc_dest_point = None
         self.current_sdc_route = None
 
+        self.loader = loader
         self.ground = None
 
     def reset(self):
@@ -34,19 +35,8 @@ class ScenarioMapManager(BaseManager):
         self.sdc_dest_point = None
 
         scene_data = self.engine.data_manager.get_current_scenario_data()
-        self.model = MODELS.build(
-            cfg=scene_data['config'].model_cfg,
-            render_mode='gui',
-            renderer_cfg=scene_data['config'].renderer_cfg
-        )
-        self.model.model_setup(
-            scene_data['CameraBasedDataset'],
-            scene_data['BoundingBoxDataset']
-        )
-        self.model.load_model(**scene_data['config'].visualizer_cfg.model_path)
+        self.loader(scene_data['config'])
 
-    def after_reset(self):
-        scene_data = self.engine.data_manager.get_current_scenario_data()
         self.spawn_object(
             GroundPlane, 
             direction=[0,0,1.], 

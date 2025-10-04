@@ -18,6 +18,7 @@ class BaseTrafficParticipant(BaseObject):
 
     def __init__(
             self,
+            physics_world,
             size,
             position: Sequence[float], 
             heading_theta: float = 0., 
@@ -25,7 +26,7 @@ class BaseTrafficParticipant(BaseObject):
             name=None, 
             config=None
         ):
-        super(BaseTrafficParticipant, self).__init__(size=size, random_seed=random_seed, name=name, config=config)
+        super(BaseTrafficParticipant, self).__init__(physics_world, size=size, random_seed=random_seed, name=name, config=config)
         
         self.set_body()
 
@@ -39,6 +40,16 @@ class BaseTrafficParticipant(BaseObject):
 
     def reset(self, position: Sequence[float], heading_theta: float = 0., random_seed=None, name=None, *args, **kwargs):
         pass
+    
+    def move(self, state_info):
+        if "transform" in state_info:
+            self.set_transform(state_info["transform"])
+        else:
+            self.set_position(state_info["position"])
+            self.set_heading_theta(state_info["heading"])
+
+        self.set_velocity(state_info["velocity"])
+        self.set_angular_velocity(state_info["angular_velocity"])
 
     def set_body(self):        
         self.body = BaseRigidBodyNode(self.name, self.TYPE_NAME, self.MASS)
@@ -46,7 +57,6 @@ class BaseTrafficParticipant(BaseObject):
         
         self.body.setFriction(0.)
         self.body.setAnisotropicFriction(LVector3(0., 0., 0.))
-        self.attachDyWld()
 
     def get_state(self):
         state = super(BaseTrafficParticipant, self).get_state()

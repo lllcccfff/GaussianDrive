@@ -1,5 +1,5 @@
 import gymnasium as gym
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.component.vehicle.PID_controller import PIDController
 from metadrive.engine.engine_utils import get_global_config
 from metadrive.policy.env_input_policy import EnvInputPolicy

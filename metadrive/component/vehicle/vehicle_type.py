@@ -9,6 +9,20 @@ from metadrive.constants import Semantics
 from metadrive.engine.asset_loader import AssetLoader
 
 
+def get_vehicle_type(length, need_default_vehicle=False, use_bounding_box=False):
+    if use_bounding_box:
+        return VaryingDynamicsBoundingBoxVehicle
+    if need_default_vehicle:
+        return DefaultVehicle
+    if length <= 4:
+        return SVehicle
+    elif length <= 5.2:
+        return MVehicle
+    elif length <= 6.2:
+        return LVehicle
+    else:
+        return XLVehicle
+
 class DefaultVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.DEFAULT_VEHICLE)
     # LENGTH = 4.51

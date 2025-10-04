@@ -11,53 +11,23 @@ class ReplayTrafficParticipantPolicy(BasePolicy):
        Replay policy from Real data. For adding new policy, overwrite get_trajectory_info()
        This policy is designed for Waymo Policy by default
        """
-    DEBUG_MARK_COLOR = (3, 140, 252, 255)
-
-    def __init__(self, control_object, track, random_seed=None):
-        super(ReplayTrafficParticipantPolicy, self).__init__(control_object=control_object, random_seed=random_seed)
-        self.start_index = 0
-        self._velocity_local_frame = False
         
-        self.traj_info = self.parse_track_infos(track)
-        self.control_object.set_kinematic(True)
+    def reset(self, object, seed, tracking, **kwargs):
+        super().reset(object, seed, tracking, **kwargs)
+        self.controller.set_kinematic(True)
 
-    @property
-    def is_valid(self):
-        return self.current_frame in self.traj_info
-    
-    @property
-    def current_frame(self):
-        return self.engine.traffic_manager.current_frame
-
-    def parse_track_infos(self, track):
-        return track
-
+        frame_list = sorted(self.trajectory.keys())
+        self.terminate_frame = frame_list[-1]
+        
     def act(self, *args, **kwargs):
 
-        info = self.traj_info[self.current_frame]
-
-        # Before step
-        # Warning by LQY: Don't call before step here! Before step should be called by manager
-        # action = self.traj_info[int(self.episode_step)].get("action", None)
-        # self.control_object.before_step(action)
+        info = self.trajectory[self.step_manager.current_frame]
 
         if not bool(info["valid"]):
             return None  # Return None action so the base vehicle will not overwrite the steering & throttle
 
-        if "throttle_brake" in info:
-            if hasattr(self.control_object, "set_throttle_brake"):
-                self.control_object.set_throttle_brake(float(info["throttle_brake"].item()))
-        if "steering" in info:
-            if hasattr(self.control_object, "set_steering"):
-                self.control_object.set_steering(float(info["steering"].item()))
-
-        if "transform" in info:
-            self.control_object.set_transform(info["transform"])
-        else:
-            self.control_object.set_position(info["position"])
-            self.control_object.set_heading_theta(info["heading"])
-
-        self.control_object.set_velocity(info["velocity"])
-        self.control_object.set_angular_velocity(info["angular_velocity"])
-
-        return None  # Return None action so the base vehicle will not overwrite the steering & throttle
+        return info
+    
+    @property
+    def is_arrive(self):
+        return self.step_manager < self.terminate_frame

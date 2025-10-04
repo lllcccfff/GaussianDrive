@@ -9,7 +9,7 @@ from panda3d.core import LVector3, TransformState, LMatrix4
 from metadrive.base_class.base_runnable import BaseRunnable
 from metadrive.constants import ObjectState
 from metadrive.constants import Semantics
-from metadrive.engine.logger import get_logger
+from metadrive.utils.logger import get_logger
 from metadrive.engine.physics_node import BaseRigidBodyNode, BaseGhostBodyNode
 from metadrive.type import MetaDriveType
 from metadrive.utils import Vector
@@ -47,7 +47,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     
     Panda2Real = None
 
-    def __init__(self, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False):
+    def __init__(self, physics_world, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False):
         """
         Config is a static conception, which specified the parameters of one element.
         There parameters doesn't change, such as length of straight road, max speed of one vehicle, etc.
@@ -57,6 +57,8 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         MetaDriveType.__init__(self)
         if not escape_random_seed_assertion:
             assert random_seed is not None, "Please assign a random seed for {} class.".format(self.class_name)
+
+        self.physics_world = physics_world
 
         # Following properties are available when this object needs visualization and physics property
         self.body: BaseRigidBodyNode = None
@@ -264,15 +266,15 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
 
     def attachDyWld(self, obj=None):
         if not obj:
-            self.engine.physics_world.dynamic_world.attach(self.body)
+            self.physics_world.dynamic_world.attach(self.body)
         else:
-            self.engine.physics_world.dynamic_world.attach(obj)
+            self.physics_world.dynamic_world.attach(obj)
     
     def detachDyWld(self, obj=None):
         if not obj:
-            self.engine.physics_world.dynamic_world.remove(self.body)
+            self.physics_world.dynamic_world.remove(self.body)
         else:
-            self.engine.physics_world.dynamic_world.remove(obj)
+            self.physics_world.dynamic_world.remove(obj)
 
     def set_kinematic(self, is_kinematic):
         self.body.setKinematic(is_kinematic)

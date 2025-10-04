@@ -16,13 +16,22 @@ class BasePolicy(Randomizable, Configurable):
     DEBUG_MARK_MODEL = None
     SYNC_DEBUG_MARK_POS_TASK_NAME = "policy_mark"
 
-    def __init__(self, control_object, random_seed=None, config=None):
-        Randomizable.__init__(self, random_seed)
+    def __init__(self, step_manager, config=None):
         Configurable.__init__(self, config)
-        # self.engine = get_engine()
-        self.control_object = control_object
+        Randomizable.__init__(self, 0)
+        self.step_manager = step_manager
         self.action_info = dict()
 
+    def reset(self, object, seed, tracking, init_state, **kwargs):
+        self.controller = object
+        self.seed(seed)
+
+        frame_list = sorted(self.trajectory.keys())
+        self.spawn_frame = frame_list[0]
+
+        self.trajectory = tracking
+        self.destination = init_state['destination']
+        self.static = sum([abs(traj['velocity']) for traj in self.trajectory]) / len(self.trajectory) < 0.1
 
     def act(self, *args, **kwargs):
         """
@@ -30,7 +39,17 @@ class BasePolicy(Randomizable, Configurable):
         the policy can be written to self.action_info, which will be retrieved and shown in info dict automatically.
         """
         pass
-
+    
+    @property
+    def is_arrive(self):
+        p = self.controller.position
+        dest = self.destination
+        return (p[0] - dest[0])**2 + (p[1] - dest[1])**2 < 4 and not self.static
+    
+    @property
+    def is_spawned(self):
+        return self.step_manager > self.spawn_frame
+    
     def get_action_info(self):
         """
         Get current action info for env.step() retrieve
@@ -54,10 +73,6 @@ class BasePolicy(Randomizable, Configurable):
     def __repr__(self):
         return self.name
 
-    @property
-    def engine(self):
-        return get_engine()
-
     @classmethod
     def get_input_space(cls):
         """
@@ -67,7 +82,3 @@ class BasePolicy(Randomizable, Configurable):
 
     def get_state(self):
         return self.get_action_info()
-
-    @property
-    def episode_step(self):
-        return self.engine.episode_step

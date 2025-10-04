@@ -81,7 +81,7 @@ def get_logger():
     global dup_filter
     if global_logger is None:
         dup_filter = DuplicateFilter()
-        logger = logging.getLogger("MetaDrive")
+        logger = logging.getLogger("Default")
         logger.propagate = False
         # create console handler with a higher log level
         ch = logging.StreamHandler()
