@@ -18,18 +18,11 @@ class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
     PRIORITY = -10
 
-    @classmethod
-    def default_config(cls) -> Config:
-        return Config(BASE_DEFAULT_CONFIG)
 
     def __init__(self, config, loader):
         
         super(ScenarioDataManager, self).__init__()        
-        if config is None:
-            config = Config()
-        default_config = self.default_config()
-        default_config.merge_from(config, replace_keys=["agent_configs"])
-        self.base_config = default_config
+        self.base_config = config
 
         # self.store_data = engine.global_config["store_data"]
         self.directory = self.base_config["scene_config_directory"]

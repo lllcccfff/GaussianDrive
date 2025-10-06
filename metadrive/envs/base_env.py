@@ -41,8 +41,17 @@ from metadrive.default_config import BASE_DEFAULT_CONFIG
 class BaseEnv(gym.Env):
     # Force to use this seed if necessary. Note that the recipient of the forced seed should be explicitly implemented.
 
+    @classmethod
+    def default_config(cls) -> Config:
+        return Config(BASE_DEFAULT_CONFIG)
 
     def __init__(self, model, config: Config = None):
+        
+        if config is None:
+            config = Config()
+        default_config = self.default_config()
+        default_config.merge_from(config, replace_keys=["agent_configs"])
+
         self.logger = get_logger()
         # set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
 
@@ -58,7 +67,7 @@ class BaseEnv(gym.Env):
 
         self.model = model
 
-        self.setup(config)
+        self.setup(default_config)
 
     # def _post_process_config(self, config):
     #     """Add more special process to merged config"""
