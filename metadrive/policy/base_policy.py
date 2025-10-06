@@ -1,14 +1,11 @@
 import copy
 import logging
 import uuid
-from metadrive.constants import CamMask
+import torch
 import gymnasium as gym
 import numpy as np
-from panda3d.core import NodePath, Material, LVector4
 from metadrive.base_class.configurable import Configurable
 from metadrive.base_class.randomizable import Randomizable
-from metadrive.engine.asset_loader import AssetLoader
-from metadrive.engine.engine_utils import get_engine
 
 
 class BasePolicy(Randomizable, Configurable):
@@ -22,16 +19,16 @@ class BasePolicy(Randomizable, Configurable):
         self.step_manager = step_manager
         self.action_info = dict()
 
-    def reset(self, object, seed, tracking, init_state, **kwargs):
-        self.controller = object
+    def reset(self, controller, seed, state, init_state, **kwargs):
+        self.controller = controller
         self.seed(seed)
 
-        frame_list = sorted(self.trajectory.keys())
+        frame_list = sorted(state.keys())
         self.spawn_frame = frame_list[0]
 
-        self.trajectory = tracking
+        self.trajectory = state
         self.destination = init_state['destination']
-        self.static = sum([abs(traj['velocity']) for traj in self.trajectory]) / len(self.trajectory) < 0.1
+        self.static = sum([np.linalg.norm(traj['velocity']) for traj in self.trajectory.values()]) / len(self.trajectory) < 0.1
 
     def act(self, *args, **kwargs):
         """
@@ -48,16 +45,26 @@ class BasePolicy(Randomizable, Configurable):
     
     @property
     def is_spawned(self):
-        return self.step_manager > self.spawn_frame
+        return self.step_manager.current_frame >= self.spawn_frame
+
+    @property
+    def is_in_trajectory(self):
+        ego_position = self.controller.position
+        ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32)
+
+        states = self.trajectory.values()
+        expert_positions = torch.stack([torch.tensor(state['position'][:2]).float() for state in states])
+
+        distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
+        min_distance = torch.min(distances).item()
+        road_threshold = 5.0
+        return min_distance < road_threshold
     
     def get_action_info(self):
         """
         Get current action info for env.step() retrieve
         """
         return copy.deepcopy(self.action_info)
-
-    def reset(self):
-        self.action_info.clear()
 
     def destroy(self):
         """

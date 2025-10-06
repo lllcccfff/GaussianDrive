@@ -6,6 +6,7 @@ from metadrive.constants import DEFAULT_AGENT
 from metadrive.utils.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.env_input_policy import EnvInputPolicy
+from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.base_class.base_object import BaseObject
 logger = get_logger()
 class AgentManager(BaseManager):
@@ -26,41 +27,50 @@ class AgentManager(BaseManager):
         """
         The real init is happened in self.init(), in which super().__init__() will be called
         """
+        super().__init__()
+        self.INITIALIZED = False
+
         # for getting {agent_id: BaseObject}, use agent_manager.active_agents
         self.config = config
         self.step_manager = step_manager
+        self.observer = None
+        self.policy = None
+        
+    def lazy_init(self):
         self.observer = self.config['observer'](self.config['observer_config'])
-        self.policy = self.config['policy'](step_manager=step_manager, config=self.config['policy_config'])
-
-    def before_reset(self):
-        if not self.INITIALIZED:
-            super().__init__()
-            self.INITIALIZED = True
-        super().before_reset()
-
-        self.last_observation = None
+        self.policy = self.config['policy'](step_manager=self.step_manager, config=self.config['policy_config'])
+        self.INITIALIZED = True
         
-    def reset(self, **kargs):
-        
+    def reset(self, config=None, **kwargs):
+
         """
         Agent manager is really initialized after the BaseObject Instances are created
         """
-        self.controller = self._create_agent(**kargs)
-        self.observer.reset(self.controller, self.generate_seed(), **kargs)
-        self.policy.reset(self.controller, self.generate_seed(), **kargs)
+        self.last_observation = None
+        if config is not None:
+            self.config = config
 
-        self.last_observation = self.get_observations()
+        if not self.INITIALIZED:
+            self.lazy_init()
+        
+        self.controller = self._create_agent(**kwargs)
 
+        self.observer.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
+        self.policy.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
+
+        if self.policy.spawn_frame == self.step_manager.current_frame:
+            self.controller.attachDyWld()
+        
         assert isinstance(self.get_action_spaces(), Space)
         
-    def _create_agent(self, physics_world, init_state, tracking, **kwargs):
+    def _create_agent(self, physics_world, init_state, **kwargs):
         # Only create one agent - use the first config or default agent
         obj_name = "default_agent"
 
         obj = self.spawn_object(
             self.config['controller'], 
             name=obj_name,
-            vehicle_config=self.config['controller_config'], 
+            config=self.config['controller_config'], 
             physics_world=physics_world,
             random_seed=self.generate_seed(),
             size=self.config['controller_config'].get('size', None),
@@ -87,28 +97,26 @@ class AgentManager(BaseManager):
         exempt the requirement for rolling out the dynamic system to get it.
         """
         if not self.is_spawned:
-            if self.policy.spawn_frame == self.step_manager.current_frame:
-                self.controller.attachDyWld()
-            else:
-                return
-            
-        if self.is_arrive:
-            if self.controller is not None:
-                self.controller.destroy()
-                self.controller = None
             return
+        elif self.policy.spawn_frame == self.step_manager.current_frame:
+            self.controller.attachDyWld()
+        elif self.is_arrive:
+            if self.controller is not None:
+                self.clear_object(self.controller.id)
+                self.controller = None
+        else:
+            if isinstance(self.policy, EnvInputPolicy):
+                action = self.policy.act(action)
+            else:
+                action = self.policy.act(self.last_observation)
+            
+            if isinstance(self.policy, ReplayPolicy):
+                self.controller.move(state_info=action)
+            else:
+                self.controller.move(action=action)
 
-        # Handle single agent
-        if isinstance(self.policy, EnvInputPolicy):
-            action = self.policy.act(action)
-        else:
-            action = self.policy.act(self.last_observation)
-        
-        if isinstance(self.policy, ReplayPolicy):
-            self.controller.move(state_info=action)
-        else:
-            self.controller.move(action=action)
-    
+        return
+
     def observe(self):
         if self.is_arrive or not self.is_spawned:
             return {}
@@ -145,5 +153,9 @@ class AgentManager(BaseManager):
         self.clear_all_objects()
         self.observer.destroy()
         self.policy.destroy()
+
+        self.controller = None
+        self.observer = None
+        self.policy = None
 
         self.INITIALIZED = False

@@ -18,7 +18,6 @@ from metadrive.constants import CamMask, get_color_palette
 from metadrive.constants import MetaDriveType, CollisionGroup
 from metadrive.constants import Semantics
 from metadrive.engine.asset_loader import AssetLoader
-from metadrive.engine.engine_utils import get_engine, engine_initialized
 from metadrive.utils.logger import get_logger
 from metadrive.engine.physics_node import BaseRigidBodyNode
 from metadrive.utils import Config, safe_clip_for_small_array
@@ -101,14 +100,15 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     def __init__(
         self,
+        config: Union[dict, Config],
         physics_world,
         size=None,
-        vehicle_config: Union[dict, Config] = None,
         name: str = None,
         random_seed=None,
         position=None,
         heading=None,
         _calling_reset=True,
+        **kwargs
     ):
         """
         This Vehicle Config is different from self.get_config(), and it is used to define which modules to use, and
@@ -117,23 +117,20 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         :param random_seed: int
         """
         # check
-        assert vehicle_config is not None, "Please specify the vehicle config."
-        assert engine_initialized(), "Please make sure game engine is successfully initialized!"
+        assert config is not None, "Please specify the vehicle config."
 
         # NOTE: it is the game engine, not vehicle drivetrain
         # self.engine = get_engine()
 
         if size is None:
             size = (self.DEFAULT_LENGTH, self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT)
-        BaseObject.__init__(self, physics_world, size, name, random_seed, vehicle_config)
+        BaseObject.__init__(self, physics_world, size, name, random_seed, config)
         BaseVehicleState.__init__(self)
         self.set_metadrive_type(MetaDriveType.VEHICLE)
 
         # build vehicle physics model
         self.vehicle, self.body = self._create_vehicle_chassis()
         self.wheels = self._create_wheel()
-        self.attachDyWld(self.body)
-        self.attachDyWld(self.vehicle)
     
         # powertrain config
         self.enable_reverse = self.config["enable_reverse"]
@@ -160,7 +157,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.break_down = False
         # if self.engine.current_map is not None:
         if _calling_reset:
-            self.reset(position=position, heading=heading, vehicle_config=vehicle_config)
+            self.reset(position=position, heading=heading, vehicle_config=config)
 
     def _init_step_info(self):
         # done info will be initialized every frame
@@ -218,7 +215,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.update_dist_to_left_right()
         self.energy_consumption = 0
 
-        if self.config["spawn_velocity"] is not None:
+        if self.config["spawn_velocity"]:
             self.set_velocity(self.config["spawn_velocity"], in_local_frame=self.config["spawn_velocity_car_frame"])
 
         # self.add_light()
@@ -418,8 +415,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         chassis.setDeactivationEnabled(False)
         chassis.notifyCollisions(True)  # advance collision check, do callback in pg_collision_callback
 
-        physics_world = get_engine().physics_world
-        vehicle_chassis = BulletVehicle(physics_world.dynamic_world, chassis)
+        vehicle_chassis = BulletVehicle(self.physics_world.dynamic_world, chassis)
         vehicle_chassis.setCoordinateSystem(ZUp)
         return vehicle_chassis, chassis
     

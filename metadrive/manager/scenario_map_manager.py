@@ -14,9 +14,10 @@ class ScenarioMapManager(BaseManager):
     PRIORITY = 0  # Map update has the most high priority
     DEFAULT_DATA_BUFFER_SIZE = 200
 
-    def __init__(self, loader):
+    def __init__(self, config, loader):
         super(ScenarioMapManager, self).__init__()
-        self.store_map = self.engine.global_config.get("store_map", False)
+        self.config = config
+        self.store_map = self.config.get("store_map", False)
         self.current_map = None
 
         # we put the route searching function here
@@ -28,19 +29,18 @@ class ScenarioMapManager(BaseManager):
         self.loader = loader
         self.ground = None
 
-    def reset(self):
-        seed = self.engine.global_random_seed
-
+    def reset(self, config, scene_config, ground_height, physics_world, **kwargs):
+        self.config = config
         self.current_sdc_route = None
         self.sdc_dest_point = None
 
-        scene_data = self.engine.data_manager.get_current_scenario_data()
-        self.loader(scene_data['config'])
+        self.loader(scene_config)
 
         self.spawn_object(
-            GroundPlane, 
-            direction=[0,0,1.], 
-            constant=scene_data['ground_height'], 
+            GroundPlane,
+            physics_world=physics_world, 
+            direction=[0,0,1.],
+            constant=ground_height,
             random_seed=self.random_seed
         )
         # self.update_route()
@@ -49,28 +49,6 @@ class ScenarioMapManager(BaseManager):
         obj = self.spawned_objects.pop(object_id)
         obj.destroy()  
 
-    def update_route(self):
-        data = self.engine.data_manager.current_scenario
-
-    def filter_path(self, start_lanes, end_lanes):
-        for start in start_lanes:
-            for end in end_lanes:
-                path = self.current_map.road_network.shortest_path(start[0].index, end[0].index)
-                if len(path) > 0:
-                    return (start[0].index, end[0].index)
-        return None
-
-
-    def load_map(self, map):
-        map.attach_to_world()
-        self.current_map = map
-
-    def unload_map(self, map):
-        map.detach_from_world()
-        self.current_map = None
-        if not self.engine.global_config["store_map"]:
-            map.destroy()
-            assert len(self.spawned_objects) == 0
 
     def destroy(self):
         self.clear_stored_maps()
@@ -93,7 +71,3 @@ class ScenarioMapManager(BaseManager):
             i: None
             for i in range(self.start_scenario_index, self.start_scenario_index + self.map_num)
         }
-
-    @property
-    def num_stored_maps(self):
-        return sum([1 if m is not None else 0 for m in self.engine.map_manager._stored_maps.values()])

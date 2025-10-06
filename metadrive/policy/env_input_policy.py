@@ -1,4 +1,3 @@
-from metadrive.engine.engine_utils import get_global_config
 from metadrive.utils.logger import get_logger
 from metadrive.policy.base_policy import BasePolicy
 import gymnasium as gym

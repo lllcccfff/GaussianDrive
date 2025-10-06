@@ -6,14 +6,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ReplayTrafficParticipantPolicy(BasePolicy):
+class ReplayPolicy(BasePolicy):
     """
        Replay policy from Real data. For adding new policy, overwrite get_trajectory_info()
        This policy is designed for Waymo Policy by default
        """
         
-    def reset(self, object, seed, tracking, **kwargs):
-        super().reset(object, seed, tracking, **kwargs)
+    def reset(self, controller, seed, tracking, **kwargs):
+        super().reset(controller, seed, tracking, **kwargs)
         self.controller.set_kinematic(True)
 
         frame_list = sorted(self.trajectory.keys())

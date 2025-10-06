@@ -15,7 +15,7 @@ class GaussianStateObservation(BaseObservation):
     IMAGE = "image"
     STATE = "state"
 
-    def __init__(self, config, controller):
+    def __init__(self, config):
         super().__init__(config)
         self.img_obs = GaussianObservation(config)
 
@@ -34,9 +34,6 @@ class GaussianStateObservation(BaseObservation):
     def observe(self):
         return {self.IMAGE: self.img_obs.observe(), self.STATE: None}
 
-    def reset(self):
-        self.img_obs.reset()
-
     def destroy(self):
         super().destroy()
         self.img_obs.destroy()
@@ -49,7 +46,7 @@ class GaussianObservation(BaseObservation):
     """
     STACK_SIZE = 3  # use continuous 3 image as the input
 
-    def __init__(self, config, controller, render_fn, camera_params):
+    def __init__(self, config):
         super().__init__(config)
         self.STACK_SIZE = config["stack_size"]
         self.clip_rgb = config['clip_rgb']
@@ -67,9 +64,9 @@ class GaussianObservation(BaseObservation):
         self.params = camera_params
 
         if self.clip_rgb:
-            self.state = {cam_name: np.zeros(self.an_observation_shape(self.params['H'], self.params['W']), dtype=np.float32) for cam_name, cam in self.params.items()}
+            self.state = {cam_name: np.zeros(self.an_observation_shape(cam['H'], cam['W']), dtype=np.float32) for cam_name, cam in self.params.items()}
         else:
-            self.state = {cam_name: np.zeros(self.an_observation_shape(self.params['H'], self.params['W']), dtype=np.uint8) for cam_name, cam in self.params.items()}
+            self.state = {cam_name: np.zeros(self.an_observation_shape(cam['H'], cam['W']), dtype=np.uint8) for cam_name, cam in self.params.items()}
 
 
     @property
@@ -96,11 +93,11 @@ class GaussianObservation(BaseObservation):
         """
         ego_pose = torch.tensor(self.controller.transform, device='cuda').inverse()
         for cam_name, params in self.params.items():
-            extrinsics = params['camera2ego'] @ ego_pose
+            extrinsics = params['ego2camera'] @ ego_pose
             ret = self.render_fn(
-                K=['K'],
-                H=['H'],
-                W=['W'],
+                K=params['K'],
+                H=params['H'],
+                W=params['W'],
                 extrinsics=extrinsics,
             )
             self.state[cam_name] = np.roll(self.state[cam_name], -1, axis=0)

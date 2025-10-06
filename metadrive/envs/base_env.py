@@ -58,7 +58,7 @@ class BaseEnv(gym.Env):
 
         self.model = model
 
-        self.lazy_init()
+        self.setup(config)
 
     # def _post_process_config(self, config):
     #     """Add more special process to merged config"""
@@ -74,45 +74,35 @@ class BaseEnv(gym.Env):
     #         )
     #     return config
 
-    @property
-    def config(self):
-        if hasattr(self.data_manager, "current_config"):
-            self.data_manager.current_config
-        else:
-            self.data_manager.base_config
 
-    def lazy_init(self):
-        """
-        Only init once in runtime, variable here exists till the close_env is called
-        :return: None
-        """
-        # It is the true init() func to create the main vehicle and its module, to avoid incompatible with ray
-        # engine setup
-        self._setup()
-
-    def _setup(self):
+    def setup(self, config):
         """
         Engine setting after launching
         """
-        self.agent_managers = {}
-        self.agent_managers['actor'] = self._init_agent_manager()
+        self._register_manager("step_manager", StepCounter())
+        self._register_manager("data_manager", ScenarioDataManager(config, self.model.load_metadata))
+        self._register_manager("map_manager", ScenarioMapManager(self.config['map_config'], self.model.load_model))
 
-        self._register_manager("data_manager", ScenarioDataManager(self.model.load_metadata))
-        self._register_manager("map_manager", ScenarioMapManager(self.model.load_model))
         # self._register_manager("record_manager", RecordManager())
         # self._register_manager("replay_manager", ReplayManager())
 
-        
         # physics world
-        self.physics_world = PhysicsWorld(
-            self.config["debug_static_world"], disable_collision=self.config["disable_collision"]
-        )
+        self.physics_world = PhysicsWorld(disable_collision=self.config["disable_collision"])
 
         # collision callback
         self.physics_world.dynamic_world.setContactAddedCallback(PythonCallbackObject(collision_callback))
 
-        self.step_manager = StepCounter()
-    
+        self.agent_managers = {}
+        self.agent_managers['actor'] = self._init_agent_manager()
+
+
+    @property
+    def config(self):
+        if hasattr(self.data_manager, "current_config"):
+            return self.data_manager.current_config
+        else:
+            return self.data_manager.base_config
+
     def _init_agent_manager(self):
         raise NotImplementedError
 
@@ -122,10 +112,10 @@ class BaseEnv(gym.Env):
         :param manager_name: name shouldn't exist in self.managers and not be same as any class attribute
         :param manager: subclass of BaseManager
         """
-        assert manager_name not in self.managers, "Manager {} already exists in BaseEnv, Use update_manager() to " \
-                                                   "overwrite".format(manager_name)
-        assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEnv"
-        self.managers[manager_name] = manager
+        # assert manager_name not in self.managers, "Manager {} already exists in BaseEnv, Use update_manager() to " \
+        #                                            "overwrite".format(manager_name)
+        # assert not hasattr(self, manager_name), "Manager name can not be same as the attribute in BaseEnv"
+        # self.managers[manager_name] = manager
         setattr(self, manager_name, manager)
 
     def reset(self, seed: Union[None, int] = None):
@@ -154,8 +144,8 @@ class BaseEnv(gym.Env):
         step_infos = {}
 
         # reset manager
-        for manager_name, manager in [self.map_manager] + self.agent_managers.values():
-            manager.clear_objects()
+        for manager in [self.map_manager] + list(self.agent_managers.values()):
+            manager.clear_all_objects()
         self._object_clean_check()
         
         all_agent = self.agent_managers.keys()
@@ -164,50 +154,27 @@ class BaseEnv(gym.Env):
                 self.agent_managers[n].destroy()
                 self.agent_managers.pop(n)
 
-        for manager_name, manager in [self.data_manager, self.map_manager, self.step_manager]:
-            new_step_infos = manager.reset()
-            step_infos = concat_step_infos([step_infos, new_step_infos])
+        self.data_manager.reset()
 
-        self._update_participants()
-        for manager_name, manager in self.agent_managers :
-            new_step_infos = manager.reset(self.physics_world)
+        scenario_data = self.data_manager.get_current_scenario_data()
+        self.step_manager.reset(**scenario_data)
+        self.map_manager.reset(config=self.config['map_config'], physics_world=self.physics_world, **scenario_data)
+        self._update_participants(scenario_data)
+
+        self._update_scene()
+        for manager in self.agent_managers.values() :
+            new_step_infos = manager.observe()
             step_infos = concat_step_infos([step_infos, new_step_infos])
 
         return self._get_reset_return(step_infos)
-    
-    def _update_participants(self):
-        scenario_data = self.data_manager.get_current_scenario_data()
-        camera_params = scenario_data['camera_params']
-        for name, init_state in scenario_data['init_state'].items():
-            if name != 'actor':
-                tracking = scenario_data['participants'][name]
-                cfg = self.config['participant_config'].copy()
-                cfg['controler_config']['size'] = tracking['size'][1]
-                if tracking['type'] == 'vehicle':
-                    cfg['controller'] = get_vehicle_type(tracking['size'][1], False)
-                elif tracking['type'] == 'pedestrian':
-                    cfg['controller'] = Pedestrian
-                elif tracking['type'] == 'cyclist':
-                    cfg['controller'] = Cyclist
-                
-                self.agent_managers[name] = AgentManager(cfg, self.step_manager)
-            
-            self.agent_managers[name].reset(
-                physics_world=self.physics_world,
-                render_fn=self.model.render,
-                camera_params=camera_params,
-                init_state=init_state,
-                tracking=tracking,
-                frame_range=scenario_data['frame_range']
-            )
 
     def _reset_global_seed(self, force_seed=None):
         if force_seed is not None:
             current_seed = force_seed
         else:
             current_seed = get_np_random(None).randint(0, 0xffffffff)
-        self.global_random_seed = current_seed
-        for mgr in self.managers.values():
+        self.current_seed = current_seed
+        for mgr in [self.data_manager, self.map_manager] + list(self.agent_managers.values()):
             mgr.seed(current_seed)
 
     def _object_clean_check(self):
@@ -229,36 +196,59 @@ class BaseEnv(gym.Env):
         assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
                                    "Uncleared bodies: {}".format(filtered)
 
+    def _update_participants(self, scenario_data):
+        camera_params = scenario_data['camera_params']
+        for name, init_state in scenario_data['init_state'].items():
+            if name != 'actor':
+                tracking = scenario_data['participants'][name]
+                cfg = self.config['participant_config'].copy()
+                cfg['controler_config']['size'] = tracking['size'][1]
+                if tracking['type'] == 'vehicle':
+                    cfg['controller'] = get_vehicle_type(tracking['size'][1], False)
+                elif tracking['type'] == 'pedestrian':
+                    cfg['controller'] = Pedestrian
+                elif tracking['type'] == 'cyclist':
+                    cfg['controller'] = Cyclist
+                
+                self.agent_managers[name] = AgentManager(cfg, self.step_manager)
+            else:
+                tracking = scenario_data['ego_poses']
+            self.agent_managers[name].reset(
+                config=self.config['actor_config'] if name == 'actor' else cfg,
+                physics_world=self.physics_world,
+                render_fn=self.model.render,
+                camera_params=camera_params,
+                init_state=init_state,
+                state=scenario_data['agent_state'][name],
+                frame_range=scenario_data['frame_range']
+            )
+
     def _get_reset_return(self, reset_info):
         # TODO: figure out how to get the information of the before step
         obses = {}
         done_infos = {}
         cost_infos = {}
         reward_infos = {}
-        engine_info = reset_info
-        obses = self.actor_manager.get_observations()
+        obses = reset_info['observation']
         _, reward_infos = self.reward_function()
         _, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
 
-        step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
+        step_infos = concat_step_infos([reset_info, done_infos, reward_infos, cost_infos])
 
         return obses, step_infos
 
     # ===== Run-time =====
     def step(self, actions: Union[Union[np.ndarray, list], Dict[AnyStr, Union[list, np.ndarray]], int]):
-        engine_info = self._step_simulator(actions)  # step the simulation
         self.step_manager.step()
-        return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
-
-    def _step_simulator(self, action):
+        
         # prepare for stepping the simulation
         before_step_infos = {}
 
         for i in range(self.config["decision_repeat"]):
             # simulate or replay
             for manager in self.agent_managers.values():
-                manager.step()
+                manager.step(actions)
 
             self.step_physics_world()
             # the recording should happen after step physics world
@@ -266,6 +256,21 @@ class BaseEnv(gym.Env):
             #     self.record_manager.step()
 
         # to get new pose and update gaussian model
+        self._update_scene()
+
+        after_step_infos = {}
+        for manager in self.agent_managers.values():
+            new_step_info = manager.observe()
+            after_step_infos = concat_step_infos([after_step_infos, new_step_info])
+
+        # Note that we use shallow update for info dict in this function! This will accelerate system.
+        engine_info = merge_dicts(
+            after_step_infos, before_step_infos, allow_new_keys=True, without_copy=True
+        )
+
+        return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
+
+    def _update_scene(self):
         new_object_poses = {}
         for name, mgr in self.agent_managers.items():
             if name == 'actor': continue
@@ -273,16 +278,6 @@ class BaseEnv(gym.Env):
                 new_object_poses[name] = mgr.get_pose()
         self.model.update_scene(self.step_manager.current_frame, new_object_poses)
 
-
-        after_step_infos = {}
-        for manager in self.managers.values():
-            new_step_info = manager.observe()
-            after_step_infos = concat_step_infos([after_step_infos, new_step_info])
-
-        # Note that we use shallow update for info dict in this function! This will accelerate system.
-        return merge_dicts(
-            after_step_infos, before_step_infos, allow_new_keys=True, without_copy=True
-        )
 
     def step_physics_world(self):
         dt = self.config["physics_world_step_size"]
@@ -302,7 +297,7 @@ class BaseEnv(gym.Env):
         done_function_result, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
         self.dones = done_function_result or self.dones
-        obses = self.actor_manager.get_observations()
+        obses = engine_info['observation']
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
         truncateds = step_infos.get(TerminationState.MAX_STEP, False)
@@ -342,8 +337,9 @@ class BaseEnv(gym.Env):
         self.logger.info("Image is saved at: {}".format(file_name))
 
     @property
-    def current_seed(self):
-        return self.engine.global_random_seed
+    def actor_controller(self):
+        return self.agent_managers['actor'].controller
+
 
     @property
     def num_scenarios(self):
@@ -396,32 +392,6 @@ class BaseEnv(gym.Env):
     #     self.logger.warning("env.vehicle will be deprecated soon. Use env.agent instead", extra={"log_once": True})
     #     return self.agent
 
-    @property
-    def agent_object(self):
-        """
-        Return all active agents
-        :return: Dict[agent_id:agent]
-        """
-        return self.actor_manager._agent_object
-
-    @property
-    def current_map(self):
-        return self.engine.current_map
-
-    @property
-    def maps(self):
-        return self.engine.map_manager.maps
-
-    def _render_topdown(self, text, *args, **kwargs):
-        return self.engine.render_topdown(text, *args, **kwargs)
-
-    @property
-    def main_camera(self):
-        return self.engine.main_camera
-
-    @property
-    def current_track_agent(self):
-        return self.engine.current_track_agent
 
     def export_scenarios(
         self,
@@ -488,25 +458,6 @@ class BaseEnv(gym.Env):
 
     def stop(self):
         self.in_stop = not self.in_stop
-
-
-    def next_seed_reset(self):
-        if self.current_seed + 1 < self.start_index + self.num_scenarios:
-            self.reset(self.current_seed + 1)
-        else:
-            self.logger.warning(
-                "Can't load next scenario! Current seed is already the max scenario index."
-                "Allowed index: {}-{}".format(self.start_index, self.start_index + self.num_scenarios - 1)
-            )
-
-    def last_seed_reset(self):
-        if self.current_seed - 1 >= self.start_index:
-            self.reset(self.current_seed - 1)
-        else:
-            self.logger.warning(
-                "Can't load last scenario! Current seed is already the min scenario index"
-                "Allowed index: {}-{}".format(self.start_index, self.start_index + self.num_scenarios - 1)
-            )
 
 if __name__ == '__main__':
     cfg = {"use_render": True}

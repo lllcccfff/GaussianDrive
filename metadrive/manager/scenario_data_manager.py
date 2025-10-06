@@ -22,21 +22,19 @@ class ScenarioDataManager(BaseManager):
     def default_config(cls) -> Config:
         return Config(BASE_DEFAULT_CONFIG)
 
-    def __init__(self, loader):
+    def __init__(self, config, loader):
         
         super(ScenarioDataManager, self).__init__()        
         if config is None:
             config = Config()
         default_config = self.default_config()
         default_config.merge_from(config, replace_keys=["agent_configs"])
-        global_config = self._post_process_config(default_config)
-        self.base_config = global_config
+        self.base_config = default_config
 
         # self.store_data = engine.global_config["store_data"]
         self.directory = self.base_config["scene_config_directory"]
 
         # for multi-worker
-        self.worker_index = self.base_config["worker_index"]
         # self._scenarios = {}
 
         # Read summary file first:
@@ -92,7 +90,7 @@ class ScenarioDataManager(BaseManager):
 
     @staticmethod
     def restructure_metadata(config, frame_range, camera_params, ego_poses, participants):
-        init_state, agent_poses = {}, {}
+        init_state, agent_state = {}, {}
         for name, tracking in (participants | {'actor': ego_poses}).items():
             if name == 'actor':
                 frame_list = range(*frame_range)
@@ -114,15 +112,15 @@ class ScenarioDataManager(BaseManager):
                 spawn_angular_velocity=first_state["angular_velocity"],
                 destination=last_state["position"]
             )
-            agent_poses[name] = parsed_data
+            agent_state[name] = parsed_data
 
         return {
-            'config': config,
+            'scene_config': config,
             'camera_params':camera_params,
             'ego_poses': ego_poses,
             'participants': participants,
             'init_state': init_state,
-            "agent_poses": agent_poses,
+            "agent_state": agent_state,
             'frame_range': frame_range
         }
 
@@ -131,15 +129,15 @@ class ScenarioDataManager(BaseManager):
         #     assert len(self._scenarios) <= 1, "It seems you access multiple scenarios in one episode"
         #     self._scenarios = {}
         self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
-        self.current_config = self.base_confg.copy()
+        self.current_config = self.base_config.copy()
 
-        config_dict=self.current_config["vehicle_config"]
+        config_dict=self.current_config["actor_config"]
         config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
 
         current_metadata = self.get_current_scenario_data()
         start_frame, end_frame = current_metadata['frame_range']
         ego_poses = current_metadata['ego_poses']
-        ground_height = ego_poses[start_frame][2, 3] - self.v_type.DEFAULT_HEIGHT / 2
+        ground_height = ego_poses[start_frame][2, 3] - config_dict["controller"].DEFAULT_HEIGHT / 2
         current_metadata['ground_height'] = ground_height
 
     def get_current_scenario_data(self):

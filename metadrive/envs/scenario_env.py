@@ -8,15 +8,12 @@ import torch
 from metadrive.constants import TerminationState
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.base_env import BaseEnv
-from metadrive.manager.scenario_agent_manager import ScenarioAgentManager
 from metadrive.manager.scenario_curriculum_manager import ScenarioCurriculumManager
 from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
 from metadrive.manager.scenario_map_manager import ScenarioMapManager
-from metadrive.manager.participant_manager import ParticipantManager
-from metadrive.policy.waypoint_policy import WaypointPolicy
+from metadrive.manager.agent_manager import AgentManager
 from metadrive.utils import get_np_random
 from metadrive.utils.math import wrap_to_pi
-from metadrive.engine.engine_utils import set_global_random_seed
 
 SCENARIO_ENV_CONFIG = dict(
     # ===== Scenario Config =====
@@ -100,15 +97,6 @@ SCENARIO_ENV_CONFIG = dict(
     use_bounding_box=False,  # Set True to use a cube in visualization to represent every dynamic objects.
 )
 
-SCENARIO_WAYPOINT_ENV_CONFIG = dict(
-    # How many waypoints will be used at each environmental step. Checkout ScenarioWaypointEnv for details.
-    waypoint_horizon=5,
-    agent_policy=WaypointPolicy,
-
-    # Must set this to True, otherwise the agent will drift away from the waypoint when doing
-    # "self.engine.step(self.config["decision_repeat"])" in "_step_simulator".
-    set_static=True,
-)
 
 
 class ScenarioEnv(BaseEnv):
@@ -129,23 +117,16 @@ class ScenarioEnv(BaseEnv):
         if self.config["num_workers"] > 1:
             assert self.config["sequential_seed"], \
                 "If using > 1 workers, you have to allow sequential_seed for consistency!"
-        self.start_index = self.config["start_scenario_index"]
 
     def _post_process_config(self, config):
         config = super(ScenarioEnv, self)._post_process_config(config)
         return config
 
     def _init_agent_manager(self):
-        return ScenarioAgentManager(self.config['actor_config'])
-
-    def _setup(self):
-        super(ScenarioEnv, self)._setup()
-        if not self.config["no_traffic"]:
-            self.engine.register_manager("traffic_manager", ParticipantManager())
-        # self.engine.register_manager("curriculum_manager", ScenarioCurriculumManager()) 
+        return AgentManager(self.config['actor_config'], self.step_manager)
 
     def done_function(self):
-        vehicle = self.agent_object
+        vehicle = self.actor_controller
         done = False
         is_max_step = self.config["max_step"] is not None and self.episode_lengths >= self.config["max_step"]
         done_info = {
@@ -154,7 +135,7 @@ class ScenarioEnv(BaseEnv):
             TerminationState.CRASH_BUILDING: vehicle.crash_building,
             TerminationState.CRASH_HUMAN: vehicle.crash_human,
             TerminationState.CRASH_SIDEWALK: vehicle.crash_sidewalk,
-            TerminationState.OUT_OF_ROAD: self._is_out_of_road(vehicle),
+            TerminationState.OUT_OF_ROAD: self._is_out_of_road(),
             TerminationState.SUCCESS: self._is_arrive_destination(),
             TerminationState.MAX_STEP: is_max_step,
             TerminationState.ENV_SEED: self.current_seed,
@@ -164,7 +145,7 @@ class ScenarioEnv(BaseEnv):
 
         def msg(reason):
             return "Episode ended! Scenario Index: {} Scenario id: {} Reason: {}.".format(
-                self.current_seed, self.engine.data_manager.current_scenario_id, reason
+                self.current_seed, self.data_manager.current_scenario_id, reason
             )
 
         if done_info[TerminationState.SUCCESS]:
@@ -198,10 +179,10 @@ class ScenarioEnv(BaseEnv):
         return done, done_info
 
     def cost_function(self):
-        vehicle = self.agent_object
+        vehicle = self.actor_controller
         step_info = dict(num_crash_object=0, num_crash_human=0, num_crash_vehicle=0, num_on_line=0)
         step_info["cost"] = 0
-        if self._is_out_of_road(vehicle):
+        if self._is_out_of_road():
             step_info["cost"] += self.config["out_of_road_cost"]
         if vehicle.crash_vehicle:
             step_info["cost"] += self.config["crash_vehicle_cost"]
@@ -218,7 +199,7 @@ class ScenarioEnv(BaseEnv):
         :param vehicle_id: id of BaseVehicle
         :return: reward
         """
-        vehicle = self.agent_object
+        vehicle = self.actor_controller
         step_info = dict()
 
         # crash penalty
@@ -233,36 +214,16 @@ class ScenarioEnv(BaseEnv):
         # termination reward
         if self._is_arrive_destination():
             reward = self.config["success_reward"]
-        elif self._is_out_of_road(vehicle):
+        elif self._is_out_of_road():
             reward = -self.config["out_of_road_penalty"]
 
         return reward, step_info
 
     def _is_arrive_destination(self):
-        return self.actor_manager.is_arrive()
+        return self.agent_managers['actor'].is_arrive
 
-    def _is_out_of_road(self, vehicle):
-        ego_position = vehicle.position
-        ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32)
-
-        ego_poses = self.engine.data_manager.get_current_scenario_data()['ego_poses']
-        if isinstance(ego_poses, torch.Tensor):
-            expert_positions = ego_poses[:, :2, 3]
-        else:
-            expert_positions = torch.stack([pose[:2, 3] for pose in ego_poses.values()])
-
-        distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
-        min_distance = torch.min(distances).item()
-        out_of_road_threshold = 5.0
-        return min_distance > out_of_road_threshold
-
-    def _reset_global_seed(self, force_seed=None):
-        if force_seed is not None:
-            current_seed = force_seed
-        else:
-            current_seed = get_np_random(None).randint(0, 0xffffffff)
-
-        set_global_random_seed(current_seed)
+    def _is_out_of_road(self):
+        return not self.agent_managers['actor'].policy.is_in_trajectory
 
 
 class ScenarioOnlineEnv(ScenarioEnv):
@@ -318,7 +279,6 @@ class ScenarioWaypointEnv(ScenarioEnv):
     @classmethod
     def default_config(cls):
         config = super(ScenarioWaypointEnv, cls).default_config()
-        config.update(SCENARIO_WAYPOINT_ENV_CONFIG)
         return config
 
     def _post_process_config(self, config):
@@ -369,8 +329,8 @@ if __name__ == "__main__":
         for t in range(10000):
             o, r, tm, tc, info = env.step([0, 0])
             assert env.observation_space.contains(o)
-            c_lane = env.agent_object.lane
-            long, lat, = c_lane.local_coordinates(env.agent_object.position)
+            c_lane = env.actor_controller.lane
+            long, lat, = c_lane.local_coordinates(env.actor_controller.position)
             # if env.config["use_render"]:
             env.render(
                 text={

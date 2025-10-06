@@ -17,14 +17,14 @@ class BaseTrafficParticipant(BaseObject):
     HEIGHT = None
 
     def __init__(
-            self,
+            self, 
+            config,
             physics_world,
             size,
             position: Sequence[float], 
             heading_theta: float = 0., 
             random_seed=None, 
-            name=None, 
-            config=None
+            name=None
         ):
         super(BaseTrafficParticipant, self).__init__(physics_world, size=size, random_seed=random_seed, name=name, config=config)
         

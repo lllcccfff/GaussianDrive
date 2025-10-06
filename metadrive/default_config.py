@@ -3,8 +3,10 @@ import logging
 from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
 from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
 from metadrive.policy.env_input_policy import EnvInputPolicy
+from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.component.vehicle.vehicle_type import DefaultVehicle
 from metadrive.obs.gaussian_obs import GaussianStateObservation
+from metadrive.obs.observation_base import DefaultObservation
 BASE_DEFAULT_CONFIG = dict(
 
     # ===== agent =====
@@ -43,11 +45,16 @@ BASE_DEFAULT_CONFIG = dict(
         # dont set it, the controller will be random vehicle every turn
         controller=DefaultVehicle,
         controller_config=dict(
+            enable_reverse=True,
+            spawn_velocity=False,
         )
     ),
     # ===== participant =====
     participant_config=dict(
         # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
+        observer=DefaultObservation,
+        observer_config=dict(
+        ),
         policy=ReplayPolicy,
         policy_config=dict(
             discrete_action=False,
@@ -55,16 +62,29 @@ BASE_DEFAULT_CONFIG = dict(
             discrete_throttle_dim=5,
             action_check=False,
         ),
+        controller_config=dict(
+            enable_reverse=True,
+            spawn_velocity=False,
+        )
     ),
 
-    # ===== Engine Core config =====
-    # If true pop a window to render
+
+    # ===== participant =====
+    map_config=dict(
+        # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
+        store_map=False
+    ),
+
 
     # Physics world step is 0.02s and will be repeated for decision_repeat times per env.step()
     physics_world_step_size=2e-2,
     decision_repeat=5,
     # Turn on it to use render pipeline, which provides advanced rendering effects (Beta)
     render_pipeline=False,
+    # Disable collision detection in physics world
+    disable_collision=False,
+    curriculum_level=1,
+    num_workers=1,
 
     # ===== Terrain =====
     # The size of the square map region, which is centered at [0, 0]. The map objects outside it are culled.

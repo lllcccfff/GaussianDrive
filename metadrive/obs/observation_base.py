@@ -50,3 +50,18 @@ class DummyObservation(BaseObservation):
 
     def observe(self, *args, **kwargs):
         return np.array([0])
+
+
+class DefaultObservation(BaseObservation):
+    """
+    Default Observation class that returns None
+    """
+    def __init__(self, config=None):
+        super(DefaultObservation, self).__init__(config or {})
+
+    @property
+    def observation_space(self):
+        return gym.spaces.Box(-0.0, 1.0, shape=(1, ), dtype=np.float32)
+
+    def observe(self, *args, **kwargs):
+        return None
