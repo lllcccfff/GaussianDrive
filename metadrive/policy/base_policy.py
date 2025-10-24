@@ -23,8 +23,8 @@ class BasePolicy(Randomizable, Configurable):
         self.controller = controller
         self.seed(seed)
 
-        frame_list = sorted(state.keys())
-        self.spawn_frame = frame_list[0]
+        timestamp_list = sorted(state.keys())
+        self.spawn_timestamp = timestamp_list[0]
 
         self.trajectory = state
         self.destination = init_state['destination']
@@ -45,7 +45,7 @@ class BasePolicy(Randomizable, Configurable):
     
     @property
     def is_spawned(self):
-        return self.step_manager.current_frame >= self.spawn_frame
+        return self.step_manager.current_timestamp >= self.spawn_timestamp
 
     @property
     def is_in_trajectory(self):

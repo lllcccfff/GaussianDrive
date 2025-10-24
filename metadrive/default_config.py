@@ -76,8 +76,8 @@ BASE_DEFAULT_CONFIG = dict(
     ),
 
 
-    # Physics world step is 0.02s and will be repeated for decision_repeat times per env.step()
-    physics_world_step_size=2e-2,
+    # Physics world step is in microsecond (0.02s) and will be repeated for decision_repeat times per env.step()
+    physics_world_step_size=2e4,
     decision_repeat=5,
     # Turn on it to use render pipeline, which provides advanced rendering effects (Beta)
     render_pipeline=False,

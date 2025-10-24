@@ -7,7 +7,7 @@ from metadrive.scenario.scenario_description import ScenarioDescription as SD, M
 from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
 from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state, get_idm_route
 from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
-
+from metadrive.utils.trajectory import Trajectory
 import json
 
 
@@ -51,8 +51,8 @@ class ScenarioDataManager(BaseManager):
             self.num_scenarios += 1
             cfg = Config.fromfile(filename=os.path.join(self.directory, config_file))
 
-            scene_name, frame_range, camera_params, ego_poses, participants = loader(cfg)
-            # frame_range : list|tuple [2]
+            scene_name, timestamp_range, camera_params, ego_poses, participants = loader(cfg)
+            # timestamp : list|tuple [2]
             # camera params : 
             #     "camera_name" :
             #         "K" : list[3][3]
@@ -67,37 +67,48 @@ class ScenarioDataManager(BaseManager):
             #     "unique_name" : 
             #         "size" :
             #         "type" :
-            #         "transforms" :
+            #         "poses" :
             #             1 : list[4][4]
             #             ...
             #             n : list[4][4]
 
-            self.metadata[scene_name] = ScenarioDataManager.restructure_metadata(
+            self.metadata[scene_name] = self.restructure_metadata(
                 config=cfg,
-                frame_range=frame_range,
+                timestamp_range=timestamp_range,
                 camera_params=camera_params,
                 ego_poses=ego_poses,
                 participants=participants
             )
             self.idx2scene.append(scene_name)
 
-    @staticmethod
-    def restructure_metadata(config, frame_range, camera_params, ego_poses, participants):
+    def restructure_metadata(self, config, timestamp_range, camera_params, ego_poses, participants):
         init_state, agent_state = {}, {}
+        scene_timestamp_list = list(range(timestamp_range[0], timestamp_range[1], int(self.base_config['physics_world_step_size'])))
         for name, tracking in (participants | {'actor': ego_poses}).items():
             if name == 'actor':
-                frame_list = range(*frame_range)
-                traj = ego_poses
+                timestamp_list = scene_timestamp_list
+                traj = Trajectory(ego_poses)
             else:
-                frame_list = sorted(tracking['transforms'].keys())
-                traj = {frame : tracking['transforms'][frame] for frame in frame_list}
-            
-            first_frame, last_frame = frame_list[0], frame_list[-1]
+                org_ts_list = sorted(int(ts) for ts in tracking['poses'].keys())
+                def round_to_scene_ts(value):
+                    return min(scene_timestamp_list, key=lambda ts: abs(ts - value))
+                rounded_start = round_to_scene_ts(org_ts_list[0])
+                rounded_end = round_to_scene_ts(org_ts_list[-1])
+
+                timestamp_list = [ts for ts in scene_timestamp_list if rounded_start <= ts <= rounded_end]
+                traj = Trajectory(tracking['poses'])
+            traj_mat = {int(k): traj.get_transform(k) for k in timestamp_list}
+
+            first_ts, last_ts = timestamp_list[0], timestamp_list[-1]
             parsed_data = {}
-            for frame in frame_list:
-                parsed_data[frame] = parse_object_state(traj, frame, first_frame, include_z_position=True)
+            for idx in range(len(timestamp_list)):
+                parsed_data[timestamp_list[idx]] = parse_object_state(
+                    traj_mat, 
+                    idx, 
+                    include_z_position=True
+                )
             
-            first_state, last_state = parsed_data[first_frame], parsed_data[last_frame]
+            first_state, last_state = parsed_data[first_ts], parsed_data[last_ts]
             init_state[name] = dict(
                 spawn_position=list(first_state["position"]),
                 spawn_heading=first_state["heading_theta"],
@@ -107,6 +118,10 @@ class ScenarioDataManager(BaseManager):
             )
             agent_state[name] = parsed_data
 
+        for cam_name, cam_param in camera_params.items():
+            cam_param['ego2camera'] = torch.tensor(cam_param['ego2camera'])
+            cam_param['K'] = torch.tensor(cam_param['K'])
+
         return {
             'scene_config': config,
             'camera_params':camera_params,
@@ -114,7 +129,7 @@ class ScenarioDataManager(BaseManager):
             'participants': participants,
             'init_state': init_state,
             "agent_state": agent_state,
-            'frame_range': frame_range
+            'timestamp_range': timestamp_range
         }
 
     def reset(self):
@@ -128,9 +143,9 @@ class ScenarioDataManager(BaseManager):
         config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
 
         current_metadata = self.get_current_scenario_data()
-        start_frame, end_frame = current_metadata['frame_range']
+        start_timestamp, end_timestamp = current_metadata['timestamp_range']
         ego_poses = current_metadata['ego_poses']
-        ground_height = ego_poses[start_frame][2, 3] - config_dict["controller"].DEFAULT_HEIGHT / 2
+        ground_height = ego_poses[start_timestamp][2][3] - config_dict["controller"].DEFAULT_HEIGHT / 2
         current_metadata['ground_height'] = ground_height
 
     def get_current_scenario_data(self):
@@ -144,8 +159,8 @@ class ScenarioDataManager(BaseManager):
 
     @property
     def current_scenario_length(self):
-        frame_range = self.get_current_scenario_data()['frame_range']
-        return frame_range[1] - frame_range[0]
+        timestamp_range = self.get_current_scenario_data()['timestamp_range']
+        return timestamp_range[1] - timestamp_range[0]
 
     def sort_scenarios(self):
         """

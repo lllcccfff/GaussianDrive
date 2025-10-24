@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 from typing import Union, Dict, AnyStr, Optional, Tuple, Callable
 from collections import OrderedDict
-
+import torch
 import gymnasium as gym
 import numpy as np
 from panda3d.core import PNMImage
@@ -88,9 +88,9 @@ class BaseEnv(gym.Env):
         """
         Engine setting after launching
         """
-        self._register_manager("step_manager", StepCounter())
         self._register_manager("data_manager", ScenarioDataManager(config, self.model.load_metadata))
         self._register_manager("map_manager", ScenarioMapManager(self.config['map_config'], self.model.load_model))
+        self._register_manager("step_manager", StepCounter(self.config['physics_world_step_size'],))
 
         # self._register_manager("record_manager", RecordManager())
         # self._register_manager("replay_manager", ReplayManager())
@@ -150,14 +150,12 @@ class BaseEnv(gym.Env):
 
         self._reset_global_seed(seed)
 
-        step_infos = {}
-
         # reset manager
         for manager in [self.map_manager] + list(self.agent_managers.values()):
             manager.clear_all_objects()
         self._object_clean_check()
         
-        all_agent = self.agent_managers.keys()
+        all_agent = list(self.agent_managers.keys())
         for n in all_agent:
             if n != 'actor':
                 self.agent_managers[n].destroy()
@@ -171,9 +169,11 @@ class BaseEnv(gym.Env):
         self._update_participants(scenario_data)
 
         self._update_scene()
-        for manager in self.agent_managers.values() :
+
+        step_infos = {}
+        for mgr_n, manager in self.agent_managers.items() :
             new_step_infos = manager.observe()
-            step_infos = concat_step_infos([step_infos, new_step_infos])
+            step_infos[mgr_n] = new_step_infos
 
         return self._get_reset_return(step_infos)
 
@@ -211,7 +211,7 @@ class BaseEnv(gym.Env):
             if name != 'actor':
                 tracking = scenario_data['participants'][name]
                 cfg = self.config['participant_config'].copy()
-                cfg['controler_config']['size'] = tracking['size'][1]
+                cfg['controller_config']['size'] = tracking['size']
                 if tracking['type'] == 'vehicle':
                     cfg['controller'] = get_vehicle_type(tracking['size'][1], False)
                 elif tracking['type'] == 'pedestrian':
@@ -229,7 +229,7 @@ class BaseEnv(gym.Env):
                 camera_params=camera_params,
                 init_state=init_state,
                 state=scenario_data['agent_state'][name],
-                frame_range=scenario_data['frame_range']
+                timestamp_range=scenario_data['timestamp_range']
             )
 
     def _get_reset_return(self, reset_info):
@@ -238,7 +238,7 @@ class BaseEnv(gym.Env):
         done_infos = {}
         cost_infos = {}
         reward_infos = {}
-        obses = reset_info['observation']
+        obses = reset_info['actor']['observation']
         _, reward_infos = self.reward_function()
         _, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
@@ -268,9 +268,9 @@ class BaseEnv(gym.Env):
         self._update_scene()
 
         after_step_infos = {}
-        for manager in self.agent_managers.values():
-            new_step_info = manager.observe()
-            after_step_infos = concat_step_infos([after_step_infos, new_step_info])
+        for mgr_n, manager in self.agent_managers.items() :
+            new_step_infos = manager.observe()
+            after_step_infos[mgr_n] = new_step_infos
 
         # Note that we use shallow update for info dict in this function! This will accelerate system.
         engine_info = merge_dicts(
@@ -284,12 +284,12 @@ class BaseEnv(gym.Env):
         for name, mgr in self.agent_managers.items():
             if name == 'actor': continue
             if mgr.is_spawned and not mgr.is_arrive:
-                new_object_poses[name] = mgr.get_pose()
-        self.model.update_scene(self.step_manager.current_frame, new_object_poses)
+                new_object_poses[name] = torch.from_numpy(mgr.get_pose())
+        self.model.update_scene(self.step_manager.current_timestamp, new_object_poses)
 
 
     def step_physics_world(self):
-        dt = self.config["physics_world_step_size"]
+        dt = self.config["physics_world_step_size"] * 1e-6
         self.physics_world.dynamic_world.doPhysics(dt, 1, dt)
 
     def _get_step_return(self, actions, engine_info):
@@ -306,7 +306,7 @@ class BaseEnv(gym.Env):
         done_function_result, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
         self.dones = done_function_result or self.dones
-        obses = engine_info['observation']
+        obses = engine_info['actor']['observation']
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
         truncateds = step_infos.get(TerminationState.MAX_STEP, False)

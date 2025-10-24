@@ -42,11 +42,7 @@ class BaseTrafficParticipant(BaseObject):
         pass
     
     def move(self, state_info):
-        if "transform" in state_info:
-            self.set_transform(state_info["transform"])
-        else:
-            self.set_position(state_info["position"])
-            self.set_heading_theta(state_info["heading"])
+        self.set_transform(state_info["transform"])
 
         self.set_velocity(state_info["velocity"])
         self.set_angular_velocity(state_info["angular_velocity"])
@@ -69,5 +65,4 @@ class BaseTrafficParticipant(BaseObject):
     
     def destroy(self):
         super(BaseTrafficParticipant, self).destroy()
-        self.detachDyWld(self.body)
         self.body = None

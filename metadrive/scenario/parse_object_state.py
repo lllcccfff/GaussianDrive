@@ -104,30 +104,32 @@ def parse_full_trajectory(object_dict):
     return trajectory
 
 
-def parse_object_state(matrix_list, frame_idx, start_idx, check_last_state=True, sim_time_interval=0.1, include_z_position=False):
+def parse_object_state(poses, idx, check_last_state=True, include_z_position=False):
     """
     Parse object state from 4x4 ego-to-world transformation matrices
     matrix_list: List of 4x4 numpy arrays representing ego2world transforms
     """
     import numpy as np
-    
-    time_idx = frame_idx - start_idx
 
-    epi_length = len(matrix_list)
-    if time_idx < 0:
-        time_idx = epi_length + time_idx
-    if time_idx >= epi_length:
-        time_idx = epi_length - 1
+    ts_list = sorted(poses.keys())
+
+    epi_length = len(poses)
+    if idx < 0:
+        idx = epi_length + idx
+    if idx >= epi_length:
+        idx = epi_length - 1
         
     if check_last_state:
-        for current_idx in range(time_idx):
-            pos_1 = matrix_list[current_idx + start_idx][:3, 3][:2]  # Extract translation
-            pos_2 = matrix_list[current_idx + start_idx + 1][:3, 3][:2]
+        for current_idx in ts_list[:-1]:
+            if current_idx >= idx:
+                break
+            pos_1 = poses[ts_list[current_idx]][:3, 3][:2]  # Extract translation
+            pos_2 = poses[ts_list[current_idx + 1]][:3, 3][:2]
             if norm(pos_1[0] - pos_2[0], pos_1[1] - pos_2[1]) > 100:
-                time_idx = current_idx
+                idx = current_idx
                 break
     
-    current_matrix = matrix_list[time_idx + start_idx]
+    current_matrix = poses[ts_list[idx]]
     
     # Extract position from translation column
     position = current_matrix[:3, 3]
@@ -140,20 +142,24 @@ def parse_object_state(matrix_list, frame_idx, start_idx, check_last_state=True,
     heading_theta = torch.arctan2(current_matrix[1, 0], current_matrix[0, 0]).item()
     
     # Calculate velocity from position difference
-    if time_idx > 0:
-        prev_pos = matrix_list[time_idx + start_idx - 1][:3, 3][:2]
-        curr_pos = current_matrix[:3, 3][:2]
-        velocity = (curr_pos - prev_pos) / sim_time_interval
+
+    # find 
+    if idx == 0:
+        prev_idx = idx
+        idx = idx + 1
     else:
-        velocity = np.array([0.0, 0.0])
-    
-    # Calculate angular velocity
-    if time_idx < len(matrix_list) - 1:
-        next_matrix = matrix_list[time_idx + start_idx + 1]
-        next_heading = torch.arctan2(next_matrix[1, 0], next_matrix[0, 0]).item()
-        angular_velocity = compute_angular_velocity(heading_theta, next_heading, sim_time_interval)
-    else:
-        angular_velocity = 0
+        prev_idx = idx - 1
+    sim_time_interval = (ts_list[idx] - ts_list[prev_idx]) * 1e-6
+    prev_matrix = poses[ts_list[prev_idx]]
+    curr_matrix = poses[ts_list[idx]]
+
+    prev_pos = prev_matrix[:3, 3][:2]
+    curr_pos = curr_matrix[:3, 3][:2]
+    velocity = (curr_pos - prev_pos) / sim_time_interval
+
+    prev_theta = torch.arctan2(prev_matrix[1, 0], prev_matrix[0, 0]).item()
+    curr_theta = torch.arctan2(curr_matrix[1, 0], curr_matrix[0, 0]).item()
+    angular_velocity = compute_angular_velocity(prev_theta, curr_theta, sim_time_interval)
     
     ret = {
         "position": position,

@@ -91,7 +91,7 @@ class GaussianObservation(BaseObservation):
         Get the image Observation. By setting new_parent_node and the reset parameters, it can capture a new image from
         a different position and pose
         """
-        ego_pose = torch.tensor(self.controller.transform, device='cuda').inverse()
+        ego_pose = torch.tensor(self.controller.transform).inverse()
         for cam_name, params in self.params.items():
             extrinsics = params['ego2camera'] @ ego_pose
             ret = self.render_fn(

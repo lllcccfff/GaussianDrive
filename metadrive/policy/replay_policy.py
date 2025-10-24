@@ -11,17 +11,16 @@ class ReplayPolicy(BasePolicy):
        Replay policy from Real data. For adding new policy, overwrite get_trajectory_info()
        This policy is designed for Waymo Policy by default
        """
-        
-    def reset(self, controller, seed, tracking, **kwargs):
-        super().reset(controller, seed, tracking, **kwargs)
+    def reset(self, controller, seed, state, init_state, **kwargs):
+        super().reset(controller, seed, state, init_state, **kwargs)
         self.controller.set_kinematic(True)
 
-        frame_list = sorted(self.trajectory.keys())
-        self.terminate_frame = frame_list[-1]
+        timestamp_list = sorted(self.trajectory.keys())
+        self.terminate_timestamp = timestamp_list[-1]
         
     def act(self, *args, **kwargs):
 
-        info = self.trajectory[self.step_manager.current_frame]
+        info = self.trajectory[self.step_manager.current_timestamp]
 
         if not bool(info["valid"]):
             return None  # Return None action so the base vehicle will not overwrite the steering & throttle
@@ -30,4 +29,4 @@ class ReplayPolicy(BasePolicy):
     
     @property
     def is_arrive(self):
-        return self.step_manager < self.terminate_frame
+        return self.step_manager.current_timestamp > self.terminate_timestamp

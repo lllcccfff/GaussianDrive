@@ -106,7 +106,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         name: str = None,
         random_seed=None,
         position=None,
-        heading=None,
+        heading_theta=None,
         _calling_reset=True,
         **kwargs
     ):
@@ -157,7 +157,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.break_down = False
         # if self.engine.current_map is not None:
         if _calling_reset:
-            self.reset(position=position, heading=heading, vehicle_config=config)
+            self.reset(position=position, heading_theta=heading_theta, vehicle_config=config)
 
     def _init_step_info(self):
         # done info will be initialized every frame
@@ -174,12 +174,16 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.physics_world.dynamic_world.attach(self.body)
         self.physics_world.dynamic_world.attach(self.vehicle)
 
+    def detachDyWld(self):
+        self.physics_world.dynamic_world.remove(self.vehicle)
+        self.physics_world.dynamic_world.remove(self.body)
+
     def reset(
         self,
         name=None,
         random_seed=None,
         position: np.ndarray = None,
-        heading: float = 0.0,
+        heading_theta: float = 0.0,
         velocity: np.ndarray = None,
         *args,
         **kwargs
@@ -199,7 +203,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             self.sample_parameters()
 
 
-        self.set_heading_theta(heading)
+        self.set_heading_theta(heading_theta)
         # self.set_wheel_friction(self.config["wheel_friction"])
 
         if len(position) == 2:
@@ -234,14 +238,11 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.last_heading_theta = self.heading_theta
 
         if state_info:
-            if "transform" in state_info:
-                self.set_transform(state_info["transform"])
-            else:
-                self.set_position(state_info["position"])
-                self.set_heading_theta(state_info["heading"])
+            self.set_transform(state_info["transform"])
 
             self.set_velocity(state_info["velocity"])
             self.set_angular_velocity(state_info["angular_velocity"])
+            step_info = None
         else:
             action, step_info = self._preprocess_action(action)
             self.last_current_action.append(action)  # the real step of physics world is implemented in taskMgr.step()
@@ -449,8 +450,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     def destroy(self):
         super(BaseVehicle, self).destroy()
-        self.detachDyWld(self.vehicle)
-        self.detachDyWld(self.body)
         self.origin = None
         self.vehicle = None
         self.wheels = None

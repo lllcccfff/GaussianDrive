@@ -202,7 +202,7 @@ class VaryingDynamicsVehicle(DefaultVehicle):
                 name=self.name,
                 random_seed=self.random_seed,
                 position=position,
-                heading=heading,
+                heading_theta=heading,
                 _calling_reset=False
             )
 
@@ -213,7 +213,7 @@ class VaryingDynamicsVehicle(DefaultVehicle):
         assert self.max_steering == self.config["max_steering"]
 
         ret = super(VaryingDynamicsVehicle, self).reset(
-            random_seed=random_seed, vehicle_config=vehicle_config, position=position, heading=heading, *args, **kwargs
+            random_seed=random_seed, vehicle_config=vehicle_config, position=position, heading_theta=heading, *args, **kwargs
         )
 
         # lm = process_memory()
@@ -240,7 +240,7 @@ class VaryingDynamicsBoundingBoxVehicle(VaryingDynamicsVehicle):
             name=name,
             random_seed=random_seed,
             position=position,
-            heading=heading,
+            heading_theta=heading,
             **kwargs
         )
 

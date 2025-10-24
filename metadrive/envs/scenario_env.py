@@ -51,18 +51,6 @@ SCENARIO_ENV_CONFIG = dict(
     show_sidewalk=False,
     even_sample_vehicle_class=None,  # Deprecated.
 
-    # ===== Agent config =====
-    vehicle_config=dict(
-        lane_line_detector=dict(num_lasers=0, distance=50),
-        side_detector=dict(num_lasers=12, distance=50),
-    ),
-    # If set_static=True, then the agent will not "fall from the sky". This will be helpful if you want to
-    # capture per-frame data for the agent (for example for collecting static sensor data).
-    # However, the physics simulation of the agent will be disable too. So in the visualization, the image will be
-    # very chunky as the agent will suddenly move to the next position for each step.
-    # Set to False for better visualization.
-    set_static=False,
-
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
     success_reward=5.0,
@@ -90,11 +78,6 @@ SCENARIO_ENV_CONFIG = dict(
     crash_object_done=False,
     crash_human_done=False,
     relax_out_of_road_done=True,
-
-    # ===== others =====
-    allowed_more_steps=None,  # horizon, None=infinite
-    top_down_show_real_size=False,
-    use_bounding_box=False,  # Set True to use a cube in visualization to represent every dynamic objects.
 )
 
 

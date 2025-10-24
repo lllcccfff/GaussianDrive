@@ -1,4 +1,5 @@
 import copy
+import math
 import numpy as np
 import torch
 from gymnasium.spaces import Space
@@ -7,6 +8,7 @@ from metadrive.utils.logger import get_logger
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.policy.replay_policy import ReplayPolicy
+from metadrive.obs.gaussian_obs import GaussianStateObservation
 from metadrive.base_class.base_object import BaseObject
 logger = get_logger()
 class AgentManager(BaseManager):
@@ -58,7 +60,7 @@ class AgentManager(BaseManager):
         self.observer.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
         self.policy.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
 
-        if self.policy.spawn_frame == self.step_manager.current_frame:
+        if math.isclose(self.policy.spawn_timestamp, self.step_manager.current_timestamp):
             self.controller.attachDyWld()
         
         assert isinstance(self.get_action_spaces(), Space)
@@ -75,19 +77,11 @@ class AgentManager(BaseManager):
             random_seed=self.generate_seed(),
             size=self.config['controller_config'].get('size', None),
             position=init_state['spawn_position'],
-            heading=init_state['spawn_heading']
+            heading_theta=init_state['spawn_heading']
         )
         self.init_pos = init_state['spawn_position']
         self.dest_pos = init_state['destination']
         return obj
-
-    # def _calc_ego2camera(self, vehicle_object, cameras, ego_poses, start_frame):
-    #     ego2cameras = {}
-    #     ego2world = ego_poses[start_frame].cuda()
-    #     for cam_name, camera in cameras.items():
-    #         w2c = camera.world_view_transform[start_frame].T
-    #         ego2cameras[cam_name] = w2c @ ego2world
-    #     return ego2cameras
 
     def step(self, action=None):
 
@@ -98,12 +92,11 @@ class AgentManager(BaseManager):
         """
         if not self.is_spawned:
             return
-        elif self.policy.spawn_frame == self.step_manager.current_frame:
+        elif math.isclose(self.policy.spawn_timestamp, self.step_manager.current_timestamp):
             self.controller.attachDyWld()
         elif self.is_arrive:
             if self.controller is not None:
-                self.clear_object(self.controller.id)
-                self.controller = None
+                self.controller.detachDyWld()
         else:
             if isinstance(self.policy, EnvInputPolicy):
                 action = self.policy.act(action)

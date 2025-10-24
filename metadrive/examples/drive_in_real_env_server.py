@@ -57,11 +57,14 @@ if __name__ == "__main__":
     for i in range(1, 100000):
         o, r, tm, tc, info = env.step(action)
         
+        if tm or tc:
+            env.reset()
+            action = [0, 0]
+            continue
+
         if viser.is_running():
             o_for_vis = o['image']['FRONT'][-1]
             action = viser.run(o_for_vis)
 
-        if tm or tc:
-            env.reset()
     env.close()
     viser.shutdown()
