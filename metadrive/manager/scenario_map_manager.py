@@ -1,6 +1,7 @@
 import copy
 
-from metadrive.component.ground import GroundPlane
+from metadrive.component.terrain.ground import GroundPlane
+from metadrive.component.terrain.mesh_terrain import MeshTerrain
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager
 from metadrive.utils.logger import get_logger, set_log_level
@@ -29,21 +30,28 @@ class ScenarioMapManager(BaseManager):
         self.loader = loader
         self.ground = None
 
-    def reset(self, config, scene_config, ground_height, physics_world, **kwargs):
+    def reset(self, config, scene_config, ground_height, physics_world, scene_mesh_path, **kwargs):
         self.config = config
         self.current_sdc_route = None
         self.sdc_dest_point = None
 
-        self.loader(scene_config)
+        vec_map = self.loader(scene_config)
 
-        self.spawn_object(
-            GroundPlane,
-            physics_world=physics_world, 
-            direction=[0,0,1.],
-            constant=ground_height,
-            random_seed=self.random_seed
-        )
-        # self.update_route()
+        if not scene_mesh_path:
+            self.spawn_object(
+                GroundPlane,
+                physics_world=physics_world, 
+                direction=[0,0,1.],
+                constant=ground_height,
+                random_seed=self.random_seed
+            )
+        else:   
+            self.spawn_object(
+                MeshTerrain,
+                model_path=scene_mesh_path,
+                physics_world=physics_world,
+                random_seed=self.random_seed
+            )
 
     def clear_object(self, object_id):
         obj = self.spawned_objects.pop(object_id)

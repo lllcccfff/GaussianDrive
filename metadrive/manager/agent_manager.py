@@ -9,6 +9,7 @@ from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.obs.gaussian_obs import GaussianStateObservation
+from metadrive.obs.navigation_obs import NavigationObservation
 from metadrive.base_class.base_object import BaseObject
 logger = get_logger()
 class AgentManager(BaseManager):
@@ -60,6 +61,9 @@ class AgentManager(BaseManager):
         self.observer.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
         self.policy.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
 
+        if isinstance(self.observer, NavigationObservation):
+            self.policy.destination = self.observer.destination
+
         if math.isclose(self.policy.spawn_timestamp, self.step_manager.current_timestamp):
             self.controller.attachDyWld()
         
@@ -79,8 +83,8 @@ class AgentManager(BaseManager):
             position=init_state['spawn_position'],
             heading_theta=init_state['spawn_heading']
         )
-        self.init_pos = init_state['spawn_position']
-        self.dest_pos = init_state['destination']
+        # self.init_pos = init_state['spawn_position']
+        # self.dest_pos = init_state['destination']
         return obj
 
     def step(self, action=None):
@@ -97,6 +101,7 @@ class AgentManager(BaseManager):
         elif self.is_arrive:
             if self.controller is not None:
                 self.controller.detachDyWld()
+            # TODO：crush/out of road.
         else:
             if isinstance(self.policy, EnvInputPolicy):
                 action = self.policy.act(action)

@@ -34,7 +34,8 @@ from metadrive.component.traffic_participants.pedestrian import Pedestrian
 from metadrive.component.vehicle.vehicle_type import get_vehicle_type
 from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
 from metadrive.manager.scenario_map_manager import ScenarioMapManager
-
+from metadrive.obs.navigation_obs import NavigationObservation
+from metadrive.policy.replay_policy import ReplayPolicy
 from easydrive.engine.config import Config
 from metadrive.default_config import BASE_DEFAULT_CONFIG
 
@@ -166,7 +167,7 @@ class BaseEnv(gym.Env):
         scenario_data = self.data_manager.get_current_scenario_data()
         self.step_manager.reset(**scenario_data)
         self.map_manager.reset(config=self.config['map_config'], physics_world=self.physics_world, **scenario_data)
-        self._update_participants(scenario_data)
+        self._reset_agents(scenario_data)
 
         self._update_scene()
 
@@ -205,7 +206,7 @@ class BaseEnv(gym.Env):
         assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
                                    "Uncleared bodies: {}".format(filtered)
 
-    def _update_participants(self, scenario_data):
+    def _reset_agents(self, scenario_data):
         camera_params = scenario_data['camera_params']
         for name, init_state in scenario_data['init_state'].items():
             if name != 'actor':
@@ -221,16 +222,27 @@ class BaseEnv(gym.Env):
                 
                 self.agent_managers[name] = AgentManager(cfg, self.step_manager)
             else:
+                cfg = self.config['actor_config']
                 tracking = scenario_data['ego_poses']
-            self.agent_managers[name].reset(
-                config=self.config['actor_config'] if name == 'actor' else cfg,
-                physics_world=self.physics_world,
-                render_fn=self.model.render,
-                camera_params=camera_params,
-                init_state=init_state,
-                state=scenario_data['agent_state'][name],
-                timestamp_range=scenario_data['timestamp_range']
-            )
+            
+            input_data = {
+                'config': cfg,
+                'physics_world': self.physics_world,
+                'render_fn': self.model.render,
+                'camera_params': camera_params,
+                'init_state': init_state,
+                'state': scenario_data['agent_state'][name],
+                'timestamp_range': scenario_data['timestamp_range'],
+            }
+            if cfg['controller'] in [Pedestrian, Cyclist]:
+                cfg['observer'] = DummyObservation
+                cfg['policy'] = ReplayPolicy
+            if cfg['observer'] == NavigationObservation:
+                input_data['trajdata_map'] = scenario_data.get('trajdata_map', None)
+            if cfg['observer'] == GaussianStateObservation:
+                input_data['collector'] = self._collect_all_object
+
+            self.agent_managers[name].reset(**input_data)
 
     def _get_reset_return(self, reset_info):
         # TODO: figure out how to get the information of the before step
@@ -287,6 +299,12 @@ class BaseEnv(gym.Env):
                 new_object_poses[name] = torch.from_numpy(mgr.get_pose())
         self.model.update_scene(self.step_manager.current_timestamp, new_object_poses)
 
+    def _collect_all_object(self):
+        agent_state = {}
+        for name, mgr in self.agent_managers.items():
+            if mgr.is_spawned and not mgr.is_arrive:
+                agent_state[name] = mgr.controller
+        return agent_state
 
     def step_physics_world(self):
         dt = self.config["physics_world_step_size"] * 1e-6

@@ -5,7 +5,7 @@ import torch
 from metadrive.manager.base_manager import BaseManager
 from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
 from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
-from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state, get_idm_route
+from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state
 from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
 from metadrive.utils.trajectory import Trajectory
 import json
@@ -51,7 +51,7 @@ class ScenarioDataManager(BaseManager):
             self.num_scenarios += 1
             cfg = Config.fromfile(filename=os.path.join(self.directory, config_file))
 
-            scene_name, timestamp_range, camera_params, ego_poses, participants = loader(cfg)
+            scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(cfg)
             # timestamp : list|tuple [2]
             # camera params : 
             #     "camera_name" :
@@ -77,8 +77,10 @@ class ScenarioDataManager(BaseManager):
                 timestamp_range=timestamp_range,
                 camera_params=camera_params,
                 ego_poses=ego_poses,
-                participants=participants
+                participants=participants,
             )
+            self.metadata[scene_name]['scene_mesh_path'] = scene_mesh_path
+
             self.idx2scene.append(scene_name)
 
     def restructure_metadata(self, config, timestamp_range, camera_params, ego_poses, participants):

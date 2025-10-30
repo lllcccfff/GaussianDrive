@@ -8,10 +8,6 @@ from panda3d.bullet import BulletVehicle, BulletBoxShape, ZUp
 from panda3d.core import Material, Vec3, TransformState
 
 from metadrive.base_class.base_object import BaseObject
-from metadrive.component.lane.abs_lane import AbstractLane
-from metadrive.component.lane.circular_lane import CircularLane
-from metadrive.component.lane.point_lane import PointLane
-from metadrive.component.lane.straight_lane import StraightLane
 # from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
 from metadrive.component.pg_space import VehicleParameterSpace, ParameterSpace
 from metadrive.constants import CamMask, get_color_palette
@@ -175,6 +171,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.physics_world.dynamic_world.attach(self.vehicle)
 
     def detachDyWld(self):
+        breakpoint()
         self.physics_world.dynamic_world.remove(self.vehicle)
         self.physics_world.dynamic_world.remove(self.body)
 
@@ -366,41 +363,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     """---------------------------------------- some math tool ----------------------------------------------"""
 
-    def heading_diff(self, target_lane):
-        lateral = None
-        if isinstance(target_lane, StraightLane):
-            lateral = np.asarray(get_vertical_vector(target_lane.end - target_lane.start)[1])
-        elif isinstance(target_lane, CircularLane):
-            if not target_lane.is_clockwise():
-                lateral = self.position - target_lane.center
-            else:
-                lateral = target_lane.center - self.position
-        elif isinstance(target_lane, PointLane):
-            lateral = target_lane.lateral_direction(target_lane.local_coordinates(self.position)[0])
-
-        lateral_norm = norm(lateral[0], lateral[1])
-        forward_direction = self.heading
-        # print(f"Old forward direction: {self.forward_direction}, new heading {self.heading}")
-        forward_direction_norm = norm(forward_direction[0], forward_direction[1])
-        if not lateral_norm * forward_direction_norm:
-            return 0
-        cos = (
-            (forward_direction[0] * lateral[0] + forward_direction[1] * lateral[1]) /
-            (lateral_norm * forward_direction_norm)
-        )
-        # return cos
-        # Normalize to 0, 1
-        return clip(cos, -1.0, 1.0) / 2 + 0.5
-
-    def lane_distance_to(self, vehicle, lane: AbstractLane = None) -> float:
-        assert self.navigation is not None, "a routing and localization module should be added " \
-                                            "to interact with other vehicles"
-        if not vehicle:
-            return np.nan
-        if not lane:
-            lane = self.lane
-        return lane.local_coordinates(vehicle.position)[0] - lane.local_coordinates(self.position)[0]
-
     """-------------------------------------- for vehicle making ------------------------------------------"""
 
     def _create_vehicle_chassis(self):
@@ -450,6 +412,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     def destroy(self):
         super(BaseVehicle, self).destroy()
+        self.detachDyWld()
         self.origin = None
         self.vehicle = None
         self.wheels = None

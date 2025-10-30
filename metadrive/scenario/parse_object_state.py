@@ -1,7 +1,6 @@
 import copy
 import warnings
 import torch
-from metadrive.component.lane.point_lane import PointLane
 from metadrive.utils.math import compute_angular_velocity
 from metadrive.utils.math import norm
 
@@ -19,10 +18,6 @@ def get_max_valid_indicis(track, current_index):
             break
     return current_index, end
 
-
-def get_idm_route(traj_points, width=2):
-    traj = PointLane(traj_points, width)
-    return traj
 
 
 # def parse_object_state(object_dict, time_idx, check_last_state=False, sim_time_interval=0.1, include_z_position=False):
