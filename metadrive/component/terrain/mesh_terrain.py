@@ -1,4 +1,4 @@
-from panda3d.core import Loader
+from panda3d.core import Loader, NodePath
 from panda3d.bullet import (
     BulletTriangleMesh,
     BulletTriangleMeshShape,
@@ -38,10 +38,11 @@ class MeshTerrain(BaseObject):
         # load model
         if not (model_path.endswith('.bam') or model_path.endswith('.egg') or model_path.endswith('.obj')):
             raise ValueError("Only .bam, .egg, .obj models are supported for MeshTerrain.")
-        loader = Loader.get_global_ptr()
-        model = loader.load_sync(model_path)
+        loader = Loader.getGlobalPtr()
+        model = NodePath(loader.loadSync(model_path))
         model.setPos(position[0], position[1], position[2])
         model.setScale(scale)
+
 
         # build bullet shape
         bullet_mesh = BulletTriangleMesh()
@@ -53,7 +54,7 @@ class MeshTerrain(BaseObject):
                 bullet_mesh.addGeom(geom, transform)
 
         shape = BulletTriangleMeshShape(bullet_mesh, dynamic=False)
-
+        shape.setMargin(0.05)
         # attach
         self.body = BaseRigidBodyNode(self.name, MetaDriveType.GROUND, self.MASS)
         self.body.addShape(shape)
@@ -67,5 +68,5 @@ class MeshTerrain(BaseObject):
         pass
     
     def destroy(self):
-        super(GroundPlane, self).destroy()
         self.detachDyWld(self.body)
+        super().destroy()

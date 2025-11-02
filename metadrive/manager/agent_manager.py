@@ -5,13 +5,28 @@ import torch
 from gymnasium.spaces import Space
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.utils.logger import get_logger
+from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.manager.base_manager import BaseManager
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.policy.replay_policy import ReplayPolicy
-from metadrive.obs.gaussian_obs import GaussianStateObservation
+from metadrive.obs.gaussian_obs import GaussianObservation
 from metadrive.obs.navigation_obs import NavigationObservation
 from metadrive.base_class.base_object import BaseObject
 logger = get_logger()
+
+
+class AgentState:
+    IDLE = "idle"
+    NOT_SPAWN = "not_spawn"
+    ALIVE = "alive"
+    SUCCESS = "arrive_dest"
+    OUT_OF_ROAD = "out_of_road"
+    OUT_OF_STEP = "out_of_step"
+    CRASH_VEHICLE = "crash_vehicle"
+    CRASH_HUMAN = "crash_human"
+    CRASH_OBJECT = "crash_object"
+    CRASH_WORLD = "crash_world"
+
 class AgentManager(BaseManager):
     """
     This class maintains a single vehicle agent in the environment.
@@ -32,6 +47,8 @@ class AgentManager(BaseManager):
         """
         super().__init__()
         self.INITIALIZED = False
+        self.max_step = config.get('max_step', 10_000)
+
 
         # for getting {agent_id: BaseObject}, use agent_manager.active_agents
         self.config = config
@@ -57,6 +74,7 @@ class AgentManager(BaseManager):
             self.lazy_init()
         
         self.controller = self._create_agent(**kwargs)
+        self.state = AgentState.NOT_SPAWN
 
         self.observer.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
         self.policy.reset(controller=self.controller, seed=self.generate_seed(), **kwargs)
@@ -94,15 +112,7 @@ class AgentManager(BaseManager):
         But other policies like ReplayPolicy should be called in after_step, as they already know the final state and
         exempt the requirement for rolling out the dynamic system to get it.
         """
-        if not self.is_spawned:
-            return
-        elif math.isclose(self.policy.spawn_timestamp, self.step_manager.current_timestamp):
-            self.controller.attachDyWld()
-        elif self.is_arrive:
-            if self.controller is not None:
-                self.controller.detachDyWld()
-            # TODO：crush/out of road.
-        else:
+        if self.state == AgentState.ALIVE:
             if isinstance(self.policy, EnvInputPolicy):
                 action = self.policy.act(action)
             else:
@@ -115,21 +125,58 @@ class AgentManager(BaseManager):
 
         return
 
+    def update_state(self):
+        """
+        Derive and cache the agent's discrete state using policy signals.
+        """
+        # Not spawned yet
+        if self.state == AgentState.NOT_SPAWN and self.policy.is_spawned:
+            self.controller.attachDyWld()
+            self.state = AgentState.ALIVE
+            return
+
+        if self.state == AgentState.ALIVE:
+            # crash checks from controller
+            if isinstance(self.controller, BaseVehicle):
+                self.controller.crash_check()
+                
+                if self.controller.crash_human:
+                    self.clear_all_objects()
+                    self.state = AgentState.CRASH_HUMAN
+                    return
+                if self.controller.crash_vehicle:
+                    self.clear_all_objects()
+                    self.state = AgentState.CRASH_VEHICLE
+                    return
+                if self.controller.crash_object:
+                    self.clear_all_objects()
+                    self.state = AgentState.CRASH_OBJECT
+                    return
+                if self.controller.crash_world:
+                    self.clear_all_objects()
+                    self.state = AgentState.CRASH_WORLD
+                    return
+
+            if self.step_manager.eposide_step >= self.max_step:
+                self.clear_all_objects()
+                self.state = AgentState.OUT_OF_STEP
+                return
+
+            if not self.policy.is_in_trajectory:
+                self.clear_all_objects()
+                self.state = AgentState.OUT_OF_ROAD
+                return
+
+            if self.policy.is_arrive:
+                self.clear_all_objects()
+                self.state = AgentState.SUCCESS
+                return
+
     def observe(self):
-        if self.is_arrive or not self.is_spawned:
-            return {}
-        
-        self.last_observation = self.observer.observe()
+        if self.state == AgentState.ALIVE:
+            self.last_observation = self.observer.observe()
         return {'observation': self.last_observation}
 
-    @property
-    def is_arrive(self):
-        return self.policy.is_arrive
-    
-    @property
-    def is_spawned(self):
-        return self.policy.is_spawned
-    
     def get_pose(self):
         return self.controller.transform
     

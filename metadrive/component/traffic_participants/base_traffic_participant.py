@@ -47,9 +47,10 @@ class BaseTrafficParticipant(BaseObject):
         self.set_velocity(state_info["velocity"])
         self.set_angular_velocity(state_info["angular_velocity"])
 
-    def set_body(self):        
+    def set_body(self):
+        collision_geom = BulletBoxShape((self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2))
         self.body = BaseRigidBodyNode(self.name, self.TYPE_NAME, self.MASS)
-        self.body.addShape(BulletBoxShape((self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2)))
+        self.body.addShape(collision_geom)
         
         self.body.setFriction(0.)
         self.body.setAnisotropicFriction(LVector3(0., 0., 0.))

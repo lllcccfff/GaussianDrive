@@ -12,10 +12,14 @@ class BaseObservation(ABC):
     """
     BaseObservation Class. Observation should implement all abstracted methods
     """
+    INITIALIZED = False
+
     def __init__(self, config):
         # assert not engine_initialized(), "Observations can not be created after initializing the simulation"
-        self.config = deepcopy(config)
-        self.current_observation = None
+        if not self.INITIALIZED:
+            self.INITIALIZED = True
+            self.config = deepcopy(config)
+            self.current_observation = None
 
     @property
     def observation_space(self):

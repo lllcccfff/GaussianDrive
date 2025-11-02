@@ -15,7 +15,9 @@ class NavigationObservation(BaseObservation, Randomizable):
         Randomizable.__init__(self, None)
         self.navigating_type = config.get("navigating_type", "expert_following")  # lane_following, destination_following, expert_following
         self.early_signal_distance = float(config.get("early_signal_distance", 10.0))  # meters
-        self.turn_threshold_deg = float(config.get("turn_threshold_deg", 25.0))  # degrees
+        # New radius-based threshold using triangle inradius (meters). Smaller -> sharper turn.
+        # You may tune this based on map scale; ~20m is a moderate default.
+        self.turn_inradius_threshold = float(config.get("turn_radius_threshold", 40.0))
 
         self.controller = None
         self.trajdata_map = None
@@ -25,7 +27,7 @@ class NavigationObservation(BaseObservation, Randomizable):
         self._path_xy = None
         self._path_cumlen = None
 
-    def reset(self, trajdata_map: VectorMap, init_state, state, controller, timestamp_range=None, seed=None, **kwargs):
+    def reset(self, trajdata_map: VectorMap, init_state, state, controller, seed=None, **kwargs):
         if self.navigating_type in ["lane_following", "destination_following"]:
             assert isinstance(trajdata_map, VectorMap), "trajdata_map must be provided for lane_following or destination_following navigation type."
 
@@ -50,39 +52,60 @@ class NavigationObservation(BaseObservation, Randomizable):
 
     def observe(self):
         return {
-            'map': self.map, 
+            'map': self.trajdata_map, 
             'turn_signal': self._get_turn_signal(), 
             'waypoint': self._path_xy,
             'cummulative_length': self._path_cumlen
         }
     
     def _get_turn_signal(self):
-        if len(self._path_xy) < 3:
+        if self._path_xy is None or len(self._path_xy) < 3:
             return 0
 
         ego_xy = self._vehicle_xy(self.controller)
         heading_vec = self._ego_heading_vec(self.controller)
-        i0 = self.nearest_front_index(self._path_xy, ego_xy, heading_vec)
+        i0 = nearest_front_index(self._path_xy, ego_xy, heading_vec)
         if i0 >= len(self._path_xy):
             return 0
-        
+
         j = self._first_index_by_arclen(self._path_cumlen, i0, self.early_signal_distance)
-        if j ==  len(self._path_cumlen) or j == 0:
+        if j == len(self._path_cumlen) or j == 0:
             return 0
 
-        thr = math.radians(self.turn_threshold_deg)
-        for k in range(j - 1, i0 + 1, -1):
-            p0 = self._path_xy[k - 1]
-            p1 = self._path_xy[k]
-            p2 = self._path_xy[k + 1]
-            v1 = p1 - p0
-            v2 = p2 - p1
-            if np.linalg.norm(v1) < 1e-6 or np.linalg.norm(v2) < 1e-6:
-                continue
-            ang = self._signed_angle(v1, v2)
-            if abs(ang) >= thr:
-                return -1 if ang > 0 else 1
-        return 0
+        # Vectorized scan within [i0+1, j-1] using numpy
+        N = len(self._path_xy)
+        k_start = max(i0 + 1, 1)
+        k_end = min(j - 1, N - 2)
+        if k_start > k_end:
+            return 0
+
+        idx = np.arange(k_start, k_end + 1, dtype=np.int32)
+        p = self._path_xy
+        p0 = p[idx - 1]
+        p1 = p[idx]
+        p2 = p[idx + 1]
+
+        v01 = p1 - p0
+        v12 = p2 - p1
+        v02 = p2 - p0
+
+        len01 = np.linalg.norm(v01, axis=1)
+        len12 = np.linalg.norm(v12, axis=1)
+        len02 = np.linalg.norm(v02, axis=1)
+        cross = v01[:, 0] * v12[:, 1] - v01[:, 1] * v12[:, 0]
+        area2 = np.abs(cross)
+
+        eps = 1e-10
+        valid = (len01 >= eps) & (len12 >= eps) & (len02 >= eps)
+        R = np.full_like(len01, np.inf, dtype=np.float32)
+        R[valid] = (len01[valid] * len12[valid] * len02[valid]) / (2 * area2[valid] + eps)
+        meets = valid & (R <= float(self.turn_inradius_threshold))
+        if not np.any(meets):
+            return 0
+        else:
+            last_idx = np.flatnonzero(meets)[-1]
+            s = cross[last_idx]
+            return -1 if s > 0.0 else 1
 
     @property
     def observation_space(self):
@@ -103,7 +126,21 @@ class NavigationObservation(BaseObservation, Randomizable):
             pos = self.state[ts]["position"]
             x, y = float(pos[0]), float(pos[1])
             points.append([x, y])
-        self._set_path(points)
+
+        # Smooth the expert path for stability
+        p = np.asarray(points, dtype=np.float64)
+        n = len(p)
+        if n >= 5:
+            # choose an odd window <= n, default up to 9
+            wl = min(9, n if (n % 2 == 1) else n - 1)
+            if wl < 5 and n >= 5:
+                wl = 5
+            from scipy.signal import savgol_filter
+            px = savgol_filter(p[:, 0], window_length=int(wl), polyorder=3, mode='interp')
+            py = savgol_filter(p[:, 1], window_length=int(wl), polyorder=3, mode='interp')
+            p = np.column_stack([px, py])
+
+        self._set_path(p)
 
     def _build_lane_follow_path(self):
         spawn_xy = self._xy2(self.init_state["spawn_position"])

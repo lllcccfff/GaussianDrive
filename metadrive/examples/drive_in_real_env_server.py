@@ -34,9 +34,6 @@ if __name__ == "__main__":
     print(HELP_MESSAGE)
 
     cfg = {
-        "manual_control": True,
-        "sequential_seed": True,
-        "reactive_traffic": True if args.reactive_traffic else False,
         "scene_config_directory": args.scene_config_directory,
     }
     if args.add_sensor:
@@ -63,7 +60,9 @@ if __name__ == "__main__":
             continue
 
         if viser.is_running():
-            o_for_vis = o['image']['FRONT'][-1]
+            o_for_vis = o['gaussian']['FRONT'][-1]
+            turn_signal = o['navigation']['turn_signal']
+            print('[Turn Signal] ', turn_signal)
             action = viser.run(o_for_vis)
 
     env.close()

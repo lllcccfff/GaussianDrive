@@ -13,12 +13,12 @@ from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
 from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
 from metadrive.constants import TerminationState, TerrainProperty
 from metadrive.utils.logger import get_logger, set_log_level
-from metadrive.manager.agent_manager import AgentManager
+from metadrive.manager.agent_manager import AgentManager, AgentState
 # from metadrive.manager.record_manager import RecordManager
 # from metadrive.manager.replay_manager import ReplayManager
 # from metadrive.obs.image_obs import ImageStateObservation
 from metadrive.obs.observation_base import BaseObservation
-from metadrive.obs.gaussian_obs import GaussianStateObservation
+from metadrive.obs.gaussian_obs import GaussianObservation
 from metadrive.obs.observation_base import DummyObservation
 # from metadrive.obs.state_obs import LidarStateObservation
 from metadrive.scenario.utils import convert_recorded_scenario_exported
@@ -35,6 +35,7 @@ from metadrive.component.vehicle.vehicle_type import get_vehicle_type
 from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
 from metadrive.manager.scenario_map_manager import ScenarioMapManager
 from metadrive.obs.navigation_obs import NavigationObservation
+from metadrive.obs.assembly_obs import AssemblyObservation
 from metadrive.policy.replay_policy import ReplayPolicy
 from easydrive.engine.config import Config
 from metadrive.default_config import BASE_DEFAULT_CONFIG
@@ -166,8 +167,8 @@ class BaseEnv(gym.Env):
 
         scenario_data = self.data_manager.get_current_scenario_data()
         self.step_manager.reset(**scenario_data)
-        self.map_manager.reset(config=self.config['map_config'], physics_world=self.physics_world, **scenario_data)
-        self._reset_agents(scenario_data)
+        scene_map = self.map_manager.reset(config=self.config['map_config'], physics_world=self.physics_world, **scenario_data)
+        self._reset_agents(scenario_data, scene_map)
 
         self._update_scene()
 
@@ -206,7 +207,7 @@ class BaseEnv(gym.Env):
         assert len(filtered) == 0, "Physics Bodies should be cleaned before manager.reset() is called. " \
                                    "Uncleared bodies: {}".format(filtered)
 
-    def _reset_agents(self, scenario_data):
+    def _reset_agents(self, scenario_data, scene_map):
         camera_params = scenario_data['camera_params']
         for name, init_state in scenario_data['init_state'].items():
             if name != 'actor':
@@ -233,14 +234,12 @@ class BaseEnv(gym.Env):
                 'init_state': init_state,
                 'state': scenario_data['agent_state'][name],
                 'timestamp_range': scenario_data['timestamp_range'],
+                'trajdata_map': scene_map,
+                'collector': self._collect_all_object
             }
             if cfg['controller'] in [Pedestrian, Cyclist]:
                 cfg['observer'] = DummyObservation
                 cfg['policy'] = ReplayPolicy
-            if cfg['observer'] == NavigationObservation:
-                input_data['trajdata_map'] = scenario_data.get('trajdata_map', None)
-            if cfg['observer'] == GaussianStateObservation:
-                input_data['collector'] = self._collect_all_object
 
             self.agent_managers[name].reset(**input_data)
 
@@ -261,11 +260,6 @@ class BaseEnv(gym.Env):
 
     # ===== Run-time =====
     def step(self, actions: Union[Union[np.ndarray, list], Dict[AnyStr, Union[list, np.ndarray]], int]):
-        self.step_manager.step()
-        
-        # prepare for stepping the simulation
-        before_step_infos = {}
-
         for i in range(self.config["decision_repeat"]):
             # simulate or replay
             for manager in self.agent_managers.values():
@@ -275,6 +269,7 @@ class BaseEnv(gym.Env):
             # the recording should happen after step physics world
             # if "record_manager" in self.managers and i < self.config["decision_repeat"] - 1:
             #     self.record_manager.step()
+        self.step_manager.step()
 
         # to get new pose and update gaussian model
         self._update_scene()
@@ -285,24 +280,26 @@ class BaseEnv(gym.Env):
             after_step_infos[mgr_n] = new_step_infos
 
         # Note that we use shallow update for info dict in this function! This will accelerate system.
-        engine_info = merge_dicts(
-            after_step_infos, before_step_infos, allow_new_keys=True, without_copy=True
-        )
-
+        # engine_info = merge_dicts(
+        #     after_step_infos, allow_new_keys=True, without_copy=True
+        # )
+        engine_info = after_step_infos
         return self._get_step_return(actions, engine_info=engine_info)  # collect observation, reward, termination
 
     def _update_scene(self):
         new_object_poses = {}
         for name, mgr in self.agent_managers.items():
-            if name == 'actor': continue
-            if mgr.is_spawned and not mgr.is_arrive:
+            mgr.update_state()
+            if name == 'actor':
+                continue
+            if mgr.state == AgentState.ALIVE:
                 new_object_poses[name] = torch.from_numpy(mgr.get_pose())
         self.model.update_scene(self.step_manager.current_timestamp, new_object_poses)
 
     def _collect_all_object(self):
         agent_state = {}
         for name, mgr in self.agent_managers.items():
-            if mgr.is_spawned and not mgr.is_arrive:
+            if mgr.state == AgentState.ALIVE:
                 agent_state[name] = mgr.controller
         return agent_state
 
@@ -323,19 +320,19 @@ class BaseEnv(gym.Env):
         self.episode_rewards += rewards
         done_function_result, done_infos = self.done_function()
         _, cost_infos = self.cost_function()
-        self.dones = done_function_result or self.dones
+        self.dones = done_function_result
         obses = engine_info['actor']['observation']
 
         step_infos = concat_step_infos([engine_info, done_infos, reward_infos, cost_infos])
-        truncateds = step_infos.get(TerminationState.MAX_STEP, False)
+        truncateds = done_infos['reason'] == AgentState.OUT_OF_STEP
         terminateds = self.dones
 
         # For extreme scenario only. Force to terminate all agents if the environmental step exceeds 5 times horizon.
-        if self.config["horizon"] and self.episode_step > 5 * self.config["horizon"]:
-            for k in truncateds:
-                truncateds[k] = True
-                if self.config["truncate_as_terminate"]:
-                    self.dones[k] = terminateds[k] = True
+        # if self.config["horizon"] and self.episode_step > 5 * self.config["horizon"]:
+        #     for k in truncateds:
+        #         truncateds[k] = True
+        #         if self.config["truncate_as_terminate"]:
+        #             self.dones[k] = terminateds[k] = True
 
         step_infos["episode_reward"] = self.episode_rewards
         step_infos["episode_length"] = self.episode_lengths

@@ -26,9 +26,7 @@ class TerminationState:
     CRASH_VEHICLE = "crash_vehicle"
     CRASH_HUMAN = "crash_human"
     CRASH_OBJECT = "crash_object"
-    CRASH_BUILDING = "crash_building"
-    CRASH_SIDEWALK = "crash_sidewalk"
-    CURRENT_BLOCK = "current_block"
+    CRASH_ROAD = "crash_road"
     ENV_SEED = "env_seed"
     IDLE = "idle"
 

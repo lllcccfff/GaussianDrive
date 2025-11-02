@@ -50,10 +50,10 @@ class BasePolicy(Randomizable, Configurable):
     @property
     def is_in_trajectory(self):
         ego_position = self.controller.position
-        ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32)
+        ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32).cuda()
 
         states = self.trajectory.values()
-        expert_positions = torch.stack([torch.tensor(state['position'][:2]).float() for state in states])
+        expert_positions = torch.stack([torch.tensor(state['position'][:2]).float() for state in states]).cuda()
 
         distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
         min_distance = torch.min(distances).item()

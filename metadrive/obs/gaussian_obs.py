@@ -3,42 +3,7 @@ import numpy as np
 
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.obs.observation_base import BaseObservation
-
 import torch
-
-
-class GaussianStateObservation(BaseObservation):
-    """
-    Use ego state info, navigation info and front cam image/top down image as input
-    The shape needs special handling
-    """
-    IMAGE = "image"
-    STATE = "state"
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.img_obs = GaussianObservation(config)
-
-    def reset(self, **kwargs):
-        self.img_obs.reset(**kwargs)
-
-    @property
-    def observation_space(self):
-        return gym.spaces.Dict(
-            {
-                self.IMAGE: self.img_obs.observation_space,
-                self.STATE: None
-            }
-        )
-
-    def observe(self):
-        return {self.IMAGE: self.img_obs.observe(), self.STATE: None}
-
-    def destroy(self):
-        super().destroy()
-        self.img_obs.destroy()
-        # self.state_obs.destroy()
-
 
 class GaussianObservation(BaseObservation):
     """

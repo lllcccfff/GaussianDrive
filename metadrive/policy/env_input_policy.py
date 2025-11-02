@@ -29,7 +29,6 @@ class EnvInputPolicy(BasePolicy):
             assert self.get_input_space().contains(action), "Input {} is not compatible with action space {}!".format(action, self.get_input_space())
         if self.discrete_action:
             action=self._convert_to_continuous_action(action)
-        self.action_info["manual_control"] = True
         self.action_info["action"] = action
         return action
 

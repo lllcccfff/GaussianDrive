@@ -5,7 +5,10 @@ from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.component.vehicle.vehicle_type import DefaultVehicle
-from metadrive.obs.gaussian_obs import GaussianStateObservation
+from metadrive.obs.gaussian_obs import GaussianObservation
+from metadrive.obs.navigation_obs import NavigationObservation
+from metadrive.obs.state_obs import StateObservation
+from metadrive.obs.assembly_obs import AssemblyObservation
 from metadrive.obs.observation_base import DefaultObservation
 BASE_DEFAULT_CONFIG = dict(
 
@@ -26,15 +29,23 @@ BASE_DEFAULT_CONFIG = dict(
     # ===== actor =====
     actor_config=dict(
         # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
-        observer=GaussianStateObservation,
+        observer=AssemblyObservation,
         observer_config=dict(
-            clip_rgb=False,
-            stack_size=3,
+            gaussian = dict(
+                observer_class=GaussianObservation,
+                clip_rgb=False,
+                stack_size=3,
+            ),
+            navigation = dict(
+                observer_class=NavigationObservation,
+                navigating_type="expert_following",
+            ),
+            states = dict(
+                observer_class=StateObservation,
+            )
         ),
         policy=EnvInputPolicy,
         policy_config=dict(
-            # If set to True, agent_policy will be overriden and change to ManualControlPolicy
-            manual_control=False,
             # What interfaces to use for manual control, options: "steering_wheel" or "keyboard" or "xbos"
             controller="keyboard",
             discrete_action=False,

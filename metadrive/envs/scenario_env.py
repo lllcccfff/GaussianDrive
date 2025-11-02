@@ -5,7 +5,7 @@ This environment can load all scenarios exported from other environments via env
 import numpy as np
 
 import torch
-from metadrive.constants import TerminationState
+from metadrive.manager.agent_manager import AgentState
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.base_env import BaseEnv
 from metadrive.manager.scenario_curriculum_manager import ScenarioCurriculumManager
@@ -109,49 +109,40 @@ class ScenarioEnv(BaseEnv):
         return AgentManager(self.config['actor_config'], self.step_manager)
 
     def done_function(self):
-        vehicle = self.actor_controller
-        done = False
+        state_info = self.agent_managers['actor'].state
         is_max_step = self.config["max_step"] is not None and self.episode_lengths >= self.config["max_step"]
-        done_info = {
-            TerminationState.CRASH_VEHICLE: vehicle.crash_vehicle,
-            TerminationState.CRASH_OBJECT: vehicle.crash_object,
-            TerminationState.CRASH_BUILDING: vehicle.crash_building,
-            TerminationState.CRASH_HUMAN: vehicle.crash_human,
-            TerminationState.CRASH_SIDEWALK: vehicle.crash_sidewalk,
-            TerminationState.OUT_OF_ROAD: self._is_out_of_road(),
-            TerminationState.SUCCESS: self._is_arrive_destination(),
-            TerminationState.MAX_STEP: is_max_step,
-            TerminationState.ENV_SEED: self.current_seed,
-            # TerminationState.CURRENT_BLOCK: self.agent.navigation.current_road.block_ID(),
-            # crash_vehicle=False, crash_object=False, crash_building=False, out_of_road=False, arrive_dest=False,
-        }
+
 
         def msg(reason):
             return "Episode ended! Scenario Index: {} Scenario id: {} Reason: {}.".format(
                 self.current_seed, self.data_manager.current_scenario_id, reason
             )
-
-        if done_info[TerminationState.SUCCESS]:
+        
+        done = False
+        if state_info == AgentState.SUCCESS:
             done = True
             self.logger.debug(msg("arrive_dest"), extra={"log_once": True})
-        elif done_info[TerminationState.OUT_OF_ROAD]:
+        elif state_info == AgentState.OUT_OF_ROAD:
             done = True
             self.logger.debug(msg("out_of_road"), extra={"log_once": True})
-        elif done_info[TerminationState.CRASH_HUMAN] and self.config["crash_human_done"]:
+        elif state_info == AgentState.OUT_OF_STEP:
+            done = True
+            self.logger.debug(msg("out_of_step of object"), extra={"log_once": True})
+        elif state_info == AgentState.CRASH_HUMAN:
             done = True
             self.logger.debug(msg("crash human"), extra={"log_once": True})
-        elif done_info[TerminationState.CRASH_VEHICLE] and self.config["crash_vehicle_done"]:
+        elif state_info == AgentState.CRASH_VEHICLE:
             done = True
             self.logger.debug(msg("crash vehicle"), extra={"log_once": True})
-        elif done_info[TerminationState.CRASH_OBJECT] and self.config["crash_object_done"]:
+        elif state_info == AgentState.CRASH_OBJECT:
             done = True
             self.logger.debug(msg("crash object"), extra={"log_once": True})
-        elif done_info[TerminationState.CRASH_BUILDING] and self.config["crash_object_done"]:
+        elif state_info == AgentState.CRASH_WORLD:
             done = True
-            self.logger.debug(msg("crash building"), extra={"log_once": True})
-        elif done_info[TerminationState.MAX_STEP]:
-            if self.config["truncate_as_terminate"]:
-                done = True
+            self.logger.debug(msg("crash background"), extra={"log_once": True})
+        elif is_max_step:
+            state_info = AgentState.OUT_OF_STEP
+            done = True
             self.logger.debug(msg("max step"), extra={"log_once": True})
 
         # # log data to curriculum manager
@@ -159,22 +150,29 @@ class ScenarioEnv(BaseEnv):
         #     done_info[TerminationState.SUCCESS], vehicle.navigation.route_completion
         # )
 
-        return done, done_info
+        return done, {'reason': state_info}
 
     def cost_function(self):
-        vehicle = self.actor_controller
+        actor_mgr = self.agent_managers['actor']
+        state = actor_mgr.state
+
         step_info = dict(num_crash_object=0, num_crash_human=0, num_crash_vehicle=0, num_on_line=0)
-        step_info["cost"] = 0
-        if self._is_out_of_road():
-            step_info["cost"] += self.config["out_of_road_cost"]
-        if vehicle.crash_vehicle:
-            step_info["cost"] += self.config["crash_vehicle_cost"]
+        cost = 0
+
+        if state == AgentState.OUT_OF_ROAD:
+            cost += self.config["out_of_road_cost"]
+        if state == AgentState.CRASH_VEHICLE:
+            cost += self.config["crash_vehicle_cost"]
             step_info["crash_vehicle_cost"] = self.config["crash_vehicle_cost"]
             step_info["num_crash_vehicle"] = 1
-        if vehicle.crash_human:
-            step_info["cost"] += self.config["crash_human_cost"]
+        if state == AgentState.CRASH_HUMAN:
+            cost += self.config["crash_human_cost"]
             step_info["num_crash_human"] = 1
-        return step_info['cost'], step_info
+        if state == AgentState.CRASH_OBJECT:
+            step_info["num_crash_object"] = 1
+
+        step_info["cost"] = cost
+        return cost, step_info
 
     def reward_function(self):
         """
@@ -182,32 +180,25 @@ class ScenarioEnv(BaseEnv):
         :param vehicle_id: id of BaseVehicle
         :return: reward
         """
-        vehicle = self.actor_controller
+        state = self.agent_managers['actor'].state
         step_info = dict()
 
         # crash penalty
         reward = 0
-        if vehicle.crash_vehicle:
+        if state == AgentState.CRASH_VEHICLE:
             reward = -self.config["crash_vehicle_penalty"]
-        if vehicle.crash_human:
+        if state == AgentState.CRASH_HUMAN:
             reward = -self.config["crash_human_penalty"]
 
         step_info["step_reward"] = reward
 
         # termination reward
-        if self._is_arrive_destination():
+        if state == AgentState.SUCCESS:
             reward = self.config["success_reward"]
-        elif self._is_out_of_road():
+        elif state == AgentState.OUT_OF_ROAD:
             reward = -self.config["out_of_road_penalty"]
 
         return reward, step_info
-
-    def _is_arrive_destination(self):
-        return self.agent_managers['actor'].is_arrive
-
-    def _is_out_of_road(self):
-        return not self.agent_managers['actor'].policy.is_in_trajectory
-
 
 class ScenarioOnlineEnv(ScenarioEnv):
     """
@@ -269,61 +260,3 @@ class ScenarioWaypointEnv(ScenarioEnv):
         assert config["set_static"], "Waypoint policy requires set_static=True"
         return ret
 
-
-if __name__ == "__main__":
-    env = ScenarioEnv(
-        {
-            "use_render": True,
-            "agent_policy": ReplayEgoCarPolicy,
-            "manual_control": False,
-            "show_interface": True,
-            "show_logo": False,
-            "show_fps": False,
-            # "debug": True,
-            # "debug_static_world": True,
-            # "no_traffic": True,
-            # "no_light": True,
-            # "debug":True,
-            # "no_traffic":True,
-            # "start_scenario_index": 192,
-            # "start_scenario_index": 1000,
-            "num_scenarios": 3,
-            "set_static": True,
-            # "force_reuse_object_name": True,
-            # "data_directory": "/home/shady/Downloads/test_processed",
-            "horizon": 1000,
-            "no_static_vehicles": True,
-            # "show_policy_mark": True,
-            # "show_coordinates": True,
-            "vehicle_config": dict(
-                show_navi_mark=False,
-                no_wheel_friction=True,
-                lidar=dict(num_lasers=120, distance=50, num_others=4),
-                lane_line_detector=dict(num_lasers=12, distance=50),
-                side_detector=dict(num_lasers=160, distance=50)
-            ),
-            "data_directory": AssetLoader.file_path("nuscenes", unix_style=False),
-        }
-    )
-    success = []
-    env.reset(seed=0)
-    while True:
-        env.reset(seed=env.current_seed + 1)
-        for t in range(10000):
-            o, r, tm, tc, info = env.step([0, 0])
-            assert env.observation_space.contains(o)
-            c_lane = env.actor_controller.lane
-            long, lat, = c_lane.local_coordinates(env.actor_controller.position)
-            # if env.config["use_render"]:
-            env.render(
-                text={
-                    # "obs_shape": len(o),
-                    "seed": env.engine.global_seed + env.config["start_scenario_index"],
-                    # "reward": r,
-                }
-                # mode="topdown"
-            )
-
-            if (tm or tc) and info["arrive_dest"]:
-                print("seed:{}, success".format(env.engine.global_random_seed))
-                break

@@ -20,7 +20,7 @@ from metadrive.utils import Config, safe_clip_for_small_array
 from metadrive.utils.math import get_vertical_vector, norm, clip
 from metadrive.utils.math import wrap_to_pi
 from metadrive.utils.utils import get_object_from_node
-
+import torch
 logger = get_logger()
 
 
@@ -35,8 +35,7 @@ class BaseVehicleState:
         self.crash_vehicle = False
         self.crash_human = False
         self.crash_object = False
-        self.crash_sidewalk = False
-        self.crash_building = False
+        self.crash_world = False
 
         # traffic light
         self.red_light = False
@@ -171,7 +170,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.physics_world.dynamic_world.attach(self.vehicle)
 
     def detachDyWld(self):
-        breakpoint()
         self.physics_world.dynamic_world.remove(self.vehicle)
         self.physics_world.dynamic_world.remove(self.body)
 
@@ -250,7 +248,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         return step_info
 
     def after_step(self):
-        self._state_check()
         step_energy, episode_energy = self._update_energy_consumption()
         # self.out_of_route = self._out_of_route()
         step_info = {}
@@ -285,26 +282,56 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.energy_consumption += step_energy  # L/100 km
         return step_energy, self.energy_consumption
     
-    def _state_check(self):
+    def crash_check(self):
         """
         Check States and filter to update info
         """
-        # result_1 = self.engine.physics_world.static_world.contactTest(self.body, True)
-        result_2 = self.engine.physics_world.dynamic_world.contactTest(self.body, False)
-        contacts = set()
+        # result_1 = self.physics_world.static_world.contactTest(self.body, True)
+        result_2 = self.physics_world.dynamic_world.contactTest(self.body, False)
+        contact_infos = set()
+        ground_contact = list()
         for contact in result_2.getContacts():
             node0 = contact.getNode0()
             node1 = contact.getNode1()
-            node = node0 if node1.getName() == MetaDriveType.VEHICLE else node1
-            name = node.getName()
+            name = node1.getName()
             if name == MetaDriveType.VEHICLE:
                 self.crash_vehicle = True
             elif name in [MetaDriveType.PEDESTRIAN, MetaDriveType.CYCLIST]:
                 self.crash_human = True
+            elif name == MetaDriveType.GROUND:
+                maniP = contact.getManifoldPoint()
+                pos = maniP.getPositionWorldOnB()
+                ground_contact.append(torch.tensor([pos.x, pos.y, pos.z]))
             else:
                 continue
-            contacts.add(name)
-        self.contact_results.update(contacts)
+            contact_infos.add(name)
+        
+        if len(ground_contact) > 0:
+            ground_contact = torch.stack(ground_contact).cuda().float()
+            print(ground_contact)
+            if self._is_crash_world(ground_contact):
+                self.crash_world = True
+
+        self.contact_results.update(contact_infos)
+
+    def _is_crash_world(self, contact_points):
+        wheel_centers = []
+        for i in range(self.vehicle.getNumWheels()):
+            wheel = self.vehicle.getWheel(i)
+            wheel_center = wheel.getWorldTransform().getRow3(3)  
+            wheel_center = torch.tensor([wheel_center.x, wheel_center.y, wheel_center.z])
+            wheel_centers.append(wheel_center)
+        wheel_centers = torch.stack(wheel_centers).cuda().float()
+
+        diff = contact_points[:, :2].unsqueeze(1) - wheel_centers[:, :2].unsqueeze(0)  # [N,4,3]
+        dist = diff.norm(dim=-1)                              # [N,4]
+        nearest_idx = dist.argmin(dim=1)                                 # [N]
+        nearest_z = wheel_centers[nearest_idx, 2]                        # [N]
+
+        if (contact_points[:, 2] - nearest_z > 0).any().item():
+            breakpoint()
+            return True
+        return False
 
     """------------------------------------------- act -------------------------------------------------"""
 
@@ -373,6 +400,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         chassis = BaseRigidBodyNode(self.name, MetaDriveType.VEHICLE, self.MASS)
 
         chassis_shape = BulletBoxShape(Vec3(self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2))
+        chassis_shape.setMargin(0.03)
         ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 4 ))
         chassis.addShape(chassis_shape, ts)
         chassis.setDeactivationEnabled(False)
