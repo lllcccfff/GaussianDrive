@@ -1,8 +1,10 @@
-<br>
+# GaussianDrive: Photorealistic Real-time Driving Simulator
 
-![](documentation/source/figs/logo-horizon.png)
+This code is currently under heavy development based on MetaDrive.
 
-<br>
+For development, see [DEV.md](docs/DEV.md)
+
+---
 
 # MetaDrive: an Open-source Driving Simulator for AI and Autonomy Research
 

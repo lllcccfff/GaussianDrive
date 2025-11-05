@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=45"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metadrive-simulator"
+description = "Photorealistic real-time driving simulator"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+    { name = "lllcccfff", email = "7802220128@csu.edu.cn" },
+    { name = "Jesse Senior", email = "jessesenior@outlook.com" },
+]
+requires-python = ">=3.8"
+version = "0.0.1"
+dependencies = ["lxml", "mediapy", "shapely", "pygame", "panda3d"]
+
+[project.optional-dependencies]
+dev = ["ruff", "pre-commit"]
+gym = ["gym>=0.19.0,<=0.26.0"]
+
+[tool.setuptools]
+packages = ["metadrive"]
+
+[tool.setuptools.package-dir]
+"metadrive" = "metadrive"
+
+[tool.setuptools.package-data]
+"metadrive" = ["*", "**/*"]
+
+[tool.ruff]
+line-length = 120
+respect-gitignore = false
+lint.select = [
+    "E",      # pycodestyle errors.
+    "F",      # Pyflakes rules.
+    "I",      # isort formatting.
+    "PLC",    # Pylint convention warnings.
+    "PLE",    # Pylint errors.
+    "PLR",    # Pylint refactor recommendations.
+    "PLW",    # Pylint warnings.
+    "NPY201", # NumPY 2.0 migration https://numpy.org/devdocs/numpy_2_0_migration_guide.html#ruff-plugin
+]
+lint.ignore = [
+    "E501",    # Line too long.
+    "F722",    # Forward annotation false positive from jaxtyping. Should be caught by pyright.
+    "F821",    # Forward annotation false positive from jaxtyping. Should be caught by pyright.
+    "PLR2004", # Magic value used in comparison.
+    "PLR0915", # Too many statements.
+    "PLR0913", # Too many arguments.
+    "PLC0414", # Import alias does not rename variable. (this is used for exporting names)
+    "PLC0415", # `import` should be at the top-level of a file
+    "PLC1901", # Use falsey strings.
+    "PLR5501", # Use `elif` instead of `else if`.
+    "PLR0911", # Too many return statements.
+    "PLR0912", # Too many branches.
+    "PLW0603", # Globa statement updates are discouraged.
+    "PLW2901", # For loop variable overwritten.
+    "PLR1730", # Replace if statement with min/max
+    "PLC0206", # Extracting value from dictionary without calling `.items()`
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["metadrive"]
+split-on-trailing-comma = false
