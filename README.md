@@ -2,8 +2,6 @@
 
 This code is currently under heavy development based on MetaDrive.
 
-For development, see [DEV.md](docs/DEV.md)
-
 ## Installation
 
 ```bash
@@ -15,6 +13,8 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 pip install -e .
 ```
+
+For development, see [DEV.md](docs/DEV.md)
 
 ## Visualization
 
@@ -58,9 +58,9 @@ python -m metadrive.examples.remote_visualizer  --host 10.76.5.241 --port 12721 
 
 MetaDrive is a driving simulator with the following key features:
 
-- **Compositional**: It supports synthesising infinite scenes with various road maps and traffic settings or loading real-world driving logs for the research of generalizable RL. 
+- **Compositional**: It supports synthesising infinite scenes with various road maps and traffic settings or loading real-world driving logs for the research of generalizable RL.
 - **Lightweight**: It is easy to install and run on Linux/Windows/MacOS with sensor simulation support. It can run up to +1000 FPS on a standard PC.
-- **Realistic**: Accurate physics simulation and multiple sensory input including point cloud, RGB/Depth/Semantic images, top-down semantic map and first-person view images. 
+- **Realistic**: Accurate physics simulation and multiple sensory input including point cloud, RGB/Depth/Semantic images, top-down semantic map and first-person view images.
 
 
 ## 🛠 Quick Start
@@ -92,7 +92,7 @@ Run the following command to launch a simple driving scenario with auto-drive mo
 ```bash
 python -m metadrive.examples.drive_in_single_agent_env
 ```
-Run the following command to launch a safe driving scenario, which includes more complex obstacles and cost to be yielded. 
+Run the following command to launch a safe driving scenario, which includes more complex obstacles and cost to be yielded.
 
 ```bash
 python -m metadrive.examples.drive_in_safe_metadrive_env
@@ -106,7 +106,7 @@ You can also launch an instance of Multi-Agent scenario as follows
 python -m metadrive.examples.drive_in_multi_agent_env --env roundabout
 ```
 ```--env```  accepts following parmeters: `roundabout` (default), `intersection`, `tollgate`, `bottleneck`, `parkinglot`, `pgmap`.
-Adding ```--top_down``` can launch top-down pygame renderer. 
+Adding ```--top_down``` can launch top-down pygame renderer.
 
 
 
@@ -122,7 +122,7 @@ The default real-world dataset is nuScenes.
 Use ```--waymo``` to visualize Waymo scenarios.
 Traffic vehicles can not response to surrounding vchicles if directly replaying them.
 Add argument ```--reactive_traffic``` to use an IDM policy control them and make them reactive.
-Press key ```r``` for loading a new scenario, and ```b``` or ```q``` for switching perspective. 
+Press key ```r``` for loading a new scenario, and ```b``` or ```q``` for switching perspective.
 
 
 
@@ -176,8 +176,7 @@ The simulator can not be built without the help from Panda3D community and the f
 - panda3d-simplepbr: https://github.com/Moguri/panda3d-simplepbr
 - panda3d-gltf: https://github.com/Moguri/panda3d-gltf
 - RenderPipeline (RP): https://github.com/tobspr/RenderPipeline
-- Water effect for RP: https://github.com/kergalym/RenderPipeline 
+- Water effect for RP: https://github.com/kergalym/RenderPipeline
 - procedural_panda3d_model_primitives: https://github.com/Epihaius/procedural_panda3d_model_primitives
 - DiamondSquare for terrain generation: https://github.com/buckinha/DiamondSquare
 - KITSUNETSUKI-Asset-Tools: https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools
-

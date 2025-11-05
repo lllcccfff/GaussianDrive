@@ -22,8 +22,9 @@ import threading
 import numpy as np
 import torch
 import websockets
-from easydrive.utils.console_utils import log
 from torchvision.io import encode_jpeg
+
+from metadrive import CONSOLE
 
 
 class WebSocketServer:
@@ -55,7 +56,7 @@ class WebSocketServer:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        log("Preparing websocket server for sending images & receiving cameras")
+        CONSOLE.log("Preparing websocket server for sending images & receiving cameras")
         server = websockets.serve(self.server_loop, self.host, self.port)
 
         loop.run_until_complete(server)

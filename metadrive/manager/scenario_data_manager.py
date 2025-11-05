@@ -46,7 +46,9 @@ class ScenarioDataManager(BaseManager):
         self.num_scenarios = 0
         for config_file in os.listdir(self.directory):
             self.num_scenarios += 1
-            cfg = Config.fromfile(filename=os.path.join(self.directory, config_file))
+            cfg = Config.fromfile(
+                filename=os.path.join(self.directory, config_file)
+            )  # TODO(fyz): Fix this with more generizable solution
 
             scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(cfg)
             # timestamp : list|tuple [2]

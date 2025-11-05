@@ -1,5 +1,6 @@
 import ctypes
 import platform
+import sys
 import threading
 from typing import Union
 
@@ -7,9 +8,9 @@ import glfw
 import numpy as np
 import OpenGL.GL as gl
 import torch
-from easydrive.utils.console_utils import *
 from imgui_bundle import imgui
 
+from metadrive import CONSOLE
 from metadrive.viewer.client import Client
 from metadrive.viewer.manual_controller import get_controller
 from metadrive.viewer.server import WebSocketServer
@@ -89,8 +90,8 @@ class Viewer:
 
     def _init_glfw(self):
         if not glfw.init():
-            log(red("Could not initialize OpenGL context"))
-            exit(1)
+            CONSOLE.log("[bold red]Could not initialize OpenGL context")
+            sys.exit(1)
 
         # Decide GL+GLSL versions
         # GL 3.3 + GLSL 330
@@ -121,7 +122,7 @@ class Viewer:
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
         if not window:
             glfw.terminate()
-            log(red("Could not initialize window"))
+            CONSOLE.log("[bold red]Could not initialize window")
             raise RuntimeError("Failed to initialize window in glfw")
 
         # Setting up the window

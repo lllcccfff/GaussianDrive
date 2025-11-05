@@ -1,18 +1,13 @@
-from typing import Dict, Union
-
-from easydrive.engine.config import Config
-
-
 class Configurable:
     """
     Instances of this class will maintain a config system, which is protected from unexpected modification
     """
 
-    def __init__(self, config: Union[Dict, Config] = None):
+    def __init__(self, config: dict = None):
         # initialize and specify the value in config
-        self._config = Config(config if config is not None else {})
+        self._config = config.copy()
 
-    def get_config(self, copy=True) -> Config:
+    def get_config(self, copy=True) -> dict:
         """
         Return self._config
         :param copy:
@@ -26,7 +21,7 @@ class Configurable:
         """
         Merge config and self._config
         """
-        self._config.merge_from(config)
+        self._config.update(config)
 
     def destroy(self):
         """

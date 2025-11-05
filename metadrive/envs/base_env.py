@@ -5,7 +5,6 @@ from typing import AnyStr, Callable, Dict, Tuple, Union
 import gymnasium as gym
 import numpy as np
 import torch
-from easydrive.engine.config import Config
 from panda3d.core import PNMImage, PythonCallbackObject
 
 from metadrive.component.traffic_participants.cyclist import Cyclist
@@ -36,12 +35,12 @@ class BaseEnv(gym.Env):
     # Force to use this seed if necessary. Note that the recipient of the forced seed should be explicitly implemented.
 
     @classmethod
-    def default_config(cls) -> Config:
-        return Config(BASE_DEFAULT_CONFIG)
+    def default_config(cls):
+        return BASE_DEFAULT_CONFIG.copy()
 
-    def __init__(self, model, config: Config = None):
+    def __init__(self, model, config: dict = None):
         if config is None:
-            config = Config()
+            config = dict()
         default_config = self.default_config()
         default_config.merge_from(config, replace_keys=["agent_configs"])
 
@@ -200,9 +199,9 @@ class BaseEnv(gym.Env):
             # if body.getName() in ["detector_mask", "debug"]:
             #     continue
             filtered.append(body)
-        assert len(filtered) == 0, (
-            "Physics Bodies should be cleaned before manager.reset() is called. Uncleared bodies: {}".format(filtered)
-        )
+        assert (
+            len(filtered) == 0
+        ), "Physics Bodies should be cleaned before manager.reset() is called. Uncleared bodies: {}".format(filtered)
 
     def _reset_agents(self, scenario_data, scene_map):
         camera_params = scenario_data["camera_params"]
@@ -439,9 +438,9 @@ class BaseEnv(gym.Env):
         if self.is_multi_agent:
             assert isinstance(policies, dict), "In MARL setting, policies should be mapped to agents according to id"
         else:
-            assert isinstance(policies, Callable), (
-                "In single agent case, policy should be a callable object, takingobservation as input."
-            )
+            assert isinstance(
+                policies, Callable
+            ), "In single agent case, policy should be a callable object, takingobservation as input."
         scenarios_to_export = dict()
         if isinstance(scenario_index, int):
             scenario_index = [scenario_index]

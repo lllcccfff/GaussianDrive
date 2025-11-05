@@ -12,7 +12,22 @@ authors = [
 ]
 requires-python = ">=3.8"
 version = "0.0.1"
-dependencies = ["lxml", "mediapy", "shapely", "pygame", "panda3d", "rich"]
+dependencies = [
+    "glfw",
+    "gymnasium",
+    "imgui-bundle",
+    "lxml",
+    "mediapy",
+    "opencv-python-headless",
+    "panda3d",
+    "pygame",
+    "PyOpenGL",
+    "PyOpenGL_accelerate",
+    "rich",
+    "shapely",
+    "torch",
+    "websockets",
+]
 
 [project.optional-dependencies]
 dev = ["ruff", "pre-commit"]
