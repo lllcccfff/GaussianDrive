@@ -13,7 +13,9 @@ class NavigationObservation(BaseObservation, Randomizable):
     def __init__(self, config):
         BaseObservation.__init__(self, config)
         Randomizable.__init__(self, None)
-        self.navigating_type = config.get("navigating_type", "expert_following")  # lane_following, destination_following, expert_following
+        self.navigating_type = config.get(
+            "navigating_type", "expert_following"
+        )  # lane_following, destination_following, expert_following
         self.early_signal_distance = float(config.get("early_signal_distance", 10.0))  # meters
         # New radius-based threshold using triangle inradius (meters). Smaller -> sharper turn.
         # You may tune this based on map scale; ~20m is a moderate default.
@@ -29,7 +31,9 @@ class NavigationObservation(BaseObservation, Randomizable):
 
     def reset(self, trajdata_map: VectorMap, init_state, state, controller, seed=None, **kwargs):
         if self.navigating_type in ["lane_following", "destination_following"]:
-            assert isinstance(trajdata_map, VectorMap), "trajdata_map must be provided for lane_following or destination_following navigation type."
+            assert isinstance(trajdata_map, VectorMap), (
+                "trajdata_map must be provided for lane_following or destination_following navigation type."
+            )
 
         if seed is not None:
             self.seed(int(seed))
@@ -47,17 +51,17 @@ class NavigationObservation(BaseObservation, Randomizable):
             self._build_destination_path()
         else:
             raise ValueError(f"Unknown navigating_type: {self.navigating_type}")
-        
+
         self.destination = self._path_xy[-1] if self._path_xy is not None else init_state["destination"]
 
     def observe(self):
         return {
-            'map': self.trajdata_map, 
-            'turn_signal': self._get_turn_signal(), 
-            'waypoint': self._path_xy,
-            'cummulative_length': self._path_cumlen
+            "map": self.trajdata_map,
+            "turn_signal": self._get_turn_signal(),
+            "waypoint": self._path_xy,
+            "cummulative_length": self._path_cumlen,
         }
-    
+
     def _get_turn_signal(self):
         if self._path_xy is None or len(self._path_xy) < 3:
             return 0
@@ -136,8 +140,9 @@ class NavigationObservation(BaseObservation, Randomizable):
             if wl < 5 and n >= 5:
                 wl = 5
             from scipy.signal import savgol_filter
-            px = savgol_filter(p[:, 0], window_length=int(wl), polyorder=3, mode='interp')
-            py = savgol_filter(p[:, 1], window_length=int(wl), polyorder=3, mode='interp')
+
+            px = savgol_filter(p[:, 0], window_length=int(wl), polyorder=3, mode="interp")
+            py = savgol_filter(p[:, 1], window_length=int(wl), polyorder=3, mode="interp")
             p = np.column_stack([px, py])
 
         self._set_path(p)
@@ -198,7 +203,7 @@ class NavigationObservation(BaseObservation, Randomizable):
         target = cumlen[i0] + max(0.0, ahead_len)
         idx = np.searchsorted(cumlen, target, side="right")
         return int(idx)
-    
+
     @staticmethod
     def _ego_heading_vec(vehicle):
         h = vehicle.heading  # (cos, sin)
@@ -234,6 +239,7 @@ class NavigationObservation(BaseObservation, Randomizable):
         if start_lane == goal_lane:
             return [start_lane]
         from collections import deque
+
         q = deque([start_lane])
         parent = {start_lane: None}
         visited = {start_lane}

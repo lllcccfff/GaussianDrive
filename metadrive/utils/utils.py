@@ -11,7 +11,7 @@ from panda3d.bullet import BulletBodyNode
 from metadrive.constants import MetaDriveType
 
 
-def is_port_occupied(port, host='127.0.0.1'):
+def is_port_occupied(port, host="127.0.0.1"):
     """
     Check if a given port is occupied on the specified host.
 
@@ -25,8 +25,9 @@ def is_port_occupied(port, host='127.0.0.1'):
 
 
 def import_pygame():
-    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
     import pygame
+
     return pygame
 
 
@@ -37,12 +38,13 @@ def get_time_str():
 def setup_logger(debug=False):
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.WARNING,
-        format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'
+        format="%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s",
     )
 
 
 def recursive_equal(data1, data2, need_assert=False):
     from metadrive.utils.config import Config
+
     if isinstance(data1, Config):
         data1 = data1.get_dict()
     if isinstance(data2, Config):
@@ -136,7 +138,7 @@ def _deep_update(
     new_keys_allowed=False,
     allow_new_subkey_list=None,
     override_all_if_type_changes=None,
-    raise_error=True
+    raise_error=True,
 ):
     allow_new_subkey_list = allow_new_subkey_list or []
     override_all_if_type_changes = override_all_if_type_changes or []
@@ -151,9 +153,12 @@ def _deep_update(
         # Both orginal value and new one are dicts.
         if isinstance(original.get(k), dict) and isinstance(value, dict):
             # Check old type vs old one. If different, override entire value.
-            if k in override_all_if_type_changes and \
-                    "type" in value and "type" in original[k] and \
-                    value["type"] != original[k]["type"]:
+            if (
+                k in override_all_if_type_changes
+                and "type" in value
+                and "type" in original[k]
+                and value["type"] != original[k]["type"]
+            ):
                 original[k] = value
             # Allowed key -> ok to add new subkeys.
             elif k in allow_new_subkey_list:
@@ -196,6 +201,7 @@ def get_object_from_node(node: BulletBodyNode):
         return None
     from metadrive.engine.engine_utils import get_object
     from metadrive.engine.engine_utils import get_engine
+
     ret = node.getPythonTag(node.getName()).base_object_name
     is_road = MetaDriveType.is_lane(node.getPythonTag(node.getName()).type_name)
     if is_road:
@@ -207,12 +213,14 @@ def get_object_from_node(node: BulletBodyNode):
 def is_map_related_instance(obj):
     from metadrive.component.block.base_block import BaseBlock
     from metadrive.component.map.base_map import BaseMap
+
     return True if isinstance(obj, BaseBlock) or isinstance(obj, BaseMap) else False
 
 
 def is_map_related_class(object_class):
     from metadrive.component.block.base_block import BaseBlock
     from metadrive.component.map.base_map import BaseMap
+
     return True if issubclass(object_class, BaseBlock) or issubclass(object_class, BaseMap) else False
 
 
@@ -234,6 +242,7 @@ def time_me(fn):
     Returns: None
 
     """
+
     def _wrapper(*args, **kwargs):
         start = time.time()
         ret = fn(*args, **kwargs)
@@ -252,6 +261,7 @@ def time_me_with_prefix(prefix):
     Returns: None
 
     """
+
     def decorator(fn):
         def _wrapper(*args, **kwargs):
             start = time.time()
@@ -341,7 +351,7 @@ def draw_polygon(polygon):
 
     # Plot the rectangle
     plt.figure(figsize=(8, 8))
-    plt.plot(*zip(*np.append(rectangle_points, [rectangle_points[0]], axis=0)), marker='o', label='Rectangle Vertices')
+    plt.plot(*zip(*np.append(rectangle_points, [rectangle_points[0]], axis=0)), marker="o", label="Rectangle Vertices")
     plt.fill(
         *zip(*np.append(rectangle_points, [rectangle_points[0]], axis=0)), alpha=0.3
     )  # Fill the rectangle with light opacity
@@ -350,10 +360,10 @@ def draw_polygon(polygon):
     # plt.scatter(x_mid, y_mid, color='red', zorder=5, label='Midpoints')
 
     # Set equal scaling and labels
-    plt.axis('equal')
-    plt.xlabel('X-coordinate')
-    plt.ylabel('Y-coordinate')
-    plt.title('Visualization of the Rectangle and Input Points')
+    plt.axis("equal")
+    plt.xlabel("X-coordinate")
+    plt.ylabel("Y-coordinate")
+    plt.title("Visualization of the Rectangle and Input Points")
     plt.legend()
     plt.grid(True)
     plt.show()

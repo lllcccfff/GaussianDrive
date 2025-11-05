@@ -67,6 +67,7 @@ class Line(Geometry):
 
     (Section 5.3.4.1.1 of OpenDRIVE 1.4)
     """
+
     def calc_position(self, s_pos):
         """
 
@@ -88,6 +89,7 @@ class Arc(Geometry):
 
     (Section 5.3.4.1.3 of OpenDRIVE 1.4)
     """
+
     def __init__(self, start_position, heading, length, curvature):
         self.curvature = curvature
         super().__init__(start_position=start_position, heading=heading, length=length)
@@ -124,6 +126,7 @@ class Spiral(Geometry):
 
     (Section 5.3.4.1.2 of OpenDRIVE 1.4)
     """
+
     def __init__(self, start_position, heading, length, curvStart, curvEnd):
         self._curvStart = curvStart
         self._curvEnd = curvEnd
@@ -157,6 +160,7 @@ class Poly3(Geometry):
 
     (Section 5.3.4.1.4 of OpenDRIVE 1.4)
     """
+
     def __init__(self, start_position, heading, length, a, b, c, d):
         self._a = a
         self._b = b
@@ -202,6 +206,7 @@ class ParamPoly3(Geometry):
 
     (Section 5.3.4.1.5 of OpenDRIVE 1.4)
     """
+
     def __init__(self, start_position, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange):
         super().__init__(start_position=start_position, heading=heading, length=length)
 

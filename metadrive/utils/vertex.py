@@ -2,8 +2,17 @@ import array
 from copy import copy
 
 import numpy as np
-from panda3d.core import GeomVertexData, Geom, GeomVertexArrayFormat, GeomVertexFormat, \
-    GeomVertexWriter, GeomNode, Triangulator, GeomTriangles, NodePath
+from panda3d.core import (
+    GeomVertexData,
+    Geom,
+    GeomVertexArrayFormat,
+    GeomVertexFormat,
+    GeomVertexWriter,
+    GeomNode,
+    Triangulator,
+    GeomTriangles,
+    NodePath,
+)
 
 from metadrive.utils import norm
 
@@ -43,7 +52,7 @@ def get_geom_with_class(geom, class_):
 
 
 def add_class_label(model, class_):
-    geomNodeCollection = model.findAllMatches('**/+GeomNode')
+    geomNodeCollection = model.findAllMatches("**/+GeomNode")
     for nodePath in geomNodeCollection:
         geomNode = nodePath.node()
         for i in range(geomNode.getNumGeoms()):
@@ -57,8 +66,8 @@ def is_anticlockwise(points):
     check if the polygon is anticlockwise
     Args:
         points: a list of 2D points representing the polygon!
-    
-    Returns: is anticlockwise or not 
+
+    Returns: is anticlockwise or not
     """
     sum = 0
     n = len(points)
@@ -110,7 +119,7 @@ def make_polygon_model(points, height, auto_anticlockwise=True, force_anticlockw
     for i, coord in enumerate(coords):
         x, y = [coord[0], coord[1]]
         # Top surface
-        values.extend((x, y, 0., 0, 0, 1, x * texture_scale, y * texture_scale))
+        values.extend((x, y, 0.0, 0, 0, 1, x * texture_scale, y * texture_scale))
 
         pre_p = coords[(i + p_num - 1) % p_num]
         edge_1 = [x - pre_p[0], y - pre_p[1]]

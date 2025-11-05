@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from panda3d.egg import (EggGroup, EggPolygon, EggVertexPool, EggMaterial, EggTexture)
+from panda3d.egg import EggGroup, EggPolygon, EggVertexPool, EggMaterial, EggTexture
 
 from metadrive.third_party.kitsunetsuki.base.matrices import get_object_matrix
 from metadrive.third_party.kitsunetsuki.base.armature import get_armature
@@ -26,7 +26,7 @@ class GeomMixin(object):
         results = {}
 
         for child in egg_group.get_children():
-            if (isinstance(child, EggGroup) and child.get_group_type() == EggGroup.GT_joint):
+            if isinstance(child, EggGroup) and child.get_group_type() == EggGroup.GT_joint:
                 results[child.get_name()] = child
                 results.update(self._get_joints(child))
 
@@ -51,7 +51,7 @@ class GeomMixin(object):
             for material in mesh.materials.values():
                 # material
                 for child in self._root.get_children():  # existing material
-                    if (isinstance(child, EggMaterial) and child.get_name() == material.name):
+                    if isinstance(child, EggMaterial) and child.get_name() == material.name:
                         egg_materials[material.name] = child
                         break
                 else:  # new material
@@ -68,7 +68,7 @@ class GeomMixin(object):
                     for type_, _, egg_texture in self.make_textures(material):
                         tname = egg_texture.get_name()
                         for child in self._root.get_children():  # existing texture
-                            if (isinstance(child, EggTexture) and child.get_name() == tname):
+                            if isinstance(child, EggTexture) and child.get_name() == tname:
                                 egg_textures[tname] = child
                                 egg_material_textures[material.name][tname] = child
                                 break
@@ -97,8 +97,11 @@ class GeomMixin(object):
         egg_joints = {}
         if armature:
             for child in self._root.get_children():
-                if (isinstance(child, EggGroup) and child.get_dart_type() == EggGroup.DT_structured
-                        and child.get_name() == armature.name):
+                if (
+                    isinstance(child, EggGroup)
+                    and child.get_dart_type() == EggGroup.DT_structured
+                    and child.get_name() == armature.name
+                ):
                     egg_joints = self._get_joints(child)
 
         sharp_vertices = {}
@@ -146,10 +149,10 @@ class GeomMixin(object):
 
                 # <-- vertex
                 vertex = mesh.vertices[vertex_id]
-                use_smooth = (polygon.use_smooth and vertex_id not in sharp_vertices and not is_collision(obj))
+                use_smooth = polygon.use_smooth and vertex_id not in sharp_vertices and not is_collision(obj)
 
                 # try to reuse shared vertices
-                if (polygon.use_smooth and vertex_id in egg_vertices and not is_collision(obj)):
+                if polygon.use_smooth and vertex_id in egg_vertices and not is_collision(obj):
                     shared = False
                     for egg_vertex in egg_vertices[vertex_id]:
                         loop_id = polygon.loop_indices[i]
@@ -160,8 +163,9 @@ class GeomMixin(object):
                             shared = True
                             break
 
-                        if self.can_share_vertex(mesh, vertex, loop_id, egg_vertex_uv.get_uv(),
-                                                 egg_vertex.get_normal()):
+                        if self.can_share_vertex(
+                            mesh, vertex, loop_id, egg_vertex_uv.get_uv(), egg_vertex.get_normal()
+                        ):
                             egg_polygon.add_vertex(egg_vertex)
                             shared = True
                             break

@@ -68,7 +68,7 @@ def calculate_slope(p1, p2):
     """
     # Handle the case of a vertical line segment
     if p1[0] == p2[0]:
-        return float('inf')
+        return float("inf")
     else:
         return (p2[1] - p1[1]) / (p2[0] - p1[0])
 
@@ -160,18 +160,21 @@ def find_longest_edge(polygon: Union[shapely.geometry.Polygon, list]):
     return heapq.nlargest(1, edges, key=lambda edge: size(edge))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     polygon = Polygon(
         [
-            [356.83858017, -234.46019451], [355.12995531, -239.44667613], [358.76606674, -240.73795931],
-            [360.27632766, -235.80099687], [356.83858017, -234.46019451]
+            [356.83858017, -234.46019451],
+            [355.12995531, -239.44667613],
+            [358.76606674, -240.73795931],
+            [360.27632766, -235.80099687],
+            [356.83858017, -234.46019451],
         ]
     )
     parallel_edges = find_longest_parallel_edges(polygon)
     assert parallel_edges == [
         (
             ((355.12995531, -239.44667613), (358.76606674, -240.73795931)),
-            ((360.27632766, -235.80099687), (356.83858017, -234.46019451))
+            ((360.27632766, -235.80099687), (356.83858017, -234.46019451)),
         )
     ]
     print(parallel_edges)

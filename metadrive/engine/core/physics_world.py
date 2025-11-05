@@ -17,10 +17,16 @@ class PhysicsWorld:
         # CollisionGroup.set_collision_rule(self.static_world, disable_collision=disable_collision)
 
     def report_bodies(self):
-        dynamic_bodies = \
-            self.dynamic_world.getNumRigidBodies() + self.dynamic_world.getNumGhosts() + self.dynamic_world.getNumVehicles()
-        static_bodies = \
-            self.static_world.getNumRigidBodies() + self.static_world.getNumGhosts() + self.static_world.getNumVehicles()
+        dynamic_bodies = (
+            self.dynamic_world.getNumRigidBodies()
+            + self.dynamic_world.getNumGhosts()
+            + self.dynamic_world.getNumVehicles()
+        )
+        static_bodies = (
+            self.static_world.getNumRigidBodies()
+            + self.static_world.getNumGhosts()
+            + self.static_world.getNumVehicles()
+        )
         return "dynamic bodies:{}, static_bodies: {}".format(dynamic_bodies, static_bodies)
 
     def destroy(self):

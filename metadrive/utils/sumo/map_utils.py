@@ -1,5 +1,6 @@
-from __future__ import \
-    annotations  # https://stackoverflow.com/questions/33533148/how-do-i-type-hint-a-method-with-the-type-of-the-enclosing-class
+from __future__ import (
+    annotations,
+)  # https://stackoverflow.com/questions/33533148/how-do-i-type-hint-a-method-with-the-type-of-the-enclosing-class
 
 import logging
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
 from typing import List, Dict, Optional
+
 try:
     import sumolib
 except ImportError:
@@ -87,20 +89,20 @@ class LaneNode:
         self.name: str = sumolib_obj.getID()
         self.edge_type: str = sumolib_obj.getEdge().getType()
         self.index: int = sumolib_obj.getIndex()
-        if len(self.edge_type.strip()) and len(self.edge_type.split('|')) > 1:
-            self.type = self.edge_type.split('|')[self.index]
-        elif (sumolib_obj.allows('pedestrian') and not sumolib_obj.allows('passenger')):
-            self.type = 'sidewalk'
-        elif sumolib_obj.getEdge().getFunction() == 'walkingarea':
-            self.type = 'sidewalk'
+        if len(self.edge_type.strip()) and len(self.edge_type.split("|")) > 1:
+            self.type = self.edge_type.split("|")[self.index]
+        elif sumolib_obj.allows("pedestrian") and not sumolib_obj.allows("passenger"):
+            self.type = "sidewalk"
+        elif sumolib_obj.getEdge().getFunction() == "walkingarea":
+            self.type = "sidewalk"
         else:
-            self.type = 'driving'
+            self.type = "driving"
         self.width: float = sumolib_obj.getWidth()
         self.length: float = sumolib_obj.getLength()
 
         self.shape: LaneShape = LaneShape(sumolib_obj, self.width)
 
-        if sumolib_obj.getEdge().getFunction() == 'walkingarea':
+        if sumolib_obj.getEdge().getFunction() == "walkingarea":
             shape = [[p[0], p[1]] for p in sumolib_obj.getShape()]
             shape.append(sumolib_obj.getShape()[0])
             self.shape.shape = Polygon(shape)
@@ -127,9 +129,9 @@ class RoadNode:
         self.sumolib_obj: sumolib.net.edge = sumolib_obj
         self.name: str = sumolib_obj.getID()
         self.type = sumolib_obj.getType()
-        if sumolib_obj.getFunction() == 'crossing':
+        if sumolib_obj.getFunction() == "crossing":
             for lane in lanes:
-                lane.type = 'crossing'
+                lane.type = "crossing"
         self.lanes: List[LaneNode] = lanes
         self.from_junction: JunctionNode = from_junction
         self.to_junction: JunctionNode = to_junction
@@ -197,7 +199,6 @@ class RoadLaneJunctionGraph:
                 name = node.getID()
 
                 if node.getID() not in self.junctions:
-
                     junction_node = JunctionNode(node)
                     self.junctions[name] = junction_node
                 else:
@@ -221,7 +222,6 @@ class RoadLaneJunctionGraph:
             junction.shape = junction.sumolib_obj.getShape()
 
         for junction_id, junction in self.junctions.items():
-
             for incoming in junction.sumolib_obj.getIncoming():  # Link junction
                 junction.incoming.append(self.roads[incoming.getID()])
             for outgoing in junction.sumolib_obj.getOutgoing():
@@ -235,7 +235,7 @@ class RoadLaneJunctionGraph:
 
                 from_road_id = conn.getFrom().getID()  # Link roads
                 to_road_id = conn.getTo().getID()
-                if via_lane_id == '':  # Maybe we could skip this, but not sure
+                if via_lane_id == "":  # Maybe we could skip this, but not sure
                     self.lanes[from_lane_id].outgoing.append(self.lanes[to_lane_id])
                     self.lanes[to_lane_id].incoming.append(self.lanes[from_lane_id])
                     self.roads[from_road_id].outgoing.append(self.roads[to_road_id])
@@ -266,7 +266,7 @@ class RoadLaneJunctionGraph:
         edge_dividers = []  # divider between lanes with opposite traffic direction
         edge_borders = []
         for edge in self.sumo_net.getEdges():
-            if edge.getFunction() in ["internal", "walkingarea", 'crossing']:
+            if edge.getFunction() in ["internal", "walkingarea", "crossing"]:
                 continue
 
             lanes = edge.getLanes()
@@ -321,28 +321,27 @@ def extract_map_features(graph):
     # build map lanes
     for road_id, road in graph.roads.items():
         for lane in road.lanes:
-
             id = "lane_{}".format(lane.name)
 
             boundary_polygon = [(x, y) for x, y in lane.shape.shape.exterior.coords]
-            if lane.type == 'driving':
+            if lane.type == "driving":
                 ret[id] = {
                     SD.TYPE: MetaDriveType.LANE_SURFACE_STREET,
                     SD.POLYLINE: lane.sumolib_obj.getShape(),
                     SD.POLYGON: boundary_polygon,
                 }
-            elif lane.type == 'sidewalk':
+            elif lane.type == "sidewalk":
                 ret[id] = {
                     SD.TYPE: MetaDriveType.BOUNDARY_SIDEWALK,
                     SD.POLYGON: boundary_polygon,
                 }
-            elif lane.type == 'shoulder':
+            elif lane.type == "shoulder":
                 ret[id] = {
                     SD.TYPE: MetaDriveType.BOUNDARY_SIDEWALK,
                     SD.POLYGON: boundary_polygon,
                 }
-            elif lane.type == 'crossing':
-                print('hello')
+            elif lane.type == "crossing":
+                print("hello")
                 ret[id] = {
                     SD.TYPE: MetaDriveType.CROSSWALK,
                     SD.POLYGON: boundary_polygon,

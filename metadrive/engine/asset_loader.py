@@ -12,10 +12,14 @@ class AssetLoader:
     """
     Load model for each element when Online/Offline render is needed. It will load all assets in initialization.
     """
+
     logger = get_logger()
     loader = None
-    asset_path = pathlib.PurePosixPath(__file__).parent.parent.joinpath("assets") if not is_win(
-    ) else pathlib.Path(__file__).resolve().parent.parent.joinpath("assets")
+    asset_path = (
+        pathlib.PurePosixPath(__file__).parent.parent.joinpath("assets")
+        if not is_win()
+        else pathlib.Path(__file__).resolve().parent.parent.joinpath("assets")
+    )
 
     @staticmethod
     def init_loader(engine):
@@ -72,8 +76,9 @@ class AssetLoader:
         :return: file path used to load asset
         """
         path = AssetLoader.asset_path.joinpath(*path_string)
-        return AssetLoader.windows_style2unix_style(path
-                                                    ) if sys.platform.startswith("win") and unix_style else str(path)
+        return (
+            AssetLoader.windows_style2unix_style(path) if sys.platform.startswith("win") and unix_style else str(path)
+        )
 
     @classmethod
     def load_model(cls, file_path):
@@ -116,9 +121,7 @@ def initialize_asset_loader(engine):
     os.environ["PYTHONUTF8"] = "on"
     if AssetLoader.initialized():
         AssetLoader.logger.warning(
-            "AssetLoader is initialize to root path: {}! But you are initializing again!".format(
-                AssetLoader.asset_path
-            )
+            "AssetLoader is initialize to root path: {}! But you are initializing again!".format(AssetLoader.asset_path)
         )
         return
     AssetLoader.init_loader(engine)
@@ -134,6 +137,7 @@ def randomize_cover():
     files = os.listdir(AssetLoader.asset_path.joinpath(background_folder_name))
     files = [f for f in files if f.startswith("logo") and f.endswith("png")]
     from metadrive.utils import get_np_random
+
     selected = get_np_random().choice(files)
     selected_file = AssetLoader.file_path("{}/{}".format(background_folder_name, selected))
     return selected_file
@@ -147,4 +151,5 @@ def get_logo_file():
 
 def asset_version():
     from metadrive.version import asset_version
+
     return asset_version()

@@ -18,6 +18,7 @@ class LinkIndex:
     Overall index of all links in the file, save everything as successors,
     predecessors can be found via a reverse search
     """
+
     def __init__(self):
         self._successors = {}
 
@@ -47,12 +48,10 @@ class LinkIndex:
 
                     # Last lane section! > Next road in first lane section
                     # Try to get next road
-                    elif (road.link.successor is not None and road.link.successor.elementType != "junction"):
-
+                    elif road.link.successor is not None and road.link.successor.elementType != "junction":
                         next_road = opendrive.getRoad(road.link.successor.element_id)
 
                         if next_road is not None:
-
                             if road.link.successor.contactPoint == "start":
                                 successorId = encode_road_section_lane_width_id(
                                     next_road.id, 0, lane.link.successorId, -1
@@ -77,12 +76,10 @@ class LinkIndex:
 
                     # First lane section! > Previous road
                     # Try to get previous road
-                    elif (road.link.predecessor is not None and road.link.predecessor.elementType != "junction"):
-
+                    elif road.link.predecessor is not None and road.link.predecessor.elementType != "junction":
                         prevRoad = opendrive.getRoad(road.link.predecessor.element_id)
 
                         if prevRoad is not None:
-
                             if road.link.predecessor.contactPoint == "start":
                                 predecessorId = encode_road_section_lane_width_id(
                                     prevRoad.id, 0, lane.link.predecessorId, -1
@@ -143,10 +140,9 @@ class LinkIndex:
 
                 for lane_link in connection.laneLinks:
                     if contact_point == "start":
-
                         # decide which lane section to use (first or last)
                         if lane_link.fromId < 0:
-                            lane_section_idx = (incoming_road.lanes.getLastLaneSectionIdx())
+                            lane_section_idx = incoming_road.lanes.getLastLaneSectionIdx()
                         else:
                             lane_section_idx = 0
                         incoming_road_id = encode_road_section_lane_width_id(
@@ -162,7 +158,7 @@ class LinkIndex:
                             lane_section_idx = 0
 
                         else:
-                            lane_section_idx = (incoming_road.lanes.getLastLaneSectionIdx())
+                            lane_section_idx = incoming_road.lanes.getLastLaneSectionIdx()
                         incoming_road_id = encode_road_section_lane_width_id(incoming_road.id, 0, lane_link.fromId, -1)
                         connecting_road_id = encode_road_section_lane_width_id(
                             connecting_road.id,

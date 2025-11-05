@@ -19,8 +19,15 @@ def get_controller(controller_name, window=None):
     controller_name = str(controller_name).lower()
     if controller_name == "keyboard":
         return KeyboardController(window)
-    elif controller_name in ["xboxController", "xboxcontroller", "xbox", "gamepad", "joystick", "steering_wheel",
-                             "wheel"]:
+    elif controller_name in [
+        "xboxController",
+        "xboxcontroller",
+        "xbox",
+        "gamepad",
+        "joystick",
+        "steering_wheel",
+        "wheel",
+    ]:
         try:
             if controller_name in ["steering_wheel", "wheel"]:
                 return SteeringWheelController()
@@ -30,7 +37,6 @@ def get_controller(controller_name, window=None):
             return None
     else:
         raise ValueError("No such a controller type: {}".format(controller_name))
-
 
 
 class Controller:
@@ -54,8 +60,8 @@ class KeyboardController(Controller):
 
     def __init__(self, window=None):
         self.window = window
-        self.steering = 0.
-        self.throttle_brake = 0.
+        self.steering = 0.0
+        self.throttle_brake = 0.0
         self.takeover = False
         self.np_random = np.random.RandomState(None)
 
@@ -71,43 +77,43 @@ class KeyboardController(Controller):
 
         # If no left or right is pressed, steering decays to the center.
         if not (left_key_pressed or right_key_pressed):
-            if self.steering > 0.:
+            if self.steering > 0.0:
                 self.steering -= self.STEERING_DECAY
-                self.steering = max(0., self.steering)
-            elif self.steering < 0.:
+                self.steering = max(0.0, self.steering)
+            elif self.steering < 0.0:
                 self.steering += self.STEERING_DECAY
-                self.steering = min(0., self.steering)
+                self.steering = min(0.0, self.steering)
         elif left_key_pressed:
             if self.steering >= 0.0:  # If left is pressed and steering is in left, increment the steering a little bit.
                 self.steering += self.STEERING_INCREMENT
             else:  # If left is pressed but steering is in right, steering back to left side a little faster.
                 self.steering += self.STEERING_INCREMENT_WHEN_INVERSE_DIRECTION
         elif right_key_pressed:
-            if self.steering <= 0.:  # If right is pressed and steering is in right, increment the steering a little
+            if self.steering <= 0.0:  # If right is pressed and steering is in right, increment the steering a little
                 self.steering -= self.STEERING_INCREMENT
             else:  # If right is pressed but steering is in left, steering back to right side a little faster.
                 self.steering -= self.STEERING_INCREMENT_WHEN_INVERSE_DIRECTION
 
         # If no up or down is pressed, throttle decays to the center.
         if not (up_key_pressed or down_key_pressed):
-            if self.throttle_brake > 0.:
+            if self.throttle_brake > 0.0:
                 self.throttle_brake -= self.THROTTLE_DECAY
-                self.throttle_brake = max(self.throttle_brake, 0.)
-            elif self.throttle_brake < 0.:
+                self.throttle_brake = max(self.throttle_brake, 0.0)
+            elif self.throttle_brake < 0.0:
                 self.throttle_brake += self.BRAKE_DECAY
-                self.throttle_brake = min(0., self.throttle_brake)
+                self.throttle_brake = min(0.0, self.throttle_brake)
         elif up_key_pressed:
-            self.throttle_brake = max(self.throttle_brake, 0.)
+            self.throttle_brake = max(self.throttle_brake, 0.0)
             self.throttle_brake += self.THROTTLE_INCREMENT
         elif down_key_pressed:
-            self.throttle_brake = min(self.throttle_brake, 0.)
+            self.throttle_brake = min(self.throttle_brake, 0.0)
             self.throttle_brake -= self.BRAKE_INCREMENT
 
         rand = self.np_random.rand() / 10000
         self.steering += rand
 
-        self.throttle_brake = min(max(-1., self.throttle_brake), 1.)
-        self.steering = min(max(-1., self.steering), 1.)
+        self.throttle_brake = min(max(-1.0, self.throttle_brake), 1.0)
+        self.steering = min(max(-1.0, self.steering), 1.0)
 
         return [self.steering, self.throttle_brake]
 
@@ -130,11 +136,11 @@ class SteeringWheelController(Controller):
             from evdev import ecodes, InputDevice
         except ImportError:
             print(
-                "Fail to load evdev, which is required for steering wheel control. "
-                "Install evdev via pip install evdev"
+                "Fail to load evdev, which is required for steering wheel control. Install evdev via pip install evdev"
             )
         try:
             import pygame
+
             pygame.display.init()
             pygame.joystick.init()
         except ImportError:
@@ -166,6 +172,7 @@ class SteeringWheelController(Controller):
     def process_input(self, vehicle):
         import pygame
         from evdev import ecodes
+
         pygame.event.pump()
         steering = -self.joystick.get_axis(0)
         throttle_brake = -self.joystick.get_axis(2) + self.joystick.get_axis(3)
@@ -199,6 +206,7 @@ class XboxController(Controller):
 
     See https://www.pygame.org/docs/ref/joystick.html#xbox-360-controller-pygame-2-x for key mapping.
     """
+
     STEERING_DISCOUNT = 0.5
     THROTTLE_DISCOUNT = 0.4
     BREAK_DISCOUNT = 0.5
@@ -219,11 +227,11 @@ class XboxController(Controller):
             from evdev import ecodes, InputDevice
         except ImportError:
             print(
-                "Fail to load evdev, which is required for steering wheel control. "
-                "Install evdev via pip install evdev"
+                "Fail to load evdev, which is required for steering wheel control. Install evdev via pip install evdev"
             )
         try:
             import pygame
+
             pygame.display.init()
             pygame.joystick.init()
         except ImportError:
@@ -249,6 +257,7 @@ class XboxController(Controller):
     def process_input(self, vehicle):
         import pygame
         import math
+
         pygame.event.pump()
         steering = -self.joystick.get_axis(self.STEERING_AXIS)
         if abs(steering) < 0.05:

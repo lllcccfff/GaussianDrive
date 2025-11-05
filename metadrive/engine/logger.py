@@ -8,6 +8,7 @@ class DuplicateFilter(object):
     """
     For filtering specific messages
     """
+
     def __init__(self):
         self.msgs = set()
 
@@ -60,7 +61,7 @@ class CustomFormatter(logging.Formatter):
         logging.INFO: grey + simple_format + reset,
         logging.WARNING: yellow + format + reset,
         logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        logging.CRITICAL: bold_red + format + reset,
     }
 
     def format(self, record):

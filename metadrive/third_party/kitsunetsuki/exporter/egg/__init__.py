@@ -24,7 +24,7 @@ from panda3d.egg import EggComment, EggData, EggGroup, EggPolygon, EggTransform
 from metadrive.third_party.kitsunetsuki.base.armature import get_armature
 from metadrive.third_party.kitsunetsuki.base.collections import get_object_collection
 from metadrive.third_party.kitsunetsuki.base.matrices import get_object_matrix, get_bone_matrix
-from metadrive.third_party.kitsunetsuki.base.objects import (is_collision, get_object_properties, set_active_object)
+from metadrive.third_party.kitsunetsuki.base.objects import is_collision, get_object_properties, set_active_object
 
 from metadrive.third_party.kitsunetsuki.exporter.base import Exporter
 
@@ -43,17 +43,17 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
     """
     BLEND to EGG converter.
     """
+
     def __init__(self, args):
         super().__init__(args)
-        self._output = args.output or args.inputs[0].replace('.blend', '.egg')
+        self._output = args.output or args.inputs[0].replace(".blend", ".egg")
 
     def make_root_node(self):
         egg_root = EggData()
         egg_root.set_coordinate_system(CS_zup_right)  # Z-up
 
         egg_comment = EggComment(
-            '', 'KITSUNETSUKI Asset Tools by kitsune.ONE - '
-            'https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools'
+            "", "KITSUNETSUKI Asset Tools by kitsune.ONE - https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools"
         )
         egg_root.add_child(egg_comment)
 
@@ -72,7 +72,7 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
         if not can_merge and not armature:
             node.add_matrix4(matrix_to_panda(obj_matrix))
 
-        if obj_props.get('type') == 'Portal':
+        if obj_props.get("type") == "Portal":
             node.set_portal_flag(True)
 
         # setup collisions
@@ -82,14 +82,14 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
 
             # collision solid type
             shape = {
-                'BOX': EggGroup.CST_box,
-                'SPHERE': EggGroup.CST_sphere,
-                'CAPSULE': EggGroup.CST_tube,
-                'MESH': EggGroup.CST_polyset,
+                "BOX": EggGroup.CST_box,
+                "SPHERE": EggGroup.CST_sphere,
+                "CAPSULE": EggGroup.CST_tube,
+                "MESH": EggGroup.CST_polyset,
             }.get(obj.rigid_body.collision_shape, EggGroup.CST_polyset)
 
             # custom shape
-            if obj.rigid_body.collision_shape == 'CONVEX_HULL':
+            if obj.rigid_body.collision_shape == "CONVEX_HULL":
                 # trying to guess the best shape
                 polygons = list(filter(lambda x: isinstance(x, EggPolygon), node.get_children()))
                 if len(polygons) == 1 and polygons[0].is_planar():
@@ -100,7 +100,7 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
             # collision flags
             # inherit collision by children nodes?
             flags = EggGroup.CF_descend
-            if (not obj.collision or not obj.collision.use):
+            if not obj.collision or not obj.collision.use:
                 # don't actually collide (ghost)
                 flags |= EggGroup.CF_intangible
             node.set_collide_flags(flags)
@@ -110,9 +110,9 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
                 set_active_object(obj)
                 x1, y1, z1 = obj.location
                 # set origin to the center of bounds
-                bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+                bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
                 x2, y2, z2 = obj.location
-                node.set_tag('origin', json.dumps([x2 - x1, y2 - y1, z2 - z1]))
+                node.set_tag("origin", json.dumps([x2 - x1, y2 - y1, z2 - z1]))
 
         # setup custom properties with tags
         for k, v in obj_props.items():
@@ -122,12 +122,12 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
             if type(v) in (tuple, list, dict):
                 tag = json.dumps(v)
             else:
-                tag = '{}'.format(v)
+                tag = "{}".format(v)
             node.set_tag(k, tag)
 
         # if can_merge and 'type' not in obj_props:
         if can_merge:
-            node.set_tag('type', 'Merged')
+            node.set_tag("type", "Merged")
 
     def make_empty(self, parent_node, obj):
         egg_group = EggGroup(obj.name)
@@ -174,7 +174,7 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
             collection = get_object_collection(obj)
 
             for child in parent_node.get_children():
-                if (isinstance(child, EggGroup) and child.get_name() == collection.name):
+                if isinstance(child, EggGroup) and child.get_name() == collection.name:
                     egg_group = child
                     break
             else:
@@ -196,21 +196,21 @@ class EggExporter(AnimationMixin, GeomMixin, MaterialMixin, TextureMixin, Vertex
 
     def make_light(self, parent_node, obj):
         LIGHT_TYPES = {
-            'POINT': 'PointLight',
-            'SPOT': 'SpotLight',
+            "POINT": "PointLight",
+            "SPOT": "SpotLight",
         }
 
         egg_group = EggGroup(obj.name)
-        egg_group.set_tag('type', 'Light')
-        egg_group.set_tag('light', LIGHT_TYPES[obj.data.type])
+        egg_group.set_tag("type", "Light")
+        egg_group.set_tag("light", LIGHT_TYPES[obj.data.type])
 
-        egg_group.set_tag('color', json.dumps(tuple(obj.data.color)))
-        egg_group.set_tag('scale', json.dumps(tuple(obj.scale)))
-        egg_group.set_tag('energy', '{:.3f}'.format(obj.data.energy))
-        egg_group.set_tag('far', '{:.3f}'.format(obj.data.shadow_soft_size))
+        egg_group.set_tag("color", json.dumps(tuple(obj.data.color)))
+        egg_group.set_tag("scale", json.dumps(tuple(obj.scale)))
+        egg_group.set_tag("energy", "{:.3f}".format(obj.data.energy))
+        egg_group.set_tag("far", "{:.3f}".format(obj.data.shadow_soft_size))
 
-        if obj.data.type == 'SPOT':
-            egg_group.set_tag('fov', '{:.3f}'.format(math.degrees(obj.data.spot_size)))
+        if obj.data.type == "SPOT":
+            egg_group.set_tag("fov", "{:.3f}".format(math.degrees(obj.data.spot_size)))
 
         self._setup_node(egg_group, obj)
         parent_node.add_child(egg_group)

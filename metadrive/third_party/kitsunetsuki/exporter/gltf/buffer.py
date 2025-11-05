@@ -29,122 +29,122 @@ class GLTFBuffer(object):
     def add_channel(self, metadata):
         self._channels.append(io.BytesIO())
         self._metadata.append(metadata)
-        self._metadata[-1]['bufferView'] = len(self._metadata) - 1
-        self._metadata[-1]['count'] = 0
+        self._metadata[-1]["bufferView"] = len(self._metadata) - 1
+        self._metadata[-1]["count"] = 0
         return self._metadata[-1]
 
     def write(self, channel_id, *values):
         size = {
-            'SCALAR': 1,
-            'VEC2': 2,
-            'VEC3': 3,
-            'VEC4': 4,
-            'MAT4': 4 * 4,
-        }[self._metadata[channel_id]['type']]
+            "SCALAR": 1,
+            "VEC2": 2,
+            "VEC3": 3,
+            "VEC4": 4,
+            "MAT4": 4 * 4,
+        }[self._metadata[channel_id]["type"]]
         assert size == len(values)
 
-        if 'min' not in self._metadata[channel_id]:
-            self._metadata[channel_id]['min'] = [None] * size
+        if "min" not in self._metadata[channel_id]:
+            self._metadata[channel_id]["min"] = [None] * size
 
-        if 'max' not in self._metadata[channel_id]:
-            self._metadata[channel_id]['max'] = [None] * size
+        if "max" not in self._metadata[channel_id]:
+            self._metadata[channel_id]["max"] = [None] * size
 
         for i, value in enumerate(values):
-            if self._metadata[channel_id]['min'][i] is None:
-                self._metadata[channel_id]['min'][i] = value
+            if self._metadata[channel_id]["min"][i] is None:
+                self._metadata[channel_id]["min"][i] = value
             else:
-                self._metadata[channel_id]['min'][i] = min(self._metadata[channel_id]['min'][i], value)
+                self._metadata[channel_id]["min"][i] = min(self._metadata[channel_id]["min"][i], value)
 
-            if self._metadata[channel_id]['max'][i] is None:
-                self._metadata[channel_id]['max'][i] = value
+            if self._metadata[channel_id]["max"][i] is None:
+                self._metadata[channel_id]["max"][i] = value
             else:
-                self._metadata[channel_id]['max'][i] = max(self._metadata[channel_id]['max'][i], value)
+                self._metadata[channel_id]["max"][i] = max(self._metadata[channel_id]["max"][i], value)
 
         type_ = {
-            spec.TYPE_UNSIGNED_BYTE: 'B',
-            spec.TYPE_UNSIGNED_SHORT: 'H',
-            spec.TYPE_UNSIGNED_INT: 'I',
-            spec.TYPE_FLOAT: 'f',
-        }[self._metadata[channel_id]['componentType']]
+            spec.TYPE_UNSIGNED_BYTE: "B",
+            spec.TYPE_UNSIGNED_SHORT: "H",
+            spec.TYPE_UNSIGNED_INT: "I",
+            spec.TYPE_FLOAT: "f",
+        }[self._metadata[channel_id]["componentType"]]
 
-        format_ = '<{}'.format(type_ * size)
+        format_ = "<{}".format(type_ * size)
 
         self._channels[channel_id].write(struct.pack(format_, *values))
-        self._metadata[channel_id]['count'] += 1
+        self._metadata[channel_id]["count"] += 1
 
     def write_raw(self, channel_id, data):
         self._channels[channel_id].write(data)
-        self._metadata[channel_id]['count'] += len(data)
+        self._metadata[channel_id]["count"] += len(data)
 
     def count(self, channel_id):
-        return self._metadata[channel_id]['count']
+        return self._metadata[channel_id]["count"]
 
     def export(self, parent_node, filepath=None):
         offset = 0
         data = bytearray()
-        uri = 'nothing.bin'
+        uri = "nothing.bin"
 
         # accessors + buffer views
         for i in range(len(self._channels)):
             channel = self._channels[i]
             metadata = self._metadata[i]
-            extras = metadata.get('extras') or {}
-            parent_node['accessors'].append(metadata)
+            extras = metadata.get("extras") or {}
+            parent_node["accessors"].append(metadata)
 
             part = channel.getbuffer()
             view = {
-                'buffer': len(parent_node['buffers']),
-                'byteLength': len(part),
-                'byteOffset': offset,
-                'extras': extras,
+                "buffer": len(parent_node["buffers"]),
+                "byteLength": len(part),
+                "byteOffset": offset,
+                "extras": extras,
             }
-            parent_node['bufferViews'].append(view)
+            parent_node["bufferViews"].append(view)
 
             offset += len(part)
             data += part
 
         # embedded images + buffer views
-        for gltf_image in parent_node.get('images', []):
-            extras = gltf_image.get('extras') or {}
+        for gltf_image in parent_node.get("images", []):
+            extras = gltf_image.get("extras") or {}
 
             part = None
 
-            if 'uri' in extras:
-                tfilepath = os.path.join(os.path.dirname(self._filepath), extras['uri'])
-                with open(tfilepath, 'rb') as f:
+            if "uri" in extras:
+                tfilepath = os.path.join(os.path.dirname(self._filepath), extras["uri"])
+                with open(tfilepath, "rb") as f:
                     part = f.read()
 
-            elif 'data' in extras:
-                part = extras.pop('data')
+            elif "data" in extras:
+                part = extras.pop("data")
 
             if not part:
                 continue
 
             view = {
-                'buffer': len(parent_node['buffers']),
-                'byteLength': len(part),
-                'byteOffset': offset,
-                'extras': extras,
+                "buffer": len(parent_node["buffers"]),
+                "byteLength": len(part),
+                "byteOffset": offset,
+                "extras": extras,
             }
-            parent_node['bufferViews'].append(view)
-            gltf_image['bufferView'] = len(parent_node['bufferViews']) - 1
+            parent_node["bufferViews"].append(view)
+            gltf_image["bufferView"] = len(parent_node["bufferViews"]) - 1
 
             offset += len(part)
             data += part
 
         if filepath:
-            buffer_fp = filepath.replace('.gltf', '.bin')
-            with open(buffer_fp, 'wb') as f:
+            buffer_fp = filepath.replace(".gltf", ".bin")
+            with open(buffer_fp, "wb") as f:
                 f.write(data)
 
             uri = os.path.relpath(buffer_fp, os.path.dirname(self._filepath))
 
         if len(data):
             gltf_buffer = {
-                'byteLength': len(data),
+                "byteLength": len(data),
             }
             if filepath:
-                gltf_buffer['uri'] = uri
-            parent_node['buffers'].append(gltf_buffer)
+                gltf_buffer["uri"] = uri
+            parent_node["buffers"].append(gltf_buffer)
 
         return data

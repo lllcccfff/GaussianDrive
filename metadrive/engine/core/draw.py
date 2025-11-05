@@ -23,7 +23,10 @@ class ColorLineNodePath(LineNodePath):
         else:
             for pointList, lineColor in zip(lineList, colorList):
                 self.moveTo(*pointList[0])
-                for point, seg_color, in zip(pointList[1:], lineColor):
+                for (
+                    point,
+                    seg_color,
+                ) in zip(pointList[1:], lineColor):
                     assert 3 <= len(seg_color) <= 4, "color vector should have 3 or 4 component, get {} instead".format(
                         len(seg_color)
                     )
@@ -39,6 +42,7 @@ class ColorSphereNodePath(NodePath):
     """
     It is used to draw points in the scenes for debugging
     """
+
     def __init__(self, parent=None, scale=1):
         super(ColorSphereNodePath, self).__init__("Point Debugger")
         scale /= 10
@@ -56,6 +60,7 @@ class ColorSphereNodePath(NodePath):
         """
         if self._engine is None:
             from metadrive.engine.engine_utils import get_engine
+
             self._engine = get_engine()
         return self._engine
 

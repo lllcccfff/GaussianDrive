@@ -35,7 +35,6 @@ def image_list_to_video(video_name, image_list, code="mp4v"):
     height, width, layers = frame.shape
     video = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*code), 40, (width, height))
     for image in tqdm(image_list, desc="Writing Video"):
-
         # Change color
         image = image[..., ::-1]
 

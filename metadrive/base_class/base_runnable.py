@@ -20,9 +20,9 @@ class BaseRunnable(Configurable, Nameable, Randomizable):
         Randomizable.__init__(self, random_seed)
         Configurable.__init__(self, {k: None for k in self.PARAMETER_SPACE.parameters})
         # Parameter check
-        assert isinstance(
-            self.PARAMETER_SPACE, ParameterSpace
-        ), "Using PGSpace to define parameter spaces of " + self.class_name
+        assert isinstance(self.PARAMETER_SPACE, ParameterSpace), (
+            "Using PGSpace to define parameter spaces of " + self.class_name
+        )
         self.sample_parameters()
         # use external config update to overwrite sampled parameters, except None
         if config:

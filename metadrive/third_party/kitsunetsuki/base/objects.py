@@ -20,7 +20,7 @@ import json
 def get_object_properties(obj):
     text = bpy.data.texts.get(obj.name)
     if text:
-        return json.loads(text.as_string() or '{}')
+        return json.loads(text.as_string() or "{}")
     else:
         return {}
 
@@ -56,11 +56,11 @@ def apply_modifiers(obj, triangulate=False, apply_scale=False):
         if not mod or not mod.show_viewport:
             continue
 
-        if mod.type in ('ARMATURE', 'COLLISION'):
+        if mod.type in ("ARMATURE", "COLLISION"):
             continue
 
         if not is_activated:
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             obj.select_set(state=True)
             set_active_object(obj)
             is_activated = True
@@ -69,11 +69,11 @@ def apply_modifiers(obj, triangulate=False, apply_scale=False):
             bpy.ops.object.modifier_apply(modifier=mod.name)
         except Exception as e:
             print(
-                'FAILED TO APPLY MODIFIER {mod_name} [{mod_type}] ON OBJECT {obj_name}'.format(
+                "FAILED TO APPLY MODIFIER {mod_name} [{mod_type}] ON OBJECT {obj_name}".format(
                     **{
-                        'mod_name': mod.name,
-                        'mod_type': mod.type,
-                        'obj_name': obj.name,
+                        "mod_name": mod.name,
+                        "mod_type": mod.type,
+                        "obj_name": obj.name,
                     }
                 )
             )
@@ -81,7 +81,7 @@ def apply_modifiers(obj, triangulate=False, apply_scale=False):
 
     if apply_scale:
         if not is_activated:
-            bpy.ops.object.select_all(action='DESELECT')
+            bpy.ops.object.select_all(action="DESELECT")
             obj.select_set(state=True)
             set_active_object(obj)
             is_activated = True

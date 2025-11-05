@@ -8,6 +8,7 @@ from panda3d.bullet import BulletVehicle, BulletBoxShape, ZUp
 from panda3d.core import Material, Vec3, TransformState
 
 from metadrive.base_class.base_object import BaseObject
+
 # from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
 from metadrive.component.pg_space import VehicleParameterSpace, ParameterSpace
 from metadrive.constants import CamMask, get_color_palette
@@ -21,6 +22,7 @@ from metadrive.utils.math import get_vertical_vector, norm, clip
 from metadrive.utils.math import wrap_to_pi
 from metadrive.utils.utils import get_object_from_node
 import torch
+
 logger = get_logger()
 
 
@@ -63,6 +65,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
                     II-----II
                     2       3
     """
+
     COLLISION_MASK = CollisionGroup.Vehicle
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.BASE_VEHICLE)
     MAX_LENGTH = 10
@@ -103,7 +106,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         position=None,
         heading_theta=None,
         _calling_reset=True,
-        **kwargs
+        **kwargs,
     ):
         """
         This Vehicle Config is different from self.get_config(), and it is used to define which modules to use, and
@@ -126,7 +129,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         # build vehicle physics model
         self.vehicle, self.body = self._create_vehicle_chassis()
         self.wheels = self._create_wheel()
-    
+
         # powertrain config
         self.enable_reverse = self.config["enable_reverse"]
         self.max_steering = self.config["max_steering"]
@@ -163,7 +166,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     @staticmethod
     def _preprocess_action(action):
         action = safe_clip_for_small_array(action, -1, 1)
-        return action, {'raw_action': (action[0], action[1])}
+        return action, {"raw_action": (action[0], action[1])}
 
     def attachDyWld(self):
         self.physics_world.dynamic_world.attach(self.body)
@@ -181,7 +184,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         heading_theta: float = 0.0,
         velocity: np.ndarray = None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         pos is a 2-d array, and heading is a float (unit degree)
@@ -196,7 +199,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             assert isinstance(random_seed, int)
             self.seed(random_seed)
             self.sample_parameters()
-
 
         self.set_heading_theta(heading_theta)
         # self.set_wheel_friction(self.config["wheel_friction"])
@@ -281,7 +283,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         step_energy = step_energy * 1000
         self.energy_consumption += step_energy  # L/100 km
         return step_energy, self.energy_consumption
-    
+
     def crash_check(self):
         """
         Check States and filter to update info
@@ -305,7 +307,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             else:
                 continue
             contact_infos.add(name)
-        
+
         if len(ground_contact) > 0:
             ground_contact = torch.stack(ground_contact).cuda().float()
             print(ground_contact)
@@ -318,15 +320,15 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         wheel_centers = []
         for i in range(self.vehicle.getNumWheels()):
             wheel = self.vehicle.getWheel(i)
-            wheel_center = wheel.getWorldTransform().getRow3(3)  
+            wheel_center = wheel.getWorldTransform().getRow3(3)
             wheel_center = torch.tensor([wheel_center.x, wheel_center.y, wheel_center.z])
             wheel_centers.append(wheel_center)
         wheel_centers = torch.stack(wheel_centers).cuda().float()
 
         diff = contact_points[:, :2].unsqueeze(1) - wheel_centers[:, :2].unsqueeze(0)  # [N,4,3]
-        dist = diff.norm(dim=-1)                              # [N,4]
-        nearest_idx = dist.argmin(dim=1)                                 # [N]
-        nearest_z = wheel_centers[nearest_idx, 2]                        # [N]
+        dist = diff.norm(dim=-1)  # [N,4]
+        nearest_idx = dist.argmin(dim=1)  # [N]
+        nearest_z = wheel_centers[nearest_idx, 2]  # [N]
 
         if (contact_points[:, 2] - nearest_z > 0).any().item():
             breakpoint()
@@ -355,7 +357,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.vehicle.setSteeringValue(self.steering * self.max_steering, 0)
         self.vehicle.setSteeringValue(self.steering * self.max_steering, 1)
         self._apply_throttle_brake(action[1])
-        
+
     def _apply_throttle_brake(self, throttle_brake):
         for wheel_index in range(4):
             if throttle_brake >= 0:
@@ -393,7 +395,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     """-------------------------------------- for vehicle making ------------------------------------------"""
 
     def _create_vehicle_chassis(self):
-
         # assert self.LENGTH < BaseVehicle.MAX_LENGTH, "Vehicle is too large!"
         # assert self.WIDTH < BaseVehicle.MAX_WIDTH, "Vehicle is too large!"
 
@@ -401,7 +402,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         chassis_shape = BulletBoxShape(Vec3(self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2))
         chassis_shape.setMargin(0.03)
-        ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 4 ))
+        ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 4))
         chassis.addShape(chassis_shape, ts)
         chassis.setDeactivationEnabled(False)
         chassis.notifyCollisions(True)  # advance collision check, do callback in pg_collision_callback
@@ -409,7 +410,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         vehicle_chassis = BulletVehicle(self.physics_world.dynamic_world, chassis)
         vehicle_chassis.setCoordinateSystem(ZUp)
         return vehicle_chassis, chassis
-    
+
     def _create_wheel(self):
         f_l = self.FRONT_WHEELBASE
         r_l = -self.REAR_WHEELBASE
@@ -418,8 +419,12 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         radius = self.TIRE_RADIUS
         wheels = []
         for id, pos in enumerate(
-            [Vec3(lateral, f_l, axis_height), Vec3(-lateral, f_l, axis_height),
-            Vec3(lateral, r_l, axis_height), Vec3(-lateral, r_l, axis_height)]
+            [
+                Vec3(lateral, f_l, axis_height),
+                Vec3(-lateral, f_l, axis_height),
+                Vec3(lateral, r_l, axis_height),
+                Vec3(-lateral, r_l, axis_height),
+            ]
         ):
             wheel = self.vehicle.createWheel()
             wheel.setChassisConnectionPointCs(pos)
@@ -449,7 +454,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         super(BaseVehicle, self).set_velocity(velocity)
         self.last_velocity = self.velocity
 
-    def set_position(self, position : List[float], height=None):
+    def set_position(self, position: List[float], height=None):
         if height is None:
             height = self.position[-1]
         if len(position) == 2:
@@ -505,7 +510,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
             max_brake_force=max_brake_force,
             wheel_friction=wheel_friction,
             max_steering=max_steering,
-            mass=mass
+            mass=mass,
         )
         return ret
 
@@ -528,10 +533,16 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
     @property
     def replay_done(self):
-        return self._replay_done if hasattr(self, "_replay_done") else (
-            self.crash_building or self.crash_vehicle or
-            # self.on_white_continuous_line or
-            self.on_yellow_continuous_line
+        return (
+            self._replay_done
+            if hasattr(self, "_replay_done")
+            else (
+                self.crash_building
+                or self.crash_vehicle
+                or
+                # self.on_white_continuous_line or
+                self.on_yellow_continuous_line
+            )
         )
 
     @property
@@ -549,5 +560,3 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     @property
     def max_speed_m_s(self):
         return self.config["max_speed_km_h"] / 3.6
-
-

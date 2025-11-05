@@ -2,6 +2,7 @@
 """
 These scripts are copied from https://github.com/liuyf5231/opendriveparser. Credit: https://github.com/liuyf5231
 """
+
 import numpy as np
 from lxml import etree
 from metadrive.utils.opendrive.elements.opendrive import OpenDrive, Header
@@ -183,7 +184,6 @@ def parse_opendrive_road_geometry(newRoad, road_geometry):
 
     elif road_geometry.find("paramPoly3") is not None:
         if road_geometry.find("paramPoly3").get("pRange"):
-
             if road_geometry.find("paramPoly3").get("pRange") == "arcLength":
                 pMax = float(road_geometry.get("length"))
             else:
@@ -323,7 +323,6 @@ def parse_opendrive_road_lane_section(newRoad, lane_section_id, lane_section):
     )
 
     for sideTag, newSideLanes in sides.items():
-
         side = lane_section.find(sideTag)
 
         # It is possible one side is not present
@@ -331,22 +330,20 @@ def parse_opendrive_road_lane_section(newRoad, lane_section_id, lane_section):
             continue
 
         for lane in side.findall("lane"):
-
             new_lane = RoadLaneSectionLane(parentRoad=newRoad, lane_section=newLaneSection)
             new_lane.id = lane.get("id")
             new_lane.type = lane.get("type")
 
             # In some sample files the level is not specified according to the OpenDRIVE spec
-            new_lane.level = ("true" if lane.get("level") in [1, "1", "true"] else "false")
+            new_lane.level = "true" if lane.get("level") in [1, "1", "true"] else "false"
 
             # Lane Links
             if lane.find("link") is not None:
-
                 if lane.find("link").find("predecessor") is not None:
-                    new_lane.link.predecessorId = (lane.find("link").find("predecessor").get("id"))
+                    new_lane.link.predecessorId = lane.find("link").find("predecessor").get("id")
 
                 if lane.find("link").find("successor") is not None:
-                    new_lane.link.successorId = (lane.find("link").find("successor").get("id"))
+                    new_lane.link.successorId = lane.find("link").find("successor").get("id")
 
             # Width
             for widthIdx, width in enumerate(lane.findall("width")):
@@ -487,14 +484,13 @@ def calculate_lane_section_lengths(newRoad):
     """
     # OpenDRIVE does not provide lane section lengths by itself, calculate them by ourselves
     for lane_section in newRoad.lanes.lane_sections:
-
         # Last lane section in road
         if lane_section.idx + 1 >= len(newRoad.lanes.lane_sections):
             lane_section.length = newRoad.planView.length - lane_section.sPos
 
         # All but the last lane section end at the succeeding one
         else:
-            lane_section.length = (newRoad.lanes.lane_sections[lane_section.idx + 1].sPos - lane_section.sPos)
+            lane_section.length = newRoad.lanes.lane_sections[lane_section.idx + 1].sPos - lane_section.sPos
 
     # OpenDRIVE does not provide lane width lengths by itself, calculate them by ourselves
     for lane_section in newRoad.lanes.lane_sections:
@@ -548,7 +544,6 @@ def parse_opendrive_junction(opendrive, junction):
     newJunction.name = str(junction.get("name"))
 
     for connection in junction.findall("connection"):
-
         newConnection = JunctionConnection()
 
         newConnection.id = connection.get("id")

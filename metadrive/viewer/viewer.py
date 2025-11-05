@@ -18,44 +18,47 @@ from metadrive.viewer.server import WebSocketServer
 from metadrive.viewer.manual_controller import KeyboardController, get_controller
 import cv2
 
+
 class Viewer:
     def __init__(
-        self, H, W,
-        mode = 'local', # client, server, local
-        host = None,
-        port = None,
-        controller = 'keyboard'
+        self,
+        H,
+        W,
+        mode="local",  # client, server, local
+        host=None,
+        port=None,
+        controller="keyboard",
     ):
         self.H = H
         self.W = W
         self.mode = mode
-            
-        if self.mode == 'client':
+
+        if self.mode == "client":
             self.lock = threading.Lock()
             self.client = Client(server_ip=host, server_port=port, lock=self.lock)
             self.client.run()
-        elif self.mode == 'server':
+        elif self.mode == "server":
             self.lock = threading.Lock()
             self.server = WebSocketServer(host=host, port=port, lock=self.lock)
             self.server.run()
-            
-        self.window_title = 'Simple Visualizer'
 
-        if self.mode in ['local', 'client']:
+        self.window_title = "Simple Visualizer"
+
+        if self.mode in ["local", "client"]:
             self._init_glfw()
             self._init_opengl()
             self._init_imgui()
             self._init_quad()
             self._bind_callbacks()
             self.manual_controller = get_controller(controller, self.window)
-        
+
     @property
     def window_address(self):
         window_address = ctypes.cast(self.window, ctypes.c_void_p).value
         return window_address
 
     def _init_opengl(self):
-        gl.glViewport(0, 0, self.W, self.H)    # Use program point size
+        gl.glViewport(0, 0, self.W, self.H)  # Use program point size
         # gl.glEnable(gl.GL_PROGRAM_POINT_SIZE)
 
         # # Performs face culling
@@ -90,7 +93,7 @@ class Viewer:
 
     def _init_glfw(self):
         if not glfw.init():
-            log(red('Could not initialize OpenGL context'))
+            log(red("Could not initialize OpenGL context"))
             exit(1)
 
         # Decide GL+GLSL versions
@@ -110,7 +113,7 @@ class Viewer:
             glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, 0)  # disable osx scaling
         else:
             # GL 3.0 + GLSL 130
-            self.glsl_version = "#version 130" # TODO: why? why not 330?
+            self.glsl_version = "#version 130"  # TODO: why? why not 330?
             glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
             glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 0)
             # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE) # // 3.2+ only
@@ -122,8 +125,8 @@ class Viewer:
         window = glfw.create_window(self.W, self.H, self.window_title, None, None)
         if not window:
             glfw.terminate()
-            log(red('Could not initialize window'))
-            raise RuntimeError('Failed to initialize window in glfw')
+            log(red("Could not initialize window"))
+            raise RuntimeError("Failed to initialize window in glfw")
 
         # Setting up the window
         glfw.make_context_current(window)
@@ -183,35 +186,36 @@ class Viewer:
         # options.font_options.regular_size = self.font_size
         # imgui_md.initialize_markdown(options=options)
         # imgui_md.get_font_loader_function()() # requires imgui_hello
-    
+
     def _init_quad(self):
         from easydrive.utils.opengl_utils import Quad
+
         self.quad = Quad(H=self.H, W=self.W)  # will blit this texture to screen if rendered
 
     def _bind_callbacks(self):
         glfw.set_window_user_pointer(self.window, self)  # set the user, for retrival
 
     def is_running(self):
-        return not glfw.window_should_close(self.window) if self.mode in ['client', 'local'] else True
-    
-    def run(self, img : Union[np.ndarray, torch.Tensor] = None):
-        if self.mode == 'server':
+        return not glfw.window_should_close(self.window) if self.mode in ["client", "local"] else True
+
+    def run(self, img: Union[np.ndarray, torch.Tensor] = None):
+        if self.mode == "server":
             action = self._actuate_server(img)
-            action = action if action else [0.0, 0.0] 
+            action = action if action else [0.0, 0.0]
             return action
-        elif self.mode == 'client':
+        elif self.mode == "client":
             action = self.manual_controller.process_input()
             img = self._actuate_client(action)
             if img is None:
-                img = self.last_image if hasattr(self, 'last_image') else None
+                img = self.last_image if hasattr(self, "last_image") else None
             else:
                 self.last_image = img
             self._render(img)
-        elif self.mode == 'local':
+        elif self.mode == "local":
             self._render(img)
             action = self.manual_controller.process_input()
             return action
-    
+
     def _render(self, img):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         glfw.poll_events()
@@ -229,7 +233,7 @@ class Viewer:
 
         imgui.render()
         imgui.backends.opengl3_render_draw_data(imgui.get_draw_data())
-        
+
         glfw.swap_buffers(self.window)
 
     def _actuate_client(self, input):
@@ -240,7 +244,7 @@ class Viewer:
             outputs = self.client.output
             self.client.output = None
         return outputs
-    
+
     def _actuate_server(self, img):
         output = img
         with self.lock:
@@ -251,7 +255,6 @@ class Viewer:
             input_data = self.server.input
             self.server.input = None
         return input_data
-        
 
     def shutdown(self):
         imgui.backends.opengl3_shutdown()

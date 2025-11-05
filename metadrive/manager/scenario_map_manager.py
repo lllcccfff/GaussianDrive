@@ -8,6 +8,7 @@ from metadrive.utils.logger import get_logger, set_log_level
 
 from easydrive.engine import MODELS
 from easydrive.utils.base_utils import dotdict
+
 logger = get_logger()
 
 
@@ -40,23 +41,19 @@ class ScenarioMapManager(BaseManager):
         if not scene_mesh_path:
             self.spawn_object(
                 GroundPlane,
-                physics_world=physics_world, 
-                direction=[0,0,1.],
-                constant=ground_height,
-                random_seed=self.random_seed
-            )
-        else:   
-            self.spawn_object(
-                MeshTerrain,
-                model_path=scene_mesh_path,
                 physics_world=physics_world,
-                random_seed=self.random_seed
+                direction=[0, 0, 1.0],
+                constant=ground_height,
+                random_seed=self.random_seed,
+            )
+        else:
+            self.spawn_object(
+                MeshTerrain, model_path=scene_mesh_path, physics_world=physics_world, random_seed=self.random_seed
             )
 
     def clear_object(self, object_id):
         obj = self.spawned_objects.pop(object_id)
-        obj.destroy()  
-
+        obj.destroy()
 
     def destroy(self):
         self.clear_stored_maps()
@@ -69,13 +66,12 @@ class ScenarioMapManager(BaseManager):
         self.current_sdc_route = None
 
         super(ScenarioMapManager, self).destroy()
-    
+
     def clear_stored_maps(self):
         for m in self._stored_maps.values():
             if m is not None:
                 m.detach_from_world()
                 m.destroy()
         self._stored_maps = {
-            i: None
-            for i in range(self.start_scenario_index, self.start_scenario_index + self.map_num)
+            i: None for i in range(self.start_scenario_index, self.start_scenario_index + self.map_num)
         }

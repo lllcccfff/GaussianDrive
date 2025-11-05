@@ -148,8 +148,9 @@ def convert_recorded_scenario_exported(record_episode, scenario_log_interval=0.1
     result[SD.METADATA]["scenario_id"] = record_episode["scenario_index"]
     result[SD.METADATA][SD.COORDINATE] = MetaDriveType.COORDINATE_METADRIVE
     result[SD.METADATA][SD.SDC_ID] = str(frames[0]._agent_to_object[DEFAULT_AGENT])
-    result[SD.METADATA][SD.TIMESTEP] = \
-        np.asarray([scenario_log_interval * i for i in range(episode_len)], dtype=np.float32)
+    result[SD.METADATA][SD.TIMESTEP] = np.asarray(
+        [scenario_log_interval * i for i in range(episode_len)], dtype=np.float32
+    )
 
     agent_to_object = {}
     object_to_agent = {}
@@ -169,16 +170,15 @@ def convert_recorded_scenario_exported(record_episode, scenario_log_interval=0.1
             type=MetaDriveType.UNSET,
             state=dict(
                 position=np.zeros(shape=(episode_len, 3)),
-                heading=np.zeros(shape=(episode_len, )),
+                heading=np.zeros(shape=(episode_len,)),
                 velocity=np.zeros(shape=(episode_len, 2)),
-                valid=np.zeros(shape=(episode_len, )),
-
+                valid=np.zeros(shape=(episode_len,)),
                 # Add these items when the object has them.
                 # throttle_brake=np.zeros(shape=(episode_len, 1)),
                 # steering=np.zeros(shape=(episode_len, 1)),
                 # size=np.zeros(shape=(episode_len, 3)),
             ),
-            metadata=dict(track_length=episode_len, type=MetaDriveType.UNSET, object_id=k, original_id=k)
+            metadata=dict(track_length=episode_len, type=MetaDriveType.UNSET, object_id=k, original_id=k),
         )
 
     all_lights = set()
@@ -189,20 +189,17 @@ def convert_recorded_scenario_exported(record_episode, scenario_log_interval=0.1
     lights = {
         k: {
             "type": MetaDriveType.TRAFFIC_LIGHT,
-            "state": {
-                ScenarioDescription.TRAFFIC_LIGHT_STATUS: [MetaDriveType.LIGHT_UNKNOWN] * episode_len
-            },
-            ScenarioDescription.TRAFFIC_LIGHT_POSITION: np.zeros(shape=(3, ), dtype=np.float32),
+            "state": {ScenarioDescription.TRAFFIC_LIGHT_STATUS: [MetaDriveType.LIGHT_UNKNOWN] * episode_len},
+            ScenarioDescription.TRAFFIC_LIGHT_POSITION: np.zeros(shape=(3,), dtype=np.float32),
             ScenarioDescription.TRAFFIC_LIGHT_LANE: None,
             "metadata": dict(
                 track_length=episode_len, type=MetaDriveType.TRAFFIC_LIGHT, object_id=k, dataset="metadrive"
-            )
+            ),
         }
         for k in list(all_lights)
     }
 
     for frame_idx in range(result[SD.LENGTH]):
-
         # Record all agents' states (position, velocity, ...)
         for id, state in frames[frame_idx].step_info.items():
             # Fill type
@@ -226,12 +223,15 @@ def convert_recorded_scenario_exported(record_episode, scenario_log_interval=0.1
                 # if light_status != MetaDriveType.LIGHT_UNKNOWN:
                 if lights[id][ScenarioDescription.TRAFFIC_LIGHT_LANE] is None:
                     lights[id][ScenarioDescription.TRAFFIC_LIGHT_LANE] = str(id)
-                    lights[id][ScenarioDescription.TRAFFIC_LIGHT_POSITION
-                               ] = state[ScenarioDescription.TRAFFIC_LIGHT_POSITION]
+                    lights[id][ScenarioDescription.TRAFFIC_LIGHT_POSITION] = state[
+                        ScenarioDescription.TRAFFIC_LIGHT_POSITION
+                    ]
                 else:
                     assert lights[id][ScenarioDescription.TRAFFIC_LIGHT_LANE] == str(id)
-                    assert lights[id][ScenarioDescription.TRAFFIC_LIGHT_POSITION
-                                      ] == state[ScenarioDescription.TRAFFIC_LIGHT_POSITION]
+                    assert (
+                        lights[id][ScenarioDescription.TRAFFIC_LIGHT_POSITION]
+                        == state[ScenarioDescription.TRAFFIC_LIGHT_POSITION]
+                    )
 
             else:
                 tracks[id]["type"] = type
@@ -472,10 +472,7 @@ def save_dataset(scenario_list, dataset_name, dataset_version, dataset_dir):
         pickle.dump(dict_recursive_remove_array_and_set(summary), file)
     with open(mapping_file, "wb") as file:
         pickle.dump(mapping, file)
-    print(
-        "\n ================ Dataset Summary and Mapping are saved at: {} "
-        "================ \n".format(summary_file)
-    )
+    print("\n ================ Dataset Summary and Mapping are saved at: {} ================ \n".format(summary_file))
 
 
 def get_number_of_scenarios(dataset_path):
@@ -510,19 +507,17 @@ def assert_scenario_equal(scenarios1, scenarios2, only_compare_sdc=False, check_
                     np.testing.assert_almost_equal(
                         state_dict1[SD.STATE][k][:min_len][..., :2],
                         state_dict2[SD.STATE][k][:min_len][..., :2],
-                        decimal=NP_ARRAY_DECIMAL
+                        decimal=NP_ARRAY_DECIMAL,
                     )
                 elif k == "heading":
                     np.testing.assert_almost_equal(
                         wrap_to_pi(state_dict1[SD.STATE][k][:min_len] - state_dict2[SD.STATE][k][:min_len]),
                         np.zeros_like(state_dict2[SD.STATE][k][:min_len]),
-                        decimal=NP_ARRAY_DECIMAL
+                        decimal=NP_ARRAY_DECIMAL,
                     )
                 elif k == "velocity":
                     np.testing.assert_almost_equal(
-                        state_dict1[SD.STATE][k][:min_len],
-                        state_dict2[SD.STATE][k][:min_len],
-                        decimal=VELOCITY_DECIMAL
+                        state_dict1[SD.STATE][k][:min_len], state_dict2[SD.STATE][k][:min_len], decimal=VELOCITY_DECIMAL
                     )
             assert state_dict1[SD.TYPE] == state_dict2[SD.TYPE]
 

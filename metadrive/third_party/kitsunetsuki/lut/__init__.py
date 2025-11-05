@@ -11,7 +11,7 @@ class Palette2LUT(object):
         lut_size = self.tile_width * self.atlas_width
 
         reg = PNMFileTypeRegistry.get_global_ptr()
-        ftype = reg.get_type_from_extension('a.png')
+        ftype = reg.get_type_from_extension("a.png")
 
         self.lut = PNMImage(lut_size, lut_size, 3, 255, ftype, CS_linear)
 

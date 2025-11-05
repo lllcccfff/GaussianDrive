@@ -9,6 +9,7 @@ from metadrive.base_class.base_object import BaseObject
 from metadrive.constants import CollisionGroup
 from metadrive.engine.physics_node import BaseRigidBodyNode
 
+
 class MeshTerrain(BaseObject):
     COLLISION_MASK = CollisionGroup.TrafficParticipants
     MASS = 0.0  # 静态地面
@@ -24,29 +25,23 @@ class MeshTerrain(BaseObject):
         random_seed=None,
         name="GroundMesh",
         config=None,
-        **kwargs
+        **kwargs,
     ):
-        super().__init__(
-            physics_world=physics_world,
-            random_seed=random_seed,
-            name=name,
-            config=config
-        )
+        super().__init__(physics_world=physics_world, random_seed=random_seed, name=name, config=config)
 
         self.set_metadrive_type(MetaDriveType.GROUND)
 
         # load model
-        if not (model_path.endswith('.bam') or model_path.endswith('.egg') or model_path.endswith('.obj')):
+        if not (model_path.endswith(".bam") or model_path.endswith(".egg") or model_path.endswith(".obj")):
             raise ValueError("Only .bam, .egg, .obj models are supported for MeshTerrain.")
         loader = Loader.getGlobalPtr()
         model = NodePath(loader.loadSync(model_path))
         model.setPos(position[0], position[1], position[2])
         model.setScale(scale)
 
-
         # build bullet shape
         bullet_mesh = BulletTriangleMesh()
-        for nodePath in model.findAllMatches('**/+GeomNode'):
+        for nodePath in model.findAllMatches("**/+GeomNode"):
             geom_node = nodePath.node()
             for i in range(geom_node.getNumGeoms()):
                 geom = geom_node.getGeom(i)
@@ -66,7 +61,7 @@ class MeshTerrain(BaseObject):
     def reset(self, random_seed=None, name=None, *args, **kwargs):
         """地面通常无需reset"""
         pass
-    
+
     def destroy(self):
         self.detachDyWld(self.body)
         super().destroy()

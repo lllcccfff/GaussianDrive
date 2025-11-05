@@ -38,14 +38,14 @@ from easydrive.utils.console_utils import log
 
 class WebSocketServer:
     # Viewer should be used in conjuction with another runner, which explicitly handles model loading
-    def __init__(self,
-                 host: str = '0.0.0.0',
-                 port: int = 1024,
-                 lock: threading.Lock = None,
-                 jpeg_quality: int = 75,
-                 **kwargs,
-                 ):
-
+    def __init__(
+        self,
+        host: str = "0.0.0.0",
+        port: int = 1024,
+        lock: threading.Lock = None,
+        jpeg_quality: int = 75,
+        **kwargs,
+    ):
         # Socket related initialization
         self.host = host
         self.port = port
@@ -53,20 +53,19 @@ class WebSocketServer:
         self.output = None
         self.input = None
         self.lock = lock
-        
+
         # self.stream = torch.cuda.Stream()
         self.jpeg_quality = jpeg_quality
 
-        
     def run(self):
         server_thread = threading.Thread(target=self.server_thread, daemon=True)
         server_thread.start()
-    
+
     def server_thread(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        log('Preparing websocket server for sending images & receiving cameras')
+        log("Preparing websocket server for sending images & receiving cameras")
         server = websockets.serve(self.server_loop, self.host, self.port)
 
         loop.run_until_complete(server)
@@ -107,7 +106,7 @@ class WebSocketServer:
                     except Exception as e:
                         print(f"Data corrupted from client: {e}")
                         continue
-                    
+
                     with self.lock:
                         self.input = action
         except websockets.ConnectionClosed:

@@ -17,18 +17,18 @@ import os
 import math
 
 from panda3d.core import CS_linear, PNMImage, PNMFileTypeRegistry, LMatrix4d
-from panda3d.egg import (EggData, EggComment, EggGroup, EggPolygon, EggVertex, EggVertexPool, EggTexture)
+from panda3d.egg import EggData, EggComment, EggGroup, EggPolygon, EggVertex, EggVertexPool, EggTexture
 
 
 class CardMaker(object):
-    def __init__(self, animations_frames, images, empty=None, prefix=None, fps=30, scale=1, type='png'):
+    def __init__(self, animations_frames, images, empty=None, prefix=None, fps=30, scale=1, type="png"):
         self.animations = {}
         for i, frames in enumerate(animations_frames):
             self.animations[i] = frames
         self.images = images
         if empty:
             self.images.insert(0, empty)
-        self.prefix = prefix or ''
+        self.prefix = prefix or ""
         self.fps = fps
         self.scale = scale
         self.type = type
@@ -93,11 +93,11 @@ class CardMaker(object):
         egg_group.set_switch_fps(self.fps)  # animation fps
 
         for i in range(count):
-            self._add_polygon('{}_frame_{:04d}'.format(name, self.index_poly), egg_group, egg_texture, egg_vertex_pool)
+            self._add_polygon("{}_frame_{:04d}".format(name, self.index_poly), egg_group, egg_texture, egg_vertex_pool)
 
         if self.empty:
             self._add_polygon(
-                '{}_frame_{:04d}'.format(name, self.index_poly), egg_group, egg_texture, egg_vertex_pool, is_empty=True
+                "{}_frame_{:04d}".format(name, self.index_poly), egg_group, egg_texture, egg_vertex_pool, is_empty=True
             )
 
         return egg_group
@@ -139,7 +139,7 @@ class CardMaker(object):
                 0,  # (x, y) from
                 frame_size,
                 frame_size,
-                1
+                1,
             )
 
             i += 1
@@ -151,16 +151,15 @@ class CardMaker(object):
         egg_root = EggData()
 
         egg_comment = EggComment(
-            '', 'KITSUNETSUKI Asset Tools by kitsune.ONE - '
-            'https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools'
+            "", "KITSUNETSUKI Asset Tools by kitsune.ONE - https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools"
         )
 
-        spritesheet = path.replace('.egg', '.{}'.format(self.type))
+        spritesheet = path.replace(".egg", ".{}".format(self.type))
         self._make_spritesheet(spritesheet)
 
-        name = os.path.basename(spritesheet).rpartition('.')[0]
-        egg_texture = EggTexture(name, '{}{}'.format(self.prefix, spritesheet))
-        egg_vertex_pool = EggVertexPool('vpool')
+        name = os.path.basename(spritesheet).rpartition(".")[0]
+        egg_texture = EggTexture(name, "{}{}".format(self.prefix, spritesheet))
+        egg_vertex_pool = EggVertexPool("vpool")
 
         egg_root.add_child(egg_comment)
         egg_root.add_child(egg_texture)
@@ -170,7 +169,7 @@ class CardMaker(object):
             self._add_polygon()
 
         for animation, frames in self.animations.items():
-            egg_group = self._add_geom('animation_{:04d}'.format(animation), frames, egg_texture, egg_vertex_pool)
+            egg_group = self._add_geom("animation_{:04d}".format(animation), frames, egg_texture, egg_vertex_pool)
             egg_group.add_matrix4(LMatrix4d.scale_mat(self.scale))
             egg_root.add_child(egg_group)
 

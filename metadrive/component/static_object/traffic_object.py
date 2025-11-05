@@ -20,6 +20,7 @@ class TrafficObject(BaseStaticObject):
     """
     Common interface for objects that appear on the road, beside vehicles.
     """
+
     CLASS_NAME = MetaDriveType.TRAFFIC_OBJECT
     COLLISION_MASK = CollisionGroup.TrafficObject
     SEMANTIC_LABEL = Semantics.FENCE.label

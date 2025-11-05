@@ -32,30 +32,30 @@ class MaterialMixin(object):
 
         shader = None
         if material.node_tree is not None:
-            output = get_root_node(material.node_tree, 'OUTPUT_MATERIAL')
+            output = get_root_node(material.node_tree, "OUTPUT_MATERIAL")
             shader = None
             if output:
                 shader = get_from_node(
                     material.node_tree,
-                    'BSDF_PRINCIPLED',
+                    "BSDF_PRINCIPLED",
                     to_node=output,
-                    from_socket_name='BSDF',
-                    to_socket_name='Surface'
+                    from_socket_name="BSDF",
+                    to_socket_name="Surface",
                 )
 
         if not shader:
             return egg_material
 
-        if self._render_type == 'rp':  # RenderPipeline
+        if self._render_type == "rp":  # RenderPipeline
             # emission = tuple(shader.inputs['Emission'].default_value)[:3]
             emission = (0, 0, 0, 0)
             # alpha = shader.inputs['Alpha'].default_value
             alpha = 1
-            clearcoat = shader.inputs['Clearcoat'].default_value
+            clearcoat = shader.inputs["Clearcoat"].default_value
             normal_strength = self.get_normal_strength(material, shader)
 
             if sum(emission) > 0:  # emission
-                egg_material.set_base(emission + (1, ))
+                egg_material.set_base(emission + (1,))
                 egg_material.set_metallic(0)
                 egg_material.set_roughness(1)
                 egg_material.set_ior(1.51)
@@ -70,7 +70,7 @@ class MaterialMixin(object):
                 egg_material.set_base((1, 1, 1, 1))
                 egg_material.set_metallic(self.get_metallic(material, shader))
                 egg_material.set_roughness(self.get_roughness(material, shader))
-                egg_material.set_ior(shader.inputs['IOR'].default_value)
+                egg_material.set_ior(shader.inputs["IOR"].default_value)
 
                 if alpha < 1:
                     emit = [SHADING_MODEL_TRANSPARENT_GLASS, normal_strength, alpha, 0]
@@ -87,7 +87,7 @@ class MaterialMixin(object):
             egg_material.set_base((1, 1, 1, alpha))
             egg_material.set_metallic(self.get_metallic(material, shader))
             egg_material.set_roughness(self.get_roughness(material, shader))
-            egg_material.set_ior(shader.inputs['IOR'].default_value)
+            egg_material.set_ior(shader.inputs["IOR"].default_value)
             egg_material.set_emit(emission)
 
         return egg_material

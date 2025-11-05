@@ -25,23 +25,23 @@ from ..gltf import spec
 from .armature import ArmatureMixin
 
 BLENDSHAPE_PRESETS = (
-    'neutral',
-    'a',
-    'i',
-    'u',
-    'e',
-    'o',
-    'blink',
-    'joy',
-    'angry',
-    'sorrow',
-    'fun',
-    'lookup',
-    'lookdown',
-    'lookleft',
-    'lookright',
-    'blink_l',
-    'blink_r',
+    "neutral",
+    "a",
+    "i",
+    "u",
+    "e",
+    "o",
+    "blink",
+    "joy",
+    "angry",
+    "sorrow",
+    "fun",
+    "lookup",
+    "lookdown",
+    "lookleft",
+    "lookright",
+    "blink_l",
+    "blink_r",
 )
 
 
@@ -51,39 +51,39 @@ class VRMExporter(ArmatureMixin, GLTFExporter):
 
         self._z_up = False
         self._pose_freeze = True
-        self._export_type = 'all'
+        self._export_type = "all"
 
     def _add_vrm_thumbnail(self, gltf_node, filepath):
         gltf_sampler = {
-            'name': os.path.basename(filepath),
-            'wrapS': spec.CLAMP_TO_EDGE,
-            'wrapT': spec.CLAMP_TO_EDGE,
+            "name": os.path.basename(filepath),
+            "wrapS": spec.CLAMP_TO_EDGE,
+            "wrapT": spec.CLAMP_TO_EDGE,
         }
-        gltf_node['samplers'].append(gltf_sampler)
+        gltf_node["samplers"].append(gltf_sampler)
 
         gltf_image = {
-            'name': os.path.basename(filepath),
-            'mimeType': 'image/png',
-            'extras': {
-                'uri': filepath,
-            }
+            "name": os.path.basename(filepath),
+            "mimeType": "image/png",
+            "extras": {
+                "uri": filepath,
+            },
         }
-        gltf_node['images'].append(gltf_image)
+        gltf_node["images"].append(gltf_image)
 
         gltf_texture = {
-            'sampler': len(gltf_node['samplers']) - 1,
-            'source': len(gltf_node['images']) - 1,
+            "sampler": len(gltf_node["samplers"]) - 1,
+            "source": len(gltf_node["images"]) - 1,
         }
-        gltf_node['textures'].append(gltf_texture)
+        gltf_node["textures"].append(gltf_texture)
 
-        texid = len(gltf_node['textures']) - 1
-        gltf_node['extensions']['VRM']['meta']['texture'] = texid
+        texid = len(gltf_node["textures"]) - 1
+        gltf_node["extensions"]["VRM"]["meta"]["texture"] = texid
 
     def make_root_node(self):
         gltf_node = super().make_root_node()
 
         data = {}
-        text = bpy.data.texts.get('VRM.ini')
+        text = bpy.data.texts.get("VRM.ini")
         if text:
             data = configparser.ConfigParser()
             data.read_string(text.as_string())
@@ -91,66 +91,66 @@ class VRMExporter(ArmatureMixin, GLTFExporter):
             raise RuntimeError('Missing "VRM.ini" text block.')
 
         vrm_meta = {
-            'exporterVersion': gltf_node['asset']['generator'],
-            'specVersion': '0.0',
-            'meta': {
-                'title': data['meta']['title'],
-                'version': data['meta']['version'],
-                'author': data['meta']['author'],
-                'contactInformation': data['meta']['contactInformation'],
-                'reference': data['meta']['reference'],
-                'texture': 0,  # thumbnail texture
-                'allowedUserName': data['meta'].get('allowedUserName', 'OnlyAuthor'),
-                'violentUssageName': data['meta'].get('violentUssageName', 'Disallow'),
-                'sexualUssageName': data['meta'].get('sexualUssageName', 'Disallow'),
-                'commercialUssageName': data['meta'].get('commercialUssageName', 'Disallow'),
-                'otherPermissionUrl': data['meta'].get('otherPermissionUrl', ''),
-                'licenseName': data['meta'].get('licenseName', 'Redistribution_Prohibited'),
-                'otherLicenseUrl': data['meta'].get('otherLicenseUrl', ''),
+            "exporterVersion": gltf_node["asset"]["generator"],
+            "specVersion": "0.0",
+            "meta": {
+                "title": data["meta"]["title"],
+                "version": data["meta"]["version"],
+                "author": data["meta"]["author"],
+                "contactInformation": data["meta"]["contactInformation"],
+                "reference": data["meta"]["reference"],
+                "texture": 0,  # thumbnail texture
+                "allowedUserName": data["meta"].get("allowedUserName", "OnlyAuthor"),
+                "violentUssageName": data["meta"].get("violentUssageName", "Disallow"),
+                "sexualUssageName": data["meta"].get("sexualUssageName", "Disallow"),
+                "commercialUssageName": data["meta"].get("commercialUssageName", "Disallow"),
+                "otherPermissionUrl": data["meta"].get("otherPermissionUrl", ""),
+                "licenseName": data["meta"].get("licenseName", "Redistribution_Prohibited"),
+                "otherLicenseUrl": data["meta"].get("otherLicenseUrl", ""),
             },
-            'humanoid': {
-                'armStretch': 0.0,
-                'legStretch': 0.0,
-                'lowerArmTwist': 0.0,  # LowerArm bone roll
-                'upperArmTwist': 0.0,  # UpperArm bone roll
-                'lowerLegTwist': 0.0,  # LowerLeg bone roll
-                'upperLegTwist': 0.0,  # UpperLeg bone roll
-                'feetSpacing': 0.0,
-                'hasTranslationDoF': False,
-                'humanBones': [],
+            "humanoid": {
+                "armStretch": 0.0,
+                "legStretch": 0.0,
+                "lowerArmTwist": 0.0,  # LowerArm bone roll
+                "upperArmTwist": 0.0,  # UpperArm bone roll
+                "lowerLegTwist": 0.0,  # LowerLeg bone roll
+                "upperLegTwist": 0.0,  # UpperLeg bone roll
+                "feetSpacing": 0.0,
+                "hasTranslationDoF": False,
+                "humanBones": [],
             },
-            'firstPerson': {
-                'firstPersonBone': None,
-                'firstPersonBoneOffset': {
-                    'x': 0,
-                    'y': 0,
-                    'z': 0,
+            "firstPerson": {
+                "firstPersonBone": None,
+                "firstPersonBoneOffset": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0,
                 },
-                'meshAnnotations': [],
-                'lookAtTypeName': 'Bone',
+                "meshAnnotations": [],
+                "lookAtTypeName": "Bone",
                 # 'lookAtTypeName': 'BlendShape',
-                'lookAtHorizontalInner': None,
-                'lookAtHorizontalOuter': None,
-                'lookAtVerticalDown': None,
-                'lookAtVerticalUp': None,
+                "lookAtHorizontalInner": None,
+                "lookAtHorizontalOuter": None,
+                "lookAtVerticalDown": None,
+                "lookAtVerticalUp": None,
             },
-            'blendShapeMaster': {
-                'blendShapeGroups': [],
+            "blendShapeMaster": {
+                "blendShapeGroups": [],
             },
-            'secondaryAnimation': {
-                'boneGroups': [],
+            "secondaryAnimation": {
+                "boneGroups": [],
                 # 'colliderGroups': [],
             },
-            'materialProperties': [],
+            "materialProperties": [],
         }
 
-        gltf_node['extensionsUsed'].append('VRM')
-        gltf_node['extensions']['VRM'] = vrm_meta
-        gltf_node['materials'] = []
+        gltf_node["extensionsUsed"].append("VRM")
+        gltf_node["extensions"]["VRM"] = vrm_meta
+        gltf_node["materials"] = []
 
         # make thumbnail
         if self._inputs:
-            prefix = os.path.basename(self._inputs[0]).replace('.blend', '.png')
+            prefix = os.path.basename(self._inputs[0]).replace(".blend", ".png")
             inpdir = os.path.dirname(os.path.abspath(self._inputs[0]))
             if os.path.exists(inpdir) and os.path.isdir(inpdir):
                 for filename in reversed(sorted(os.listdir(inpdir))):
@@ -162,57 +162,57 @@ class VRMExporter(ArmatureMixin, GLTFExporter):
 
     def _make_vrm_material(self, material):
         vrm_material = {
-            'floatProperties': {
-                '_BlendMode': 0 if material.blend_method == 'OPAQUE' else 1,
-                '_BumpScale': 1,
-                '_CullMode': 2 if material.use_backface_culling else 0,
-                '_Cutoff': material.alpha_threshold,
-                '_DebugMode': 0,
-                '_DstBlend': 0,
-                '_IndirectLightIntensity': 0.1,
-                '_LightColorAttenuation': 0,
-                '_MToonVersion': 35,
-                '_OutlineColorMode': 0,
-                '_OutlineCullMode': 1,
-                '_OutlineLightingMix': 1,
-                '_OutlineScaledMaxDistance': 1,
-                '_OutlineWidth': 0.5,
-                '_OutlineWidthMode': 0,
-                '_ReceiveShadowRate': 1,
-                '_RimFresnelPower': 1,
-                '_RimLift': 0,
-                '_RimLightingMix': 0,
-                '_ShadeShift': 0,
-                '_ShadeToony': 0.9,
-                '_ShadingGradeRate': 1,
-                '_SrcBlend': 1,
-                '_UvAnimRotation': 0,
-                '_UvAnimScrollX': 0,
-                '_UvAnimScrollY': 0,
-                '_ZWrite': 1,
+            "floatProperties": {
+                "_BlendMode": 0 if material.blend_method == "OPAQUE" else 1,
+                "_BumpScale": 1,
+                "_CullMode": 2 if material.use_backface_culling else 0,
+                "_Cutoff": material.alpha_threshold,
+                "_DebugMode": 0,
+                "_DstBlend": 0,
+                "_IndirectLightIntensity": 0.1,
+                "_LightColorAttenuation": 0,
+                "_MToonVersion": 35,
+                "_OutlineColorMode": 0,
+                "_OutlineCullMode": 1,
+                "_OutlineLightingMix": 1,
+                "_OutlineScaledMaxDistance": 1,
+                "_OutlineWidth": 0.5,
+                "_OutlineWidthMode": 0,
+                "_ReceiveShadowRate": 1,
+                "_RimFresnelPower": 1,
+                "_RimLift": 0,
+                "_RimLightingMix": 0,
+                "_ShadeShift": 0,
+                "_ShadeToony": 0.9,
+                "_ShadingGradeRate": 1,
+                "_SrcBlend": 1,
+                "_UvAnimRotation": 0,
+                "_UvAnimScrollX": 0,
+                "_UvAnimScrollY": 0,
+                "_ZWrite": 1,
             },
-            'keywordMap': {},
-            'name': material.name,
-            'renderQueue': 2000,
-            'shader': 'VRM_USE_GLTFSHADER',
-            'tagMap': {},
-            'textureProperties': {},
-            'vectorProperties': {
-                '_BumpMap': [0, 0, 1, 1],
-                '_Color': [1, 1, 1, 1],
-                '_EmissionColor': [0, 0, 0, 1],
-                '_EmissionMap': [0, 0, 1, 1],
-                '_MainTex': [0, 0, 1, 1],
-                '_OutlineColor': [0, 0, 0, 1],
-                '_OutlineWidthTexture': [0, 0, 1, 1],
-                '_ReceiveShadowTexture': [0, 0, 1, 1],
-                '_RimColor': [0, 0, 0, 1],
-                '_RimTexture': [0, 0, 1, 1],
-                '_ShadeColor': [1, 1, 1, 1],
-                '_ShadeTexture': [0, 0, 1, 1],
-                '_ShadingGradeTexture': [0, 0, 1, 1],
-                '_SphereAdd': [0, 0, 1, 1],
-                '_UvAnimMaskTexture': [0, 0, 1, 1],
+            "keywordMap": {},
+            "name": material.name,
+            "renderQueue": 2000,
+            "shader": "VRM_USE_GLTFSHADER",
+            "tagMap": {},
+            "textureProperties": {},
+            "vectorProperties": {
+                "_BumpMap": [0, 0, 1, 1],
+                "_Color": [1, 1, 1, 1],
+                "_EmissionColor": [0, 0, 0, 1],
+                "_EmissionMap": [0, 0, 1, 1],
+                "_MainTex": [0, 0, 1, 1],
+                "_OutlineColor": [0, 0, 0, 1],
+                "_OutlineWidthTexture": [0, 0, 1, 1],
+                "_ReceiveShadowTexture": [0, 0, 1, 1],
+                "_RimColor": [0, 0, 0, 1],
+                "_RimTexture": [0, 0, 1, 1],
+                "_ShadeColor": [1, 1, 1, 1],
+                "_ShadeTexture": [0, 0, 1, 1],
+                "_ShadingGradeTexture": [0, 0, 1, 1],
+                "_SphereAdd": [0, 0, 1, 1],
+                "_UvAnimMaskTexture": [0, 0, 1, 1],
             },
         }
 
@@ -250,26 +250,26 @@ class VRMExporter(ArmatureMixin, GLTFExporter):
 
         vrm_name = {
             # try to get VRM blend shapes from VRChat
-            'vrc.v_aa': 'A',
-            'vrc.v_ih': 'I',
-            'vrc.v_ou': 'U',
-            'vrc.v_e': 'E',
-            'vrc.v_oh': 'O',
-            'vrc.blink': 'Blink',
-            'vrc.blink_left': 'Blink_L',
-            'vrc.blink_right': 'Blink_R',
+            "vrc.v_aa": "A",
+            "vrc.v_ih": "I",
+            "vrc.v_ou": "U",
+            "vrc.v_e": "E",
+            "vrc.v_oh": "O",
+            "vrc.blink": "Blink",
+            "vrc.blink_left": "Blink_L",
+            "vrc.blink_right": "Blink_R",
         }.get(name, name)
 
-        preset = 'unknown'
+        preset = "unknown"
         if vrm_name.lower() in BLENDSHAPE_PRESETS:
             preset = vrm_name.lower()
 
         vrm_blend_shape = {
-            'name': vrm_name,
-            'presetName': preset,
-            'isBinary': False,
-            'binds': [],  # bind to mesh ID and shape key ID with shape key weight
-            'materialValues': [],  # material values override
+            "name": vrm_name,
+            "presetName": preset,
+            "isBinary": False,
+            "binds": [],  # bind to mesh ID and shape key ID with shape key weight
+            "materialValues": [],  # material values override
         }
 
         return vrm_blend_shape
@@ -277,81 +277,82 @@ class VRMExporter(ArmatureMixin, GLTFExporter):
     def convert(self):
         root, buffer_ = super().convert()
 
-        for gltf_material_id, gltf_material in enumerate(root['materials']):
-            material = bpy.data.materials[gltf_material['name']]
+        for gltf_material_id, gltf_material in enumerate(root["materials"]):
+            material = bpy.data.materials[gltf_material["name"]]
             vrm_material = self._make_vrm_material(material)
 
-            if gltf_material['alphaMode'] == 'OPAQUE':
-                vrm_material['tagMap']['RenderType'] = 'Opaque'
-                vrm_material['shader'] = 'VRM/MToon'
+            if gltf_material["alphaMode"] == "OPAQUE":
+                vrm_material["tagMap"]["RenderType"] = "Opaque"
+                vrm_material["shader"] = "VRM/MToon"
             else:
-                vrm_material['shader'] = 'VRM/UnlitCutout'
+                vrm_material["shader"] = "VRM/UnlitCutout"
 
-            if gltf_material['pbrMetallicRoughness'].get('baseColorTexture'):
-                vrm_material['textureProperties']['_MainTex'] = gltf_material['pbrMetallicRoughness']['baseColorTexture'
-                                                                                                      ]['index']
+            if gltf_material["pbrMetallicRoughness"].get("baseColorTexture"):
+                vrm_material["textureProperties"]["_MainTex"] = gltf_material["pbrMetallicRoughness"][
+                    "baseColorTexture"
+                ]["index"]
 
-            root['extensions']['VRM']['materialProperties'].append(vrm_material)
+            root["extensions"]["VRM"]["materialProperties"].append(vrm_material)
 
         vrm_blend_shapes = {
-            'Neutral': {
-                'name': 'Neutral',
-                'presetName': 'neutral',
-                'isBinary': False,
-                'binds': [],
-                'materialValues': [],
+            "Neutral": {
+                "name": "Neutral",
+                "presetName": "neutral",
+                "isBinary": False,
+                "binds": [],
+                "materialValues": [],
             }
         }
-        for gltf_mesh_id, gltf_mesh in enumerate(root['meshes']):
+        for gltf_mesh_id, gltf_mesh in enumerate(root["meshes"]):
             vrm_annotation = {
-                'firstPersonFlag': 'Auto',
-                'mesh': gltf_mesh_id,
+                "firstPersonFlag": "Auto",
+                "mesh": gltf_mesh_id,
             }
-            root['extensions']['VRM']['firstPerson']['meshAnnotations'].append(vrm_annotation)
+            root["extensions"]["VRM"]["firstPerson"]["meshAnnotations"].append(vrm_annotation)
 
-            for gltf_primitive_id, gltf_primitive in enumerate(gltf_mesh['primitives']):
-                for sk_id, sk_name in enumerate(gltf_primitive['extras']['targetNames']):
+            for gltf_primitive_id, gltf_primitive in enumerate(gltf_mesh["primitives"]):
+                for sk_id, sk_name in enumerate(gltf_primitive["extras"]["targetNames"]):
                     if sk_name in vrm_blend_shapes:
                         vrm_blend_shape = vrm_blend_shapes[sk_name]
                     else:
                         vrm_blend_shape = self._make_vrm_blend_shape(sk_name)
                         vrm_blend_shapes[sk_name] = vrm_blend_shape
 
-                    for vrm_bind in vrm_blend_shape['binds']:
-                        if vrm_bind['mesh'] == gltf_mesh_id and vrm_bind['index'] == sk_id:
+                    for vrm_bind in vrm_blend_shape["binds"]:
+                        if vrm_bind["mesh"] == gltf_mesh_id and vrm_bind["index"] == sk_id:
                             break
                     else:
                         vrm_bind = {
-                            'mesh': gltf_mesh_id,
-                            'index': sk_id,
-                            'weight': 100,
+                            "mesh": gltf_mesh_id,
+                            "index": sk_id,
+                            "weight": 100,
                         }
-                        vrm_blend_shape['binds'].append(vrm_bind)
+                        vrm_blend_shape["binds"].append(vrm_bind)
 
         for vrm_blend_shape in vrm_blend_shapes.values():
-            root['extensions']['VRM']['blendShapeMaster']['blendShapeGroups'].append(vrm_blend_shape)
+            root["extensions"]["VRM"]["blendShapeMaster"]["blendShapeGroups"].append(vrm_blend_shape)
 
         return root, buffer_
 
 
 class VRMExporterOperator(bpy.types.Operator, ExportHelper):
-    bl_idname = 'avatar.vrm'
-    bl_label = 'Export VRM'
-    bl_description = 'Export VRM'
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_idname = "avatar.vrm"
+    bl_label = "Export VRM"
+    bl_description = "Export VRM"
+    bl_options = {"REGISTER", "UNDO"}
 
-    filename_ext = '.vrm'
-    filter_glob: bpy.props.StringProperty(default='*.vrm', options={'HIDDEN'})
+    filename_ext = ".vrm"
+    filter_glob: bpy.props.StringProperty(default="*.vrm", options={"HIDDEN"})
 
     def execute(self, context: bpy.types.Context):
         if not self.filepath:
-            return {'CANCELLED'}
+            return {"CANCELLED"}
 
         class Args(object):
             inputs = []
             output = self.filepath
-            export = 'all'
-            render = 'default'
+            export = "all"
+            render = "default"
             exec = None
             action = None
             speed = None
@@ -384,4 +385,4 @@ class VRMExporterOperator(bpy.types.Operator, ExportHelper):
 
 
 def export(export_op, context):
-    export_op.layout.operator(VRMExporterOperator.bl_idname, text='VRM using KITSUNETSUKI Asset Tools (.vrm)')
+    export_op.layout.operator(VRMExporterOperator.bl_idname, text="VRM using KITSUNETSUKI Asset Tools (.vrm)")

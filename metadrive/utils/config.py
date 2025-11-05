@@ -13,6 +13,7 @@ def merge_config_with_unknown_keys(old_dict, new_dict):
 
 def merge_config(old_dict, new_dict, new_keys_allowed=False):
     from metadrive.utils import Config
+
     if isinstance(old_dict, Config):
         old_dict = old_dict.get_dict()
     if isinstance(new_dict, Config):
@@ -76,6 +77,7 @@ class Config:
     For these <key, value> items, use Config["your key"] = None to init your PgConfig, then it will not implement
     type check at the first time. key "config" in map.py and key "force_fps" in world.py are good examples.
     """
+
     def __init__(self, config: Union["Config", dict], unchangeable=False):
         self._unchangeable = False
         if isinstance(config, Config):

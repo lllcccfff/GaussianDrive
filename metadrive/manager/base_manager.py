@@ -10,6 +10,7 @@ class BaseManager(Randomizable):
     """
     Managers should be created and registered after launching BaseEngine
     """
+
     PRIORITY = 10  # the engine will call managers according to the priority
 
     def __init__(self):
@@ -73,7 +74,7 @@ class BaseManager(Randomizable):
 
     def clear_all_objects(self):
         id_list = list(self.spawned_objects.keys())
-         
+
         for obj_id in id_list:
             self.clear_object(obj_id)
         self.spawned_objects = {}

@@ -18,6 +18,7 @@ class ElevationProfile:
 
     (Section 5.3.5 of OpenDRIVE 1.4)
     """
+
     def __init__(self):
         self.elevations = []
 

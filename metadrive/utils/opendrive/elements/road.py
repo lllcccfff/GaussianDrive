@@ -12,6 +12,7 @@ from metadrive.utils.opendrive.elements.junction import Junction
 
 class Road:
     """ """
+
     def __init__(self):
         self._id = None
         self._name = None

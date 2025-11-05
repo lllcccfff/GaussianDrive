@@ -22,23 +22,23 @@ import websockets
 
 
 class Client:
-    def __init__(self,
-                 server_ip='127.0.0.1', 
-                 server_port=56789,
-                 lock: threading.Lock = None,
-                 **kwargs,
-                 ):
+    def __init__(
+        self,
+        server_ip="127.0.0.1",
+        server_port=56789,
+        lock: threading.Lock = None,
+        **kwargs,
+    ):
         self.server_ip = server_ip
         self.server_port = server_port
         self.lock = lock
         self.output = None
         self.input = None
 
-    
     @property
     def url(self):
         return f"ws://{self.server_ip}:{self.server_port}"
-    
+
     def run(self):
         client_thread = threading.Thread(target=self.client_thread, daemon=True)
         client_thread.start()
@@ -85,7 +85,9 @@ class Client:
                 if buffer is not None:
                     try:
                         # https://github.com/pytorch/vision/issues/4378 Still not fixed even to this day? CUDA 12.1 seems fine
-                        tensor = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
+                        tensor = decode_jpeg(
+                            torch.from_numpy(np.frombuffer(buffer, np.uint8)), device="cuda"
+                        )  # 10ms for 1080p...
                         tensor = tensor.permute(1, 2, 0)
                     except RuntimeError as e:
                         print("Image corruptted.")

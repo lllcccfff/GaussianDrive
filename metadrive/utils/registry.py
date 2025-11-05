@@ -18,10 +18,24 @@ def _initialize_registry():
     from metadrive.component.pgblock.straight import Straight
     from metadrive.component.pgblock.tollgate import TollGate
     from metadrive.component.pgblock.bidirection import Bidirection
+
     _metadrive_class_list.extend(
         [
-            Merge, Split, Curve, InFork, OutFork, ParkingLot, InRampOnStraight, OutRampOnStraight, Roundabout,
-            StdInterSection, StdTInterSection, StdInterSectionWithUTurn, Straight, TollGate, Bidirection
+            Merge,
+            Split,
+            Curve,
+            InFork,
+            OutFork,
+            ParkingLot,
+            InRampOnStraight,
+            OutRampOnStraight,
+            Roundabout,
+            StdInterSection,
+            StdTInterSection,
+            StdInterSectionWithUTurn,
+            Straight,
+            TollGate,
+            Bidirection,
         ]
     )
 

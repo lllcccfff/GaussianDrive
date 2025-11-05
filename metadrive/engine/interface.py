@@ -5,13 +5,12 @@ import time
 import numpy as np
 from panda3d.core import NodePath, TextNode, LQuaternionf
 
-from metadrive.constants import COLLISION_INFO_COLOR, COLOR, MetaDriveType, \
-    CamMask, RENDER_MODE_NONE
+from metadrive.constants import COLLISION_INFO_COLOR, COLOR, MetaDriveType, CamMask, RENDER_MODE_NONE
 from metadrive.engine.asset_loader import AssetLoader
 
 
 class DisplayRegionPosition:
-    left = [0., 1 / 3, 0.8, 1.0]
+    left = [0.0, 1 / 3, 0.8, 1.0]
     mid = [1 / 3, 2 / 3, 0.8, 1.0]
     right = [2 / 3, 1, 0.8, 1.0]
 
@@ -20,6 +19,7 @@ class Interface:
     """
     Visualization interface, state banner and vehicle panel
     """
+
     ARROW_COLOR = COLLISION_INFO_COLOR["green"][1]
 
     def __init__(self, base_engine):
@@ -35,11 +35,15 @@ class Interface:
         self._right_arrow = None
         self._contact_banners = {}  # to save time/memory
         self.current_banner = None
-        self.need_interface = base_engine.mode != RENDER_MODE_NONE and not base_engine.global_config[
-            "debug_physics_world"] and base_engine.global_config["show_interface"]
+        self.need_interface = (
+            base_engine.mode != RENDER_MODE_NONE
+            and not base_engine.global_config["debug_physics_world"]
+            and base_engine.global_config["show_interface"]
+        )
         if base_engine.mode == RENDER_MODE_NONE:
-            assert self.need_interface is False, \
+            assert self.need_interface is False, (
                 "We should not using interface with extra cameras when in offscreen mode!"
+            )
         self._init_interface()
         self._is_showing_arrow = True  # store the state of navigation mark
 
@@ -60,7 +64,10 @@ class Interface:
             self._node_path_list.append(info_np)
 
             self.contact_result_render = info_np
-            for idx, panel_name, in enumerate(reversed(self.engine.global_config["interface_panel"])):
+            for (
+                idx,
+                panel_name,
+            ) in enumerate(reversed(self.engine.global_config["interface_panel"])):
                 if idx == 0:
                     self.right_panel = self.engine.get_sensor(panel_name)
                 elif idx == 1:
@@ -168,7 +175,6 @@ class Interface:
         self._render_banner(text, color)
 
     def destroy(self):
-
         for np in self._node_path_list:
             np.detachNode()
             np.removeNode()
@@ -218,4 +224,5 @@ class Interface:
     @property
     def engine(self):
         from metadrive.engine.engine_utils import get_engine
+
         return get_engine()

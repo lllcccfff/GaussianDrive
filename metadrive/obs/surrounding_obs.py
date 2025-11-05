@@ -28,6 +28,7 @@ class SurroundingObservation(BaseObservation):
     def observation_space(self):
         # Variable-size list; return a placeholder Box to satisfy interface.
         import gymnasium as gym
+
         return gym.spaces.Box(-np.inf, np.inf, shape=(1,), dtype=np.float32)
 
     def observe(self):
@@ -60,13 +61,15 @@ class SurroundingObservation(BaseObservation):
             width = ctrl.WIDTH
             size = [float(length), float(width)]
 
-            surrounding.append({
-                "position": [float(pos_ego[0]), float(pos_ego[1])],
-                "velocity": [float(v_ego[0]), float(v_ego[1])],
-                "heading": float(rel_heading),
-                "size": size,
-                "type": self.collector.metadrive_type
-            })
+            surrounding.append(
+                {
+                    "position": [float(pos_ego[0]), float(pos_ego[1])],
+                    "velocity": [float(v_ego[0]), float(v_ego[1])],
+                    "heading": float(rel_heading),
+                    "size": size,
+                    "type": self.collector.metadrive_type,
+                }
+            )
 
         return surrounding
 

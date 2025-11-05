@@ -12,12 +12,11 @@ def get_max_valid_indicis(track, current_index):
     states = track["state"]
     assert states["valid"][current_index], "Current index should be valid"
     end = len(states["valid"])
-    for i, valid in enumerate(states["valid"][current_index + 1:], current_index + 1):
+    for i, valid in enumerate(states["valid"][current_index + 1 :], current_index + 1):
         if not valid:
             end = i
             break
     return current_index, end
-
 
 
 # def parse_object_state(object_dict, time_idx, check_last_state=False, sim_time_interval=0.1, include_z_position=False):
@@ -113,7 +112,7 @@ def parse_object_state(poses, idx, check_last_state=True, include_z_position=Fal
         idx = epi_length + idx
     if idx >= epi_length:
         idx = epi_length - 1
-        
+
     if check_last_state:
         for current_idx in ts_list[:-1]:
             if current_idx >= idx:
@@ -123,22 +122,22 @@ def parse_object_state(poses, idx, check_last_state=True, include_z_position=Fal
             if norm(pos_1[0] - pos_2[0], pos_1[1] - pos_2[1]) > 100:
                 idx = current_idx
                 break
-    
+
     current_matrix = poses[ts_list[idx]]
-    
+
     # Extract position from translation column
     position = current_matrix[:3, 3]
     if not include_z_position:
         position = position[:2]
     if not isinstance(position, list):
         position = position.tolist()
-    
+
     # Extract heading from rotation matrix (assuming Z-up)
     heading_theta = torch.arctan2(current_matrix[1, 0], current_matrix[0, 0]).item()
-    
+
     # Calculate velocity from position difference
 
-    # find 
+    # find
     if idx == 0:
         prev_idx = idx
         idx = idx + 1
@@ -155,7 +154,7 @@ def parse_object_state(poses, idx, check_last_state=True, include_z_position=Fal
     prev_theta = torch.arctan2(prev_matrix[1, 0], prev_matrix[0, 0]).item()
     curr_theta = torch.arctan2(curr_matrix[1, 0], curr_matrix[0, 0]).item()
     angular_velocity = compute_angular_velocity(prev_theta, curr_theta, sim_time_interval)
-    
+
     ret = {
         "position": position,
         "velocity": velocity,
@@ -163,7 +162,7 @@ def parse_object_state(poses, idx, check_last_state=True, include_z_position=Fal
         "angular_velocity": angular_velocity,
         "transform": current_matrix,
         "valid": True,  # Assume valid if matrix exists
-        "vehicle_class": None
+        "vehicle_class": None,
     }
-    
+
     return ret

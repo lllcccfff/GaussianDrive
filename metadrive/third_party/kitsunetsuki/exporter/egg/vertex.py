@@ -21,9 +21,9 @@ from panda3d.egg import EggVertex, EggVertexUV
 class VertexMixin(object):
     def _get_uv_name(self, uv_layer):
         if uv_layer.active:
-            return ''
+            return ""
         else:
-            return uv_layer.name.replace(' ', '_')
+            return uv_layer.name.replace(" ", "_")
 
     def make_vertex(self, parent_obj_matrix, obj_matrix, polygon, vertex, use_smooth=False, can_merge=False):
         egg_vertex = EggVertex()

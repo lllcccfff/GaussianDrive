@@ -27,8 +27,10 @@ class BasePolicy(Randomizable, Configurable):
         self.spawn_timestamp = timestamp_list[0]
 
         self.trajectory = state
-        self.destination = init_state['destination']
-        self.static = sum([np.linalg.norm(traj['velocity']) for traj in self.trajectory.values()]) / len(self.trajectory) < 0.1
+        self.destination = init_state["destination"]
+        self.static = (
+            sum([np.linalg.norm(traj["velocity"]) for traj in self.trajectory.values()]) / len(self.trajectory) < 0.1
+        )
 
     def act(self, *args, **kwargs):
         """
@@ -36,13 +38,13 @@ class BasePolicy(Randomizable, Configurable):
         the policy can be written to self.action_info, which will be retrieved and shown in info dict automatically.
         """
         pass
-    
+
     @property
     def is_arrive(self):
         p = self.controller.position
         dest = self.destination
-        return (p[0] - dest[0])**2 + (p[1] - dest[1])**2 < 4 and not self.static
-    
+        return (p[0] - dest[0]) ** 2 + (p[1] - dest[1]) ** 2 < 4 and not self.static
+
     @property
     def is_spawned(self):
         return self.step_manager.current_timestamp >= self.spawn_timestamp
@@ -53,13 +55,13 @@ class BasePolicy(Randomizable, Configurable):
         ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32).cuda()
 
         states = self.trajectory.values()
-        expert_positions = torch.stack([torch.tensor(state['position'][:2]).float() for state in states]).cuda()
+        expert_positions = torch.stack([torch.tensor(state["position"][:2]).float() for state in states]).cuda()
 
         distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
         min_distance = torch.min(distances).item()
         road_threshold = 5.0
         return min_distance < road_threshold
-    
+
     def get_action_info(self):
         """
         Get current action info for env.step() retrieve
@@ -85,7 +87,7 @@ class BasePolicy(Randomizable, Configurable):
         """
         It defines the input space of this class of policy. This will be the action space for the agent.
         """
-        return gym.spaces.Box(-1.0, 1.0, shape=(2, ), dtype=np.float32)
+        return gym.spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
 
     def get_state(self):
         return self.get_action_info()

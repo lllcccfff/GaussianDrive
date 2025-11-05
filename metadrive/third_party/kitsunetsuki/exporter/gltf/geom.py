@@ -25,64 +25,64 @@ class GeomMixin(object):
     def _get_joints(self, gltf_node):
         results = {}
 
-        for i, child_id in enumerate(gltf_node['joints']):
-            child = self._root['nodes'][child_id]
-            results[child['name']] = i
+        for i, child_id in enumerate(gltf_node["joints"]):
+            child = self._root["nodes"][child_id]
+            results[child["name"]] = i
 
         return results
 
     def _make_primitive(self, gltf_mesh, mesh):
         gltf_primitive = {
-            'attributes': {},
-            'material': 0,
+            "attributes": {},
+            "material": 0,
             # 'mode': 4,
-            'extras': {
-                'highest_index': -1,
-                'targetNames': gltf_mesh['extras']['targetNames'],
+            "extras": {
+                "highest_index": -1,
+                "targetNames": gltf_mesh["extras"]["targetNames"],
             },
         }
 
         channel = self._buffer.add_channel(
             {
                 # 'componentType': spec.TYPE_UNSIGNED_SHORT,
-                'componentType': spec.TYPE_UNSIGNED_INT,
-                'type': 'SCALAR',
-                'extras': {
-                    'reference': 'indices',
+                "componentType": spec.TYPE_UNSIGNED_INT,
+                "type": "SCALAR",
+                "extras": {
+                    "reference": "indices",
                 },
             }
         )
-        gltf_primitive['indices'] = channel['bufferView']
+        gltf_primitive["indices"] = channel["bufferView"]
 
-        if gltf_mesh['primitives'] and not self._split_primitives:
-            gltf_primitive['attributes'] = gltf_mesh['primitives'][0]['attributes']
-            if 'targets' in gltf_mesh['primitives'][0]:
-                gltf_primitive['targets'] = gltf_mesh['primitives'][0]['targets']
+        if gltf_mesh["primitives"] and not self._split_primitives:
+            gltf_primitive["attributes"] = gltf_mesh["primitives"][0]["attributes"]
+            if "targets" in gltf_mesh["primitives"][0]:
+                gltf_primitive["targets"] = gltf_mesh["primitives"][0]["targets"]
 
         else:
             channel = self._buffer.add_channel(
                 {
-                    'componentType': spec.TYPE_FLOAT,
-                    'type': 'VEC3',
-                    'extras': {
-                        'reference': 'NORMAL',
+                    "componentType": spec.TYPE_FLOAT,
+                    "type": "VEC3",
+                    "extras": {
+                        "reference": "NORMAL",
                     },
                 }
             )
-            gltf_primitive['attributes']['NORMAL'] = channel['bufferView']
+            gltf_primitive["attributes"]["NORMAL"] = channel["bufferView"]
 
             channel = self._buffer.add_channel(
                 {
-                    'componentType': spec.TYPE_FLOAT,
-                    'type': 'VEC3',
-                    'extras': {
-                        'reference': 'POSITION',
+                    "componentType": spec.TYPE_FLOAT,
+                    "type": "VEC3",
+                    "extras": {
+                        "reference": "POSITION",
                     },
                 }
             )
-            gltf_primitive['attributes']['POSITION'] = channel['bufferView']
+            gltf_primitive["attributes"]["POSITION"] = channel["bufferView"]
 
-            for sk_id, sk_name in enumerate(gltf_primitive['extras']['targetNames']):
+            for sk_id, sk_name in enumerate(gltf_primitive["extras"]["targetNames"]):
                 gltf_target = {
                     # '_extras': {
                     #     'name': sk_name,
@@ -91,19 +91,19 @@ class GeomMixin(object):
 
                 channel = self._buffer.add_channel(
                     {
-                        'componentType': spec.TYPE_FLOAT,
-                        'type': 'VEC3',
-                        'extras': {
-                            'reference': 'POSITION',
-                            'target': sk_name,
+                        "componentType": spec.TYPE_FLOAT,
+                        "type": "VEC3",
+                        "extras": {
+                            "reference": "POSITION",
+                            "target": sk_name,
                         },
                     }
                 )
-                gltf_target['POSITION'] = channel['bufferView']
+                gltf_target["POSITION"] = channel["bufferView"]
 
-                if 'targets' not in gltf_primitive:
-                    gltf_primitive['targets'] = []
-                gltf_primitive['targets'].append(gltf_target)
+                if "targets" not in gltf_primitive:
+                    gltf_primitive["targets"] = []
+                gltf_primitive["targets"].append(gltf_target)
 
         return gltf_primitive
 
@@ -121,10 +121,10 @@ class GeomMixin(object):
         # setup shape key names for the primitives
         if mesh.shape_keys:
             for sk_name in sorted(mesh.shape_keys.key_blocks.keys()):
-                if sk_name.lower() == 'basis':
+                if sk_name.lower() == "basis":
                     continue
 
-                gltf_mesh['extras']['targetNames'].append(sk_name)
+                gltf_mesh["extras"]["targetNames"].append(sk_name)
 
         # get or create materials and textures
         gltf_materials = {}
@@ -135,46 +135,46 @@ class GeomMixin(object):
                     continue
 
                 # material
-                for i, child in enumerate(self._root['materials']):  # existing material
-                    if child['name'] == material.name:
+                for i, child in enumerate(self._root["materials"]):  # existing material
+                    if child["name"] == material.name:
                         gltf_materials[material.name] = i
                         break
                 else:  # new material
                     gltf_material = self.make_material(material)
-                    self._root['materials'].append(gltf_material)
+                    self._root["materials"].append(gltf_material)
 
-                    gltf_materials[material.name] = len(self._root['materials']) - 1
+                    gltf_materials[material.name] = len(self._root["materials"]) - 1
 
                 # textures
                 if not self._no_textures:
                     for type_, gltf_sampler, gltf_image in self.make_textures(material):
-                        tname = gltf_image['name']
-                        for i, child in enumerate(self._root['images']):  # existing texture
-                            if child['name'] == tname:
+                        tname = gltf_image["name"]
+                        for i, child in enumerate(self._root["images"]):  # existing texture
+                            if child["name"] == tname:
                                 texid = i
                                 break
                         else:  # new texture
-                            self._root['samplers'].append(gltf_sampler)
-                            self._root['images'].append(gltf_image)
+                            self._root["samplers"].append(gltf_sampler)
+                            self._root["images"].append(gltf_image)
 
                             gltf_texture = {
-                                'sampler': len(self._root['samplers']) - 1,
-                                'source': len(self._root['images']) - 1,
+                                "sampler": len(self._root["samplers"]) - 1,
+                                "source": len(self._root["images"]) - 1,
                             }
-                            self._root['textures'].append(gltf_texture)
-                            texid = len(self._root['textures']) - 1
+                            self._root["textures"].append(gltf_texture)
+                            texid = len(self._root["textures"]) - 1
 
                         matid = gltf_materials[material.name]
                         if type(type_) == tuple and len(type_) == 2:
                             type_l1, type_l2 = type_
-                            self._root['materials'][matid][type_l1][type_l2] = {
-                                'index': texid,
-                                'texCoord': 0,
+                            self._root["materials"][matid][type_l1][type_l2] = {
+                                "index": texid,
+                                "texCoord": 0,
                             }
                         else:
-                            self._root['materials'][matid][type_] = {
-                                'index': texid,
-                                'texCoord': 0,
+                            self._root["materials"][matid][type_] = {
+                                "index": texid,
+                                "texCoord": 0,
                             }
 
         # get primitives
@@ -182,13 +182,13 @@ class GeomMixin(object):
         gltf_primitive_indices = {}  # splitted vertex buffers
         gltf_mesh_vertices_index = -1  # reusable vertex buffer
         if can_merge:
-            for i, gltf_primitive in enumerate(gltf_mesh['primitives']):
+            for i, gltf_primitive in enumerate(gltf_mesh["primitives"]):
                 mname = None
-                if 'material' in gltf_primitive:
-                    matid = gltf_primitive['material']
-                    mname = self._root['materials'][matid]['name']
+                if "material" in gltf_primitive:
+                    matid = gltf_primitive["material"]
+                    mname = self._root["materials"][matid]["name"]
                 gltf_primitives[mname] = gltf_primitive
-                gltf_primitive_indices[mname] = gltf_primitive['extras']['highest_index']
+                gltf_primitive_indices[mname] = gltf_primitive["extras"]["highest_index"]
 
         gltf_vertices = {}
 
@@ -208,8 +208,8 @@ class GeomMixin(object):
             #                 joints += 1
             #         max_joints = max(max_joints, joints)
 
-            if 'skin' in gltf_node:
-                gltf_skin = self._root['skins'][gltf_node['skin']]
+            if "skin" in gltf_node:
+                gltf_skin = self._root["skins"][gltf_node["skin"]]
 
                 # for i, child in enumerate(self._root['skins']):
                 #     if child['name'] == armature.name:
@@ -246,12 +246,12 @@ class GeomMixin(object):
                 gltf_primitive = self._make_primitive(gltf_mesh, mesh)
                 gltf_primitives[mname] = gltf_primitive
                 gltf_primitive_indices[mname] = -1
-                gltf_mesh['primitives'].append(gltf_primitive)
+                gltf_mesh["primitives"].append(gltf_primitive)
 
             # set material
             if material and not self._no_materials and not is_collision(obj):
                 if material.name in gltf_materials:
-                    gltf_primitive['material'] = gltf_materials[mname]
+                    gltf_primitive["material"] = gltf_materials[mname]
 
             # vertices
             for i, vertex_id in enumerate(polygon.vertices):
@@ -265,7 +265,8 @@ class GeomMixin(object):
                 # <-- vertex
                 vertex = mesh.vertices[vertex_id]
                 use_smooth = (
-                    polygon.use_smooth and
+                    polygon.use_smooth
+                    and
                     # vertex_id not in sharp_vertices and
                     not is_collision(obj)
                 )
@@ -273,11 +274,11 @@ class GeomMixin(object):
                 # try to reuse shared vertices
                 if mname not in gltf_vertices:
                     gltf_vertices[mname] = {}
-                if (polygon.use_smooth and vertex_id in gltf_vertices[mname] and not is_collision(obj)):
+                if polygon.use_smooth and vertex_id in gltf_vertices[mname] and not is_collision(obj):
                     shared = False
                     for gltf_vertex_index, gltf_vertex_uv, gltf_vertex_normal in gltf_vertices[mname][vertex_id]:
                         if self.can_share_vertex(mesh, vertex, loop_id, gltf_vertex_uv, gltf_vertex_normal):
-                            self._buffer.write(gltf_primitive['indices'], gltf_vertex_index)
+                            self._buffer.write(gltf_primitive["indices"], gltf_vertex_index)
                             shared = True
                             break
                     if shared:
@@ -298,7 +299,7 @@ class GeomMixin(object):
                     vertex_id,
                     loop_id,
                     use_smooth=use_smooth,
-                    can_merge=can_merge_vertices
+                    can_merge=can_merge_vertices,
                 )
 
                 # uv layers, active first
@@ -330,8 +331,8 @@ class GeomMixin(object):
                     idx = gltf_primitive_indices[mname]
                 else:
                     idx = gltf_mesh_vertices_index
-                self._buffer.write(gltf_primitive['indices'], idx)
-                gltf_primitive['extras']['highest_index'] = gltf_primitive_indices[mname]
+                self._buffer.write(gltf_primitive["indices"], idx)
+                gltf_primitive["extras"]["highest_index"] = gltf_primitive_indices[mname]
 
                 # save vertex data for sharing
                 if vertex_id not in gltf_vertices[mname]:
@@ -363,16 +364,16 @@ class GeomMixin(object):
                         joints_weights.append([joint_id, vertex_group.weight])
 
                     # objects reparented to bone instead of entire armature
-                    if obj.parent_type == 'BONE' and obj.parent_bone in gltf_joints:
+                    if obj.parent_type == "BONE" and obj.parent_bone in gltf_joints:
                         joint_id = gltf_joints[obj.parent_bone]
                         joints_weights.append([joint_id, 1])
 
                     # padding
-                    while ((len(joints_weights) % 4 != 0) or (len(joints_weights) < max_joint_layers * 4)):
+                    while (len(joints_weights) % 4 != 0) or (len(joints_weights) < max_joint_layers * 4):
                         joints_weights.append([0, 0])
 
                     # limit by max joints
-                    joints_weights = joints_weights[:max_joint_layers * 4]
+                    joints_weights = joints_weights[: max_joint_layers * 4]
 
                     imax = -1
                     wmax = 0
@@ -391,7 +392,7 @@ class GeomMixin(object):
                     # group by 4 joint-weight pairs
                     joints_weights_groups = []
                     for j in range(len(joints_weights) // 4):
-                        group = joints_weights[j * 4:j * 4 + 4]
+                        group = joints_weights[j * 4 : j * 4 + 4]
                         joints_weights_groups.append(group)
 
                     self._write_joints_weights(gltf_primitive, len(tuple(gltf_joints.keys())), joints_weights_groups)

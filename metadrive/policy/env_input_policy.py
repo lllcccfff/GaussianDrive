@@ -7,6 +7,7 @@ logger = get_logger()
 
 JOYSTICK_DEADZONE = 0.025
 
+
 class EnvInputPolicy(BasePolicy):
     """
     Control the current track vehicle
@@ -26,9 +27,11 @@ class EnvInputPolicy(BasePolicy):
 
     def act(self, action, *args, **kwargs):
         if self.config["action_check"]:
-            assert self.get_input_space().contains(action), "Input {} is not compatible with action space {}!".format(action, self.get_input_space())
+            assert self.get_input_space().contains(action), "Input {} is not compatible with action space {}!".format(
+                action, self.get_input_space()
+            )
         if self.discrete_action:
-            action=self._convert_to_continuous_action(action)
+            action = self._convert_to_continuous_action(action)
         self.action_info["action"] = action
         return action
 
@@ -42,7 +45,7 @@ class EnvInputPolicy(BasePolicy):
         The Input space is a class attribute
         """
         if not self.discrete_action:
-            _input_space = gym.spaces.Box(-1.0, 1.0, shape=(2, ), dtype=np.float32)
+            _input_space = gym.spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
         else:
             _input_space = gym.spaces.Discrete(self.discrete_steering_dim * self.discrete_throttle_dim)
         return _input_space

@@ -10,8 +10,8 @@ from metadrive.obs.navigation_obs import NavigationObservation
 from metadrive.obs.state_obs import StateObservation
 from metadrive.obs.assembly_obs import AssemblyObservation
 from metadrive.obs.observation_base import DefaultObservation
-BASE_DEFAULT_CONFIG = dict(
 
+BASE_DEFAULT_CONFIG = dict(
     # ===== agent =====
     # Whether randomize the car model for the agent, randomly choosing from 4 types of cars
     random_agent_model=False,
@@ -19,30 +19,28 @@ BASE_DEFAULT_CONFIG = dict(
     agent_configs={DEFAULT_AGENT: dict(use_special_color=True, spawn_lane_index=None)},
     # Set as None or a number
     max_step=None,
-
     # ===== Termination =====
     # The maximum length of each agent episode. Set to None to remove this constraint
     horizon=None,
     # If set to True, the terminated will be True as well when the length of agent episode exceeds horizon
     truncate_as_terminate=False,
-
     # ===== actor =====
     actor_config=dict(
         # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
         observer=AssemblyObservation,
         observer_config=dict(
-            gaussian = dict(
+            gaussian=dict(
                 observer_class=GaussianObservation,
                 clip_rgb=False,
                 stack_size=3,
             ),
-            navigation = dict(
+            navigation=dict(
                 observer_class=NavigationObservation,
                 navigating_type="expert_following",
             ),
-            states = dict(
+            states=dict(
                 observer_class=StateObservation,
-            )
+            ),
         ),
         policy=EnvInputPolicy,
         policy_config=dict(
@@ -58,14 +56,13 @@ BASE_DEFAULT_CONFIG = dict(
         controller_config=dict(
             enable_reverse=True,
             spawn_velocity=False,
-        )
+        ),
     ),
     # ===== participant =====
     participant_config=dict(
         # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
         observer=DefaultObservation,
-        observer_config=dict(
-        ),
+        observer_config=dict(),
         policy=ReplayPolicy,
         policy_config=dict(
             discrete_action=False,
@@ -76,17 +73,13 @@ BASE_DEFAULT_CONFIG = dict(
         controller_config=dict(
             enable_reverse=True,
             spawn_velocity=False,
-        )
+        ),
     ),
-
-
     # ===== participant =====
     map_config=dict(
         # Vehicle model. Candidates: "s", "m", "l", "xl", "default". random_agent_model makes this config invalid
         store_map=False
     ),
-
-
     # Physics world step is in microsecond (0.02s) and will be repeated for decision_repeat times per env.step()
     physics_world_step_size=2e4,
     decision_repeat=5,
@@ -96,7 +89,6 @@ BASE_DEFAULT_CONFIG = dict(
     disable_collision=False,
     curriculum_level=1,
     num_workers=1,
-
     # ===== Terrain =====
     # The size of the square map region, which is centered at [0, 0]. The map objects outside it are culled.
     map_region_size=2048,
@@ -114,7 +106,6 @@ BASE_DEFAULT_CONFIG = dict(
     show_crosswalk=True,
     # Whether to show sidewalk
     show_sidewalk=True,
-
     # ===== Debug =====
     # Please see Documentation: Debug for more details
     pstats=False,  # turn on to profile the efficiency
@@ -124,7 +115,6 @@ BASE_DEFAULT_CONFIG = dict(
     debug_static_world=False,  # debug static world
     log_level=logging.INFO,  # log level. logging.DEBUG/logging.CRITICAL or so on
     show_coordinates=False,  # show coordinates for maps and objects for debug
-
     # ===== GUI =====
     # Please see Documentation: GUI for more details
     # Whether to show these elements in the 3D scene
@@ -140,7 +130,6 @@ BASE_DEFAULT_CONFIG = dict(
     show_interface_navi_mark=True,
     # A list showing sensor output on window. Its elements are chosen from sensors.keys() + "dashboard"
     interface_panel=["dashboard"],
-
     # ===== Record/Replay Metadata =====
     # Please see Documentation: Record and Replay for more details
     # When replay_episode is True, the episode metadata will be recorded
@@ -151,7 +140,6 @@ BASE_DEFAULT_CONFIG = dict(
     only_reset_when_replay=False,
     # If True, when creating and replaying object trajectories, use the same ID as in dataset
     force_reuse_object_name=False,
-
     # ===== randomization =====
-    num_scenarios=1  # the number of scenarios in this environment
+    num_scenarios=1,  # the number of scenarios in this environment
 )

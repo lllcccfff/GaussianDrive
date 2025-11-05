@@ -13,6 +13,7 @@ __status__ = "Released"
 
 class EulerSpiral:
     """ """
+
     def __init__(self, gamma):
         self._gamma = gamma
 
@@ -40,7 +41,7 @@ class EulerSpiral:
         """
 
         Args:
-          s: 
+          s:
           x0:  (Default value = 0)
           y0:  (Default value = 0)
           kappa0:  (Default value = 0)

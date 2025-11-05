@@ -12,6 +12,7 @@ __status__ = "Released"
 
 class Link:
     """"""
+
     def __init__(self, link_id=None, predecessor=None, successor=None, neighbors=None):
         self.id_ = link_id
         self.predecessor = predecessor
@@ -119,13 +120,14 @@ class Link:
 
 class Predecessor:
     """ """
+
     def __init__(self, element_type=None, element_id=None, contact_point=None):
         self.elementType = element_type
         self.element_id = element_id
         self.contactPoint = contact_point
 
     def __str__(self):
-        return (str(self._elementType) + " with id " + str(self._elementId) + " contact at " + str(self._contactPoint))
+        return str(self._elementType) + " with id " + str(self._elementId) + " contact at " + str(self._contactPoint)
 
     @property
     def elementType(self):
@@ -194,6 +196,7 @@ class Successor(Predecessor):
 
 class Neighbor:
     """ """
+
     def __init__(self, side=None, element_id=None, direction=None):
         self._side = side
         self._elementId = element_id

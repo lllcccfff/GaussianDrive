@@ -42,15 +42,17 @@ class ScenarioCurriculumManager(BaseManager):
         super().__init__()
         curriculum_level = self.engine.global_config["curriculum_level"]
         if curriculum_level > 1:
-            assert self.engine.global_config["sequential_seed"], \
+            assert self.engine.global_config["sequential_seed"], (
                 "Sort and sequential seed is required for curriculum seed"
+            )
         if self.engine.global_config["episodes_to_evaluate_curriculum"] is None:
             self._episodes_to_eval = int(self.engine.global_config["num_scenarios"] / curriculum_level)
         else:
             self._episodes_to_eval = self.engine.global_config["episodes_to_evaluate_curriculum"]
         assert self._episodes_to_eval != 0, "episodes_to_evaluate_curriculum can not be 0"
-        assert self._episodes_to_eval % self.engine.global_config["num_workers"
-                                                                  ] == 0, "Can not be divisible by num_workers"
+        assert self._episodes_to_eval % self.engine.global_config["num_workers"] == 0, (
+            "Can not be divisible by num_workers"
+        )
         self._episodes_to_eval = int(self._episodes_to_eval / self.engine.global_config["num_workers"])
         self.recent_route_completion = QueueDict(max_length=self._episodes_to_eval)
         self.recent_success = QueueDict(max_length=self._episodes_to_eval)
@@ -64,8 +66,10 @@ class ScenarioCurriculumManager(BaseManager):
         """
         It should be called before reseting all managers
         """
-        if self.current_success_rate >= (self.target_success_rate-0.001) \
-                and self.engine.current_level < self.engine.max_level - 1:
+        if (
+            self.current_success_rate >= (self.target_success_rate - 0.001)
+            and self.engine.current_level < self.engine.max_level - 1
+        ):
             self._level_up()
 
     def _level_up(self):

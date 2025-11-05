@@ -17,17 +17,19 @@ class GroundPlane(BaseObject):
     HEIGHT = None
 
     def __init__(
-            self,
-            physics_world,
-            direction: Sequence[float],
-            constant: float = 0.,
-            random_seed=None,
-            name=None,
-            config=None,
-            **kwargs
-        ):
-        super(GroundPlane, self).__init__(physics_world=physics_world, random_seed=random_seed, name=name, config=config)
-        
+        self,
+        physics_world,
+        direction: Sequence[float],
+        constant: float = 0.0,
+        random_seed=None,
+        name=None,
+        config=None,
+        **kwargs,
+    ):
+        super(GroundPlane, self).__init__(
+            physics_world=physics_world, random_seed=random_seed, name=name, config=config
+        )
+
         self.set_metadrive_type(MetaDriveType.GROUND)
         self.body = BaseRigidBodyNode(self.name, MetaDriveType.GROUND, self.MASS)
         self.body.addShape(BulletPlaneShape(LVector3(*direction), constant))
@@ -37,7 +39,7 @@ class GroundPlane(BaseObject):
 
     def reset(self, random_seed=None, name=None, *args, **kwargs):
         pass
-    
+
     def destroy(self):
         super(GroundPlane, self).destroy()
         self.detachDyWld(self.body)

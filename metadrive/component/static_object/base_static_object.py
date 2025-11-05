@@ -13,7 +13,7 @@ class BaseStaticObject(BaseObject):
     MASS = 1
     HEIGHT = None
 
-    def __init__(self, position: Sequence[float], heading_theta: float = 0., lane=None, random_seed=None, name=None):
+    def __init__(self, position: Sequence[float], heading_theta: float = 0.0, lane=None, random_seed=None, name=None):
         """
         :param lane: the lane to spawn object
         :param position: cartesian position of object in the surface

@@ -76,6 +76,7 @@ class Junction:
 
 class Connection:
     """ """
+
     def __init__(self):
         self._id = None
         self._incomingRoad = None
@@ -176,6 +177,7 @@ class Connection:
 
 class LaneLink:
     """ """
+
     def __init__(self):
         self._from = None
         self._to = None

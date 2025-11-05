@@ -3,6 +3,7 @@ import math
 import os
 import pathlib
 import time
+
 #
 #
 from abc import ABC
@@ -30,6 +31,7 @@ class Terrain(BaseObject, ABC):
     """
     Terrain and map
     """
+
     COLLISION_MASK = CollisionGroup.Terrain
     HEIGHT = 0.0
     PROBE_HEIGHT = 600
@@ -115,8 +117,9 @@ class Terrain(BaseObject, ABC):
         if self.render or self.use_mesh_terrain:
             # modify default height image
             drivable_region = self.get_drivable_region(center_point)
-            assert (drivable_region is
-                    None) or (isinstance(drivable_region, np.ndarray) and drivable_region.dtype == bool)
+            assert (drivable_region is None) or (
+                isinstance(drivable_region, np.ndarray) and drivable_region.dtype == bool
+            )
 
             # embed to the original height image
             start = self._heightfield_start
@@ -127,14 +130,15 @@ class Terrain(BaseObject, ABC):
                 drivable_area_height_mean = self.heightfield_img[start:end, start:end, ...].mean()
                 heightfield_base = np.where(
                     heightfield_base > (drivable_area_height_mean - self._terrain_offset),
-                    heightfield_base - (drivable_area_height_mean - self._terrain_offset), 0
+                    heightfield_base - (drivable_area_height_mean - self._terrain_offset),
+                    0,
                 ).astype(np.uint16)
                 heightfield_to_modify = heightfield_base[start:end, start:end, ...]
                 heightfield_base[start:end, start:end, ...] = self._terrain_offset
                 logger.warning(
-                    "No map is found in map region, "
-                    "size: [{}, {}], "
-                    "center: {}".format(self._semantic_map_size, self._semantic_map_size, center_point)
+                    "No map is found in map region, size: [{}, {}], center: {}".format(
+                        self._semantic_map_size, self._semantic_map_size, center_point
+                    )
                 )
             else:
                 drivable_area_height_mean = np.mean(
@@ -142,11 +146,13 @@ class Terrain(BaseObject, ABC):
                 )
                 heightfield_base = np.where(
                     heightfield_base > (drivable_area_height_mean - self._terrain_offset),
-                    heightfield_base - (drivable_area_height_mean - self._terrain_offset), 0
+                    heightfield_base - (drivable_area_height_mean - self._terrain_offset),
+                    0,
                 ).astype(np.uint16)
                 heightfield_to_modify = heightfield_base[start:end, start:end, ...]
-                heightfield_base[start:end, start:end,
-                                 ...] = np.where(drivable_region, self._terrain_offset, heightfield_to_modify)
+                heightfield_base[start:end, start:end, ...] = np.where(
+                    drivable_region, self._terrain_offset, heightfield_to_modify
+                )
 
             # generate collision mesh
             if self.use_mesh_terrain:
@@ -178,7 +184,7 @@ class Terrain(BaseObject, ABC):
         # If no render pipeline, we can only have 2d terrain. It will only be generated for once.
         shape = BulletPlaneShape(Vec3(0, 0, 1), 0)
         node = BulletRigidBodyNode(MetaDriveType.GROUND)
-        node.setFriction(.9)
+        node.setFriction(0.9)
         node.addShape(shape)
 
         node.setIntoCollideMask(self.COLLISION_MASK)
@@ -295,7 +301,7 @@ class Terrain(BaseObject, ABC):
                 crosswalk_semantics=to_float(Semantics.CROSSWALK.color),
                 lane_line_semantics=to_float(Semantics.LANE_LINE.color),
                 road_semantics=to_float(Semantics.ROAD.color),
-                ground_semantics=to_float(Semantics.TERRAIN.color)
+                ground_semantics=to_float(Semantics.TERRAIN.color),
             )
         self._mesh_terrain.set_shader_input("attribute_tex", attribute_tex)
 
@@ -327,7 +333,7 @@ class Terrain(BaseObject, ABC):
         mesh = np.flipud(mesh)
         mesh = cv2.resize(mesh, (mesh.shape[0] + 1, mesh.shape[1] + 1))
         path_to_store = self.PATH.joinpath("run_time_map_mesh_{}.png".format(self.engine.pid))
-        cv2.imencode('.png', mesh)[1].tofile(path_to_store)
+        cv2.imencode(".png", mesh)[1].tofile(path_to_store)
         # cv2.imwrite(str(path_to_store), mesh)
         p = PNMImage(Filename(str(AssetLoader.windows_style2unix_style(path_to_store) if is_win() else path_to_store)))
         os.remove(path_to_store)  # remove after using
@@ -336,7 +342,7 @@ class Terrain(BaseObject, ABC):
         shape.setUseDiamondSubdivision(True)
 
         node = BulletRigidBodyNode(MetaDriveType.GROUND)
-        node.setFriction(.9)
+        node.setFriction(0.9)
         node.addShape(shape)
 
         node.setIntoCollideMask(CollisionGroup.Terrain)
@@ -384,7 +390,7 @@ class Terrain(BaseObject, ABC):
         self.ts_normal = TextureStage("normal")
         self.ts_normal.set_mode(TextureStage.M_normal)
         # self.set_position((0, 0), self.HEIGHT)
-        cm = CardMaker('card')
+        cm = CardMaker("card")
         scale = 4000
         cm.setUvRange((0, 0), (scale / 10, scale / 10))
         card = self.origin.attachNewNode(cm.generate())
@@ -393,7 +399,7 @@ class Terrain(BaseObject, ABC):
 
         card.set_scale(scale)
         card.setPos(-scale / 2, -scale / 2, -0.1)
-        card.setZ(-.05)
+        card.setZ(-0.05)
         card.setTexture(self.ts_color, self.terrain_texture)
         # card.setTexture(self.ts_normal, self.terrain_normal)
         self.terrain_texture.setMinfilter(SamplerState.FT_linear_mipmap_linear)
@@ -430,7 +436,7 @@ class Terrain(BaseObject, ABC):
         )
 
         white = PNMImage(256, 256, 4)
-        white.fill(1., 1., 1.)
+        white.fill(1.0, 1.0, 1.0)
         self.grass_rough = Texture("grass rough")
         self.grass_rough.load(white)
         self.grass_tex_ratio = 64 * self._terrain_size / 512
@@ -539,7 +545,7 @@ class Terrain(BaseObject, ABC):
         tex = tex.reshape((self.road_texture.getYSize(), self.road_texture.getXSize(), 3))
         step_size = 64
         for x in range(0, 2048, step_size * 2):
-            tex[x:x + step_size, ...] = 220
+            tex[x : x + step_size, ...] = 220
         self.crosswalk_tex = Texture()
         self.crosswalk_tex.setup2dTexture(*tex.shape[:2], Texture.TUnsignedByte, Texture.F_rgb)
         self.crosswalk_tex.setRamImage(tex)
@@ -574,11 +580,11 @@ class Terrain(BaseObject, ABC):
             [height_3, width_3], min_height, max_height, roughness, random_seed=self.generate_seed()
         )
 
-        heightfield[:length, length:length + width] = array_1
-        heightfield[-length:, length:length + width] = array_1
+        heightfield[:length, length : length + width] = array_1
+        heightfield[-length:, length : length + width] = array_1
 
-        heightfield[length:length + width, :length] = array_2
-        heightfield[length:length + width, -length:] = array_2
+        heightfield[length : length + width, :length] = array_2
+        heightfield[length : length + width, -length:] = array_2
 
         heightfield[:length, :length] = array_3
         heightfield[-length:, :length] = array_3
@@ -625,7 +631,7 @@ class Terrain(BaseObject, ABC):
                 white_line_thickness=2,
                 yellow_line_thickness=3,
                 # 1 when map_region_size == 2048, 2 for others
-                layer=layer
+                layer=layer,
             )
         else:
             logger.warning("Can not find map. Generate a square terrain")

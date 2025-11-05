@@ -14,14 +14,13 @@ import json
 from easydrive.engine.config import Config
 from metadrive.default_config import BASE_DEFAULT_CONFIG
 
+
 class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
     PRIORITY = -10
 
-
     def __init__(self, config, loader):
-        
-        super(ScenarioDataManager, self).__init__()        
+        super(ScenarioDataManager, self).__init__()
         self.base_config = config
 
         # self.store_data = engine.global_config["store_data"]
@@ -38,9 +37,9 @@ class ScenarioDataManager(BaseManager):
         self.scenario_difficulty = None
         # self.sort_scenarios()
 
-
         # stat
         # self.coverage = [0 for _ in range(self.num_scenarios)]
+
     def _post_process_config(self, config):
         pass
 
@@ -53,18 +52,18 @@ class ScenarioDataManager(BaseManager):
 
             scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(cfg)
             # timestamp : list|tuple [2]
-            # camera params : 
+            # camera params :
             #     "camera_name" :
             #         "K" : list[3][3]
             #         "H" : int
             #         "W" : int
             #         "ego2camera" : list[4][4]
-            # ego poses : 
+            # ego poses :
             #     1 : list[4][4]
             #     ...
-            #     n : list[4][4]            
+            #     n : list[4][4]
             # participants :
-            #     "unique_name" : 
+            #     "unique_name" :
             #         "size" :
             #         "type" :
             #         "poses" :
@@ -79,59 +78,59 @@ class ScenarioDataManager(BaseManager):
                 ego_poses=ego_poses,
                 participants=participants,
             )
-            self.metadata[scene_name]['scene_mesh_path'] = scene_mesh_path
+            self.metadata[scene_name]["scene_mesh_path"] = scene_mesh_path
 
             self.idx2scene.append(scene_name)
 
     def restructure_metadata(self, config, timestamp_range, camera_params, ego_poses, participants):
         init_state, agent_state = {}, {}
-        scene_timestamp_list = list(range(timestamp_range[0], timestamp_range[1], int(self.base_config['physics_world_step_size'])))
-        for name, tracking in (participants | {'actor': ego_poses}).items():
-            if name == 'actor':
+        scene_timestamp_list = list(
+            range(timestamp_range[0], timestamp_range[1], int(self.base_config["physics_world_step_size"]))
+        )
+        for name, tracking in (participants | {"actor": ego_poses}).items():
+            if name == "actor":
                 timestamp_list = scene_timestamp_list
                 traj = Trajectory(ego_poses)
             else:
-                org_ts_list = sorted(int(ts) for ts in tracking['poses'].keys())
+                org_ts_list = sorted(int(ts) for ts in tracking["poses"].keys())
+
                 def round_to_scene_ts(value):
                     return min(scene_timestamp_list, key=lambda ts: abs(ts - value))
+
                 rounded_start = round_to_scene_ts(org_ts_list[0])
                 rounded_end = round_to_scene_ts(org_ts_list[-1])
 
                 timestamp_list = [ts for ts in scene_timestamp_list if rounded_start <= ts <= rounded_end]
-                traj = Trajectory(tracking['poses'])
+                traj = Trajectory(tracking["poses"])
             traj_mat = {int(k): traj.get_transform(k) for k in timestamp_list}
 
             first_ts, last_ts = timestamp_list[0], timestamp_list[-1]
             parsed_data = {}
             for idx in range(len(timestamp_list)):
-                parsed_data[timestamp_list[idx]] = parse_object_state(
-                    traj_mat, 
-                    idx, 
-                    include_z_position=True
-                )
-            
+                parsed_data[timestamp_list[idx]] = parse_object_state(traj_mat, idx, include_z_position=True)
+
             first_state, last_state = parsed_data[first_ts], parsed_data[last_ts]
             init_state[name] = dict(
                 spawn_position=list(first_state["position"]),
                 spawn_heading=first_state["heading_theta"],
                 spawn_velocity=first_state["velocity"],
                 spawn_angular_velocity=first_state["angular_velocity"],
-                destination=last_state["position"]
+                destination=last_state["position"],
             )
             agent_state[name] = parsed_data
 
         for cam_name, cam_param in camera_params.items():
-            cam_param['ego2camera'] = torch.tensor(cam_param['ego2camera'])
-            cam_param['K'] = torch.tensor(cam_param['K'])
+            cam_param["ego2camera"] = torch.tensor(cam_param["ego2camera"])
+            cam_param["K"] = torch.tensor(cam_param["K"])
 
         return {
-            'scene_config': config,
-            'camera_params':camera_params,
-            'ego_poses': ego_poses,
-            'participants': participants,
-            'init_state': init_state,
+            "scene_config": config,
+            "camera_params": camera_params,
+            "ego_poses": ego_poses,
+            "participants": participants,
+            "init_state": init_state,
             "agent_state": agent_state,
-            'timestamp_range': timestamp_range
+            "timestamp_range": timestamp_range,
         }
 
     def reset(self):
@@ -141,27 +140,28 @@ class ScenarioDataManager(BaseManager):
         self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
         self.current_config = self.base_config.copy()
 
-        config_dict=self.current_config["actor_config"]
-        config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
+        config_dict = self.current_config["actor_config"]
+        config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random))
 
         current_metadata = self.get_current_scenario_data()
-        start_timestamp, end_timestamp = current_metadata['timestamp_range']
-        ego_poses = current_metadata['ego_poses']
+        start_timestamp, end_timestamp = current_metadata["timestamp_range"]
+        ego_poses = current_metadata["ego_poses"]
         ground_height = ego_poses[start_timestamp][2][3] - config_dict["controller"].DEFAULT_HEIGHT / 2
-        current_metadata['ground_height'] = ground_height
+        current_metadata["ground_height"] = ground_height
 
     def get_current_scenario_data(self):
         return self.get_scenario_data(self.current_scenario_id)
 
     def get_scenario_data(self, i, should_copy=False):
-        assert 0 <= i < self.num_scenarios, \
-            "scenario index exceeds range, scenario index: {}, worker_index: {}".format(i, self.worker_index)
+        assert 0 <= i < self.num_scenarios, "scenario index exceeds range, scenario index: {}, worker_index: {}".format(
+            i, self.worker_index
+        )
         scenario_name = self.idx2scene[i]
         return self.metadata[scenario_name]
 
     @property
     def current_scenario_length(self):
-        timestamp_range = self.get_current_scenario_data()['timestamp_range']
+        timestamp_range = self.get_current_scenario_data()["timestamp_range"]
         return timestamp_range[1] - timestamp_range[0]
 
     def sort_scenarios(self):
@@ -199,15 +199,17 @@ class ScenarioDataManager(BaseManager):
         id_score_scenarios = sorted(id_score_scenarios, key=lambda scenario: scenario[-2])
         self.summary_lookup[start:end] = [id_score_scenario[0] for id_score_scenario in id_score_scenarios]
         self.scenario_difficulty = {
-            id_score_scenario[0]: id_score_scenario[1]
-            for id_score_scenario in id_score_scenarios
+            id_score_scenario[0]: id_score_scenario[1] for id_score_scenario in id_score_scenarios
         }
         self._scenarios = {i + start: id_score_scenario[-1] for i, id_score_scenario in enumerate(id_score_scenarios)}
 
     @property
     def current_scenario_difficulty(self):
-        return self.scenario_difficulty[self.summary_lookup[self.engine.global_random_seed]
-                                        ] if self.scenario_difficulty is not None else 0
+        return (
+            self.scenario_difficulty[self.summary_lookup[self.engine.global_random_seed]]
+            if self.scenario_difficulty is not None
+            else 0
+        )
 
     # @property
     # def data_coverage(self):
@@ -230,6 +232,7 @@ class ScenarioOnlineDataManager(BaseManager):
     Compared to ScenarioDataManager, this manager allow user to pass in Scenario Description online.
     It will not read data from disk, but receive data from user.
     """
+
     PRIORITY = -10
     _scenario = None
 

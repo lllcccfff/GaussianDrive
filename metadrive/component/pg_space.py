@@ -24,8 +24,10 @@ class Space:
     code that applies to any Env. For example, you can choose a random
     action.
     """
+
     def __init__(self, shape=None, dtype=None):
         import numpy as np  # takes about 300-400ms to import, so we load lazily
+
         self.shape = None if shape is None else tuple(shape)
         self.dtype = None if dtype is None else np.dtype(dtype)
         self.np_random = None
@@ -37,7 +39,7 @@ class Space:
         raise NotImplementedError
 
     def seed(self, seed=None):
-        """Seed the PRNG of this space. """
+        """Seed the PRNG of this space."""
         self.np_random, seed = get_np_random(seed, return_seed=True)
         return [seed]
 
@@ -99,8 +101,9 @@ class Dict(Space):
         })
     })
     """
+
     def __init__(self, spaces=None, **spaces_kwargs):
-        assert (spaces is None) or (not spaces_kwargs), 'Use either Dict(spaces=dict(...)) or Dict(foo=x, bar=z)'
+        assert (spaces is None) or (not spaces_kwargs), "Use either Dict(spaces=dict(...)) or Dict(foo=x, bar=z)"
         if spaces is None:
             spaces = spaces_kwargs
         if isinstance(spaces, dict) and not isinstance(spaces, OrderedDict):
@@ -109,7 +112,7 @@ class Dict(Space):
             spaces = OrderedDict(spaces)
         self.spaces = spaces
         for space in spaces.values():
-            assert isinstance(space, Space), 'Values of the dict should be instances of gym.Space'
+            assert isinstance(space, Space), "Values of the dict should be instances of gym.Space"
         super(Dict, self).__init__(None, None)  # None for shape and dtype, since it'll require special handling
 
     def seed(self, seed=None):
@@ -137,8 +140,7 @@ class Dict(Space):
 
     def to_jsonable(self, sample_n):
         # serialize as dict-repr of vectors
-        return {key: space.to_jsonable([sample[key] for sample in sample_n]) \
-                for key, space in self.spaces.items()}
+        return {key: space.to_jsonable([sample[key] for sample in sample_n]) for key, space in self.spaces.items()}
 
     def from_jsonable(self, sample_n):
         dict_of_list = {}
@@ -162,6 +164,7 @@ class ParameterSpace(Dict):
     Usage:
     PGSpace({"lane_length":length})
     """
+
     def __init__(self, our_config: tp.Dict[str, tp.Union[BoxSpace, DiscreteSpace, ConstantSpace]]):
         super(ParameterSpace, self).__init__(ParameterSpace.wrap2gym_space(our_config))
         self.parameters = set(our_config.keys())
@@ -171,11 +174,11 @@ class ParameterSpace(Dict):
         ret = dict()
         for key, value in our_config.items():
             if isinstance(value, BoxSpace):
-                ret[key] = Box(low=value.min, high=value.max, shape=(1, ))
+                ret[key] = Box(low=value.min, high=value.max, shape=(1,))
             elif isinstance(value, DiscreteSpace):
-                ret[key] = Box(low=value.min, high=value.max, shape=(1, ), dtype=np.int64)
+                ret[key] = Box(low=value.min, high=value.max, shape=(1,), dtype=np.int64)
             elif isinstance(value, ConstantSpace):
-                ret[key] = Box(low=value.value, high=value.value, shape=(1, ))
+                ret[key] = Box(low=value.value, high=value.value, shape=(1,))
             else:
                 raise ValueError("{} can not be wrapped in gym space".format(key))
         return ret
@@ -185,6 +188,7 @@ class Parameter:
     """
     Block parameters and vehicle parameters
     """
+
     # block
     length = "length"
     radius = "radius"
@@ -278,6 +282,7 @@ class BlockParameterSpace:
     Make sure the range of curve parameters covers the parameter space of other blocks,
     otherwise, an error may happen in navigation info normalization
     """
+
     STRAIGHT = {Parameter.length: BoxSpace(min=40.0, max=80.0)}
     BIDIRECTION = {Parameter.length: BoxSpace(min=40.0, max=80.0)}
 
@@ -285,38 +290,38 @@ class BlockParameterSpace:
         Parameter.length: BoxSpace(min=40.0, max=80.0),
         Parameter.radius: BoxSpace(min=25.0, max=60.0),
         Parameter.angle: BoxSpace(min=45, max=135),
-        Parameter.dir: DiscreteSpace(min=0, max=1)
+        Parameter.dir: DiscreteSpace(min=0, max=1),
     }
     INTERSECTION = {
         Parameter.radius: ConstantSpace(10),
         Parameter.change_lane_num: DiscreteSpace(min=0, max=1),  # 0, 1
-        Parameter.decrease_increase: DiscreteSpace(min=0, max=1)  # 0, decrease, 1 increase
+        Parameter.decrease_increase: DiscreteSpace(min=0, max=1),  # 0, decrease, 1 increase
     }
     ROUNDABOUT = {
         # The radius of the
         Parameter.radius_exit: BoxSpace(min=5, max=15),
         Parameter.radius_inner: BoxSpace(min=15, max=45),
-        Parameter.angle: ConstantSpace(60)
+        Parameter.angle: ConstantSpace(60),
     }
     T_INTERSECTION = {
         Parameter.radius: ConstantSpace(10),
         Parameter.t_intersection_type: DiscreteSpace(min=0, max=2),  # 3 different t type for previous socket
         Parameter.change_lane_num: DiscreteSpace(min=0, max=1),  # 0,1
-        Parameter.decrease_increase: DiscreteSpace(min=0, max=1)  # 0, decrease, 1 increase
+        Parameter.decrease_increase: DiscreteSpace(min=0, max=1),  # 0, decrease, 1 increase
     }
     RAMP_PARAMETER = {
         Parameter.length: BoxSpace(min=20, max=40),  # accelerate/decelerate part length
-        Parameter.extension_length: BoxSpace(min=20, max=40)
+        Parameter.extension_length: BoxSpace(min=20, max=40),
     }
     FORK_PARAMETER = {
         Parameter.length: BoxSpace(min=20, max=40),  # accelerate/decelerate part length
-        Parameter.lane_num: DiscreteSpace(min=0, max=1)
+        Parameter.lane_num: DiscreteSpace(min=0, max=1),
     }
     BOTTLENECK_PARAMETER = {
         Parameter.length: BoxSpace(min=20, max=50),  # the length of straigh part
         Parameter.lane_num: DiscreteSpace(min=1, max=2),  # the lane num increased or decreased now 1-2
         "bottle_len": ConstantSpace(20),
-        "solid_center_line": ConstantSpace(0)  # bool, turn on yellow line or not
+        "solid_center_line": ConstantSpace(0),  # bool, turn on yellow line or not
     }
     TOLLGATE_PARAMETER = {
         Parameter.length: ConstantSpace(20),  # the length of straigh part
@@ -324,7 +329,7 @@ class BlockParameterSpace:
     PARKING_LOT_PARAMETER = {
         Parameter.one_side_vehicle_num: DiscreteSpace(min=2, max=10),
         Parameter.radius: ConstantSpace(value=4),
-        Parameter.length: ConstantSpace(value=8)
+        Parameter.length: ConstantSpace(value=8),
     }
 
 
@@ -339,6 +344,7 @@ class Discrete(Space):
         >>> Discrete(2)
 
     """
+
     def __init__(self, n):
         assert n >= 0
         self.n = n
@@ -350,7 +356,7 @@ class Discrete(Space):
     def contains(self, x):
         if isinstance(x, int):
             as_int = x
-        elif isinstance(x, (np.generic, np.ndarray)) and (x.dtype.char in np.typecodes['AllInteger'] and x.shape == ()):
+        elif isinstance(x, (np.generic, np.ndarray)) and (x.dtype.char in np.typecodes["AllInteger"] and x.shape == ()):
             as_int = int(x)
         else:
             return False
@@ -382,8 +388,9 @@ class Box(Space):
         Box(2,)
 
     """
+
     def __init__(self, low, high, shape=None, dtype=np.float32):
-        assert dtype is not None, 'dtype must be explicitly provided. '
+        assert dtype is not None, "dtype must be explicitly provided. "
         self.dtype = np.dtype(dtype)
 
         # determine shape if it isn't provided directly
@@ -454,8 +461,7 @@ class Box(Space):
         * (-oo, b] : shifted negative exponential distribution
         * (-oo, oo) : normal distribution
         """
-        high = self.high if self.dtype.kind == 'f' \
-            else self.high.astype('int64') + 1
+        high = self.high if self.dtype.kind == "f" else self.high.astype("int64") + 1
         sample = np.empty(self.shape)
 
         # Masking arrays which classify the coordinates according to interval
@@ -473,7 +479,7 @@ class Box(Space):
         sample[upp_bounded] = -self.np_random.exponential(size=upp_bounded[upp_bounded].shape) + self.high[upp_bounded]
 
         sample[bounded] = self.np_random.uniform(low=self.low[bounded], high=high[bounded], size=bounded[bounded].shape)
-        if self.dtype.kind == 'i':
+        if self.dtype.kind == "i":
             sample = np.floor(sample)
 
         return sample.astype(self.dtype)
@@ -493,10 +499,12 @@ class Box(Space):
         return "Box" + str(self.shape)
 
     def __eq__(self, other):
-        return isinstance(other, Box) and \
-               (self.shape == other.shape) and \
-               np.allclose(self.low, other.low) and \
-               np.allclose(self.high, other.high)
+        return (
+            isinstance(other, Box)
+            and (self.shape == other.shape)
+            and np.allclose(self.low, other.low)
+            and np.allclose(self.high, other.high)
+        )
 
 
 if __name__ == "__main__":
@@ -506,7 +514,7 @@ if __name__ == "__main__":
     config = {
         "length": BoxSpace(min=10.0, max=80.0),
         "angle": BoxSpace(min=50.0, max=360.0),
-        "goal": DiscreteSpace(min=0, max=2)
+        "goal": DiscreteSpace(min=0, max=2),
     }
     config = ParameterSpace(config)
     print(config.sample())

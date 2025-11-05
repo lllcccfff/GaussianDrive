@@ -133,7 +133,6 @@ class ModelMaker:
         self._vert_ranges = {s_id: () for s_id in surface_ids}
 
     def reset(self):
-
         self._segments = None
         self._inverted = False
         self._vertex_color = None
@@ -145,7 +144,6 @@ class ModelMaker:
         self._vert_ranges = {s_id: () for s_id in self._surface_ids}
 
     def _make_flat_shaded(self, indices, verts):
-
         points = [Point3(verts[i]["pos"]) for i in indices[:3]]
         normal = Plane(*points).get_normal()
 
@@ -153,13 +151,11 @@ class ModelMaker:
             verts[i]["normal"] = normal
 
     def _average_normals(self, index1, index2, verts):
-
         normal = (verts[index1]["normal"] + verts[index2]["normal"]).normalized()
         verts[index1]["normal"] = normal
         verts[index2]["normal"] = normal
 
     def _get_tex_xform(self, surface_id):
-
         tex_offset = self._tex_offset
         tex_rotation = self._tex_rotation
         tex_scale = self._tex_scale
@@ -170,7 +166,6 @@ class ModelMaker:
         has_tex_xform = has_tex_offset or has_tex_rot or has_tex_scale
 
         if has_tex_xform:
-
             mat = Mat3.ident_mat()
 
             if has_tex_scale:

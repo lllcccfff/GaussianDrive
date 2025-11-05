@@ -17,15 +17,15 @@ def build_rotation(r):
     y = q[..., 2]
     z = q[..., 3]
 
-    R[..., 0, 0] = 1 - 2 * (y*y + z*z)
-    R[..., 0, 1] = 2 * (x*y - w*z)
-    R[..., 0, 2] = 2 * (x*z + w*y)
-    R[..., 1, 0] = 2 * (x*y + w*z)
-    R[..., 1, 1] = 1 - 2 * (x*x + z*z)
-    R[..., 1, 2] = 2 * (y*z - w*x)
-    R[..., 2, 0] = 2 * (x*z - w*y)
-    R[..., 2, 1] = 2 * (y*z + w*x)
-    R[..., 2, 2] = 1 - 2 * (x*x + y*y)
+    R[..., 0, 0] = 1 - 2 * (y * y + z * z)
+    R[..., 0, 1] = 2 * (x * y - w * z)
+    R[..., 0, 2] = 2 * (x * z + w * y)
+    R[..., 1, 0] = 2 * (x * y + w * z)
+    R[..., 1, 1] = 1 - 2 * (x * x + z * z)
+    R[..., 1, 2] = 2 * (y * z - w * x)
+    R[..., 2, 0] = 2 * (x * z - w * y)
+    R[..., 2, 1] = 2 * (y * z + w * x)
+    R[..., 2, 2] = 1 - 2 * (x * x + y * y)
     return R
 
 
@@ -50,14 +50,12 @@ def matrix_to_quaternion(matrix: torch.Tensor) -> torch.Tensor:
         positive_mask = x > 0
         ret[positive_mask] = torch.sqrt(x[positive_mask])
         return ret
-    
+
     if matrix.size(-1) != 3 or matrix.size(-2) != 3:
         raise ValueError(f"Invalid rotation matrix shape {matrix.shape}.")
 
     batch_dim = matrix.shape[:-2]
-    m00, m01, m02, m10, m11, m12, m20, m21, m22 = torch.unbind(
-        matrix.reshape(batch_dim + (9,)), dim=-1
-    )
+    m00, m01, m02, m10, m11, m12, m20, m21, m22 = torch.unbind(matrix.reshape(batch_dim + (9,)), dim=-1)
 
     q_abs = _sqrt_positive_part(
         torch.stack(
@@ -98,9 +96,7 @@ def matrix_to_quaternion(matrix: torch.Tensor) -> torch.Tensor:
     # if not for numerical problems, quat_candidates[i] should be same (up to a sign),
     # forall i; we pick the best-conditioned one (with the largest denominator)
 
-    return quat_candidates[
-        F.one_hot(q_abs.argmax(dim=-1), num_classes=4) > 0.5, :
-    ].reshape(batch_dim + (4,))
+    return quat_candidates[F.one_hot(q_abs.argmax(dim=-1), num_classes=4) > 0.5, :].reshape(batch_dim + (4,))
 
 
 def slerp(v1, v2, t, DOT_THR=0.99975, to_cpu=False, dim=-1):
@@ -117,10 +113,9 @@ def slerp(v1, v2, t, DOT_THR=0.99975, to_cpu=False, dim=-1):
     https://splines.readthedocs.io/en/latest/rotation/slerp.html
     PyTorch reference:
     https://discuss.pytorch.org/t/help-regarding-slerp-function-for-generative-model-sampling/32475/3
-    Numpy reference: 
+    Numpy reference:
     https://gist.github.com/dvschultz/3af50c40df002da3b751efab1daddf2c
     """
-    
 
     # take the dot product between normalized vectors
     v1_norm = v1 / torch.norm(v1, dim=dim, keepdim=True)
@@ -130,11 +125,11 @@ def slerp(v1, v2, t, DOT_THR=0.99975, to_cpu=False, dim=-1):
     # if the vectors are too close, return a simple linear interpolation
     if (torch.abs(dot) > DOT_THR).any():
         res = (1 - t) * v1 + t * v2
-    else: # else apply SLERP
+    else:  # else apply SLERP
         # compute the angle terms we need
-        theta   = torch.acos(dot)
+        theta = torch.acos(dot)
         theta_t = theta * t
-        sin_theta   = torch.sin(theta)
+        sin_theta = torch.sin(theta)
         sin_theta_t = torch.sin(theta_t)
 
         # compute the sine scaling terms for the vectors
@@ -164,7 +159,7 @@ class Trajectory:
         ts = int(timestamp)
         if ts not in self._sorted_ts:
             transform = torch.tensor(transform).float()
-            
+
             self.trans[ts] = transform[:3, 3]
             self.quats[ts] = matrix_to_quaternion(transform[:3, :3])
 
@@ -176,7 +171,7 @@ class Trajectory:
         transform[:3, :3] = self.get_rotation(timestamp, allow_extrapolation=allow_extrapolation)
         transform[:3, 3] = self.get_translation(timestamp, allow_extrapolation=allow_extrapolation)
         return transform
-    
+
     def get_rotation(self, timestamp: int, allow_extrapolation: bool = True) -> torch.Tensor:
         return build_rotation(self.get_quaternion(timestamp, allow_extrapolation=allow_extrapolation))
 
@@ -189,7 +184,7 @@ class Trajectory:
             return self.quats[t_next]
         else:
             return slerp(self.quats[t_prev], self.quats[t_next], ratio, to_cpu=True)
-    
+
     def get_translation(self, timestamp: int, allow_extrapolation: bool = True) -> torch.Tensor:
         ts = int(timestamp)
         t_prev, t_next, ratio = self._sample(ts, allow_extrapolation=allow_extrapolation)
@@ -199,13 +194,13 @@ class Trajectory:
             return self.trans[t_next]
         else:
             return (1 - ratio) * self.trans[t_prev] + ratio * self.trans[t_next]
-    
+
     def _sample(self, ts: int, clamp: bool = False, allow_extrapolation: bool = False) -> Tuple[int, int, float]:
         if not self._sorted_ts:
             raise ValueError("Empty.")
         elif len(self._sorted_ts) == 1:
             return self._sorted_ts[0], self._sorted_ts[0], 0.0
-        
+
         if ts < self._sorted_ts[0]:
             if allow_extrapolation:
                 t_prev = self._sorted_ts[0]
@@ -233,7 +228,7 @@ class Trajectory:
 
         raise ValueError(f"Timestamp {ts} could not be indexing.")
 
-    def sub_trajectory(self, start: int, end: int) -> 'Trajectory':
+    def sub_trajectory(self, start: int, end: int) -> "Trajectory":
         sub_values = {ts: self.get_transform(ts) for ts in self._sorted_ts if start <= ts <= end}
         if not sub_values:
             raise ValueError("No values found in the specified range.")

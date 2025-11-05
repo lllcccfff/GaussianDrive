@@ -4,6 +4,28 @@ This code is currently under heavy development based on MetaDrive.
 
 For development, see [DEV.md](docs/DEV.md)
 
+## Installation
+
+```bash
+conda create -n "gaussiandrive" python=3.11 -y
+conda activate gaussiandrive
+
+# Install compatible torch version here, cu121 for example
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+pip install -e .
+```
+
+## Visualization
+
+```bash
+# Server side
+python -m metadrive.examples.drive_in_real_env_server -c /.../EasyDrive/configs/exps/street_gs --host 10.76.5.241 --port 12721
+
+# Client side (for example, Windows)
+python -m metadrive.examples.remote_visualizer  --host 10.76.5.241 --port 12721 --width 1920 --height 1280
+```
+
 ---
 
 # MetaDrive: an Open-source Driving Simulator for AI and Autonomy Research

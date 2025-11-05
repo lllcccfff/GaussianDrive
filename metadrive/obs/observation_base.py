@@ -12,6 +12,7 @@ class BaseObservation(ABC):
     """
     BaseObservation Class. Observation should implement all abstracted methods
     """
+
     INITIALIZED = False
 
     def __init__(self, config):
@@ -44,13 +45,14 @@ class DummyObservation(BaseObservation):
     """
     Fake Observation class, can be used as placeholder
     """
+
     def __init__(self, config=None):
         super(DummyObservation, self).__init__(config)
         logger.warning("You are using DummyObservation which doesn't collect information from the environment.")
 
     @property
     def observation_space(self):
-        return gym.spaces.Box(-0.0, 1.0, shape=(1, ), dtype=np.float32)
+        return gym.spaces.Box(-0.0, 1.0, shape=(1,), dtype=np.float32)
 
     def observe(self, *args, **kwargs):
         return np.array([0])
@@ -60,12 +62,13 @@ class DefaultObservation(BaseObservation):
     """
     Default Observation class that returns None
     """
+
     def __init__(self, config=None):
         super(DefaultObservation, self).__init__(config or {})
 
     @property
     def observation_space(self):
-        return gym.spaces.Box(-0.0, 1.0, shape=(1, ), dtype=np.float32)
+        return gym.spaces.Box(-0.0, 1.0, shape=(1,), dtype=np.float32)
 
     def observe(self, *args, **kwargs):
         return None

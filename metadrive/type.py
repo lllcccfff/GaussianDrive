@@ -110,8 +110,11 @@ class MetaDriveType:
     @classmethod
     def is_lane(cls, type):
         return type in [
-            cls.LANE_SURFACE_STREET, cls.LANE_SURFACE_UNSTRUCTURE, cls.LANE_UNKNOWN, cls.LANE_BIKE_LANE,
-            cls.LANE_FREEWAY
+            cls.LANE_SURFACE_STREET,
+            cls.LANE_SURFACE_UNSTRUCTURE,
+            cls.LANE_UNKNOWN,
+            cls.LANE_BIKE_LANE,
+            cls.LANE_FREEWAY,
         ]
 
     @classmethod
@@ -121,16 +124,25 @@ class MetaDriveType:
         is in the boundary or not.
         """
         return line in [
-            cls.LINE_UNKNOWN, cls.LINE_BROKEN_SINGLE_WHITE, cls.LINE_SOLID_SINGLE_WHITE, cls.LINE_SOLID_DOUBLE_WHITE,
-            cls.LINE_BROKEN_SINGLE_YELLOW, cls.LINE_BROKEN_DOUBLE_YELLOW, cls.LINE_SOLID_SINGLE_YELLOW,
-            cls.LINE_SOLID_DOUBLE_YELLOW, cls.LINE_PASSING_DOUBLE_YELLOW
+            cls.LINE_UNKNOWN,
+            cls.LINE_BROKEN_SINGLE_WHITE,
+            cls.LINE_SOLID_SINGLE_WHITE,
+            cls.LINE_SOLID_DOUBLE_WHITE,
+            cls.LINE_BROKEN_SINGLE_YELLOW,
+            cls.LINE_BROKEN_DOUBLE_YELLOW,
+            cls.LINE_SOLID_SINGLE_YELLOW,
+            cls.LINE_SOLID_DOUBLE_YELLOW,
+            cls.LINE_PASSING_DOUBLE_YELLOW,
         ]
 
     @classmethod
     def is_yellow_line(cls, line):
         return line in [
-            cls.LINE_SOLID_DOUBLE_YELLOW, cls.LINE_PASSING_DOUBLE_YELLOW, cls.LINE_SOLID_SINGLE_YELLOW,
-            cls.LINE_BROKEN_DOUBLE_YELLOW, cls.LINE_BROKEN_SINGLE_YELLOW
+            cls.LINE_SOLID_DOUBLE_YELLOW,
+            cls.LINE_PASSING_DOUBLE_YELLOW,
+            cls.LINE_SOLID_SINGLE_YELLOW,
+            cls.LINE_BROKEN_DOUBLE_YELLOW,
+            cls.LINE_BROKEN_SINGLE_YELLOW,
         ]
 
     @classmethod
@@ -144,8 +156,10 @@ class MetaDriveType:
     @classmethod
     def is_solid_line(cls, line):
         return line in [
-            cls.LINE_SOLID_DOUBLE_WHITE, cls.LINE_SOLID_DOUBLE_YELLOW, cls.LINE_SOLID_SINGLE_YELLOW,
-            cls.LINE_SOLID_SINGLE_WHITE
+            cls.LINE_SOLID_DOUBLE_WHITE,
+            cls.LINE_SOLID_DOUBLE_YELLOW,
+            cls.LINE_SOLID_SINGLE_YELLOW,
+            cls.LINE_SOLID_SINGLE_WHITE,
         ]
 
     @classmethod
@@ -228,8 +242,12 @@ class MetaDriveType:
             return cls.LIGHT_UNKNOWN
         elif status in [cls.LANE_STATE_ARROW_STOP, cls.LANE_STATE_STOP, cls.LIGHT_RED]:
             return cls.LIGHT_RED
-        elif status in [cls.LANE_STATE_ARROW_CAUTION, cls.LANE_STATE_CAUTION, cls.LANE_STATE_FLASHING_CAUTION,
-                        cls.LIGHT_YELLOW]:
+        elif status in [
+            cls.LANE_STATE_ARROW_CAUTION,
+            cls.LANE_STATE_CAUTION,
+            cls.LANE_STATE_FLASHING_CAUTION,
+            cls.LIGHT_YELLOW,
+        ]:
             return cls.LIGHT_YELLOW
         elif status in [cls.LANE_STATE_ARROW_GO, cls.LANE_STATE_GO, cls.LIGHT_GREEN]:
             return cls.LIGHT_GREEN

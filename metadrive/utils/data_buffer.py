@@ -34,8 +34,8 @@ class DataBuffer:
     You can store map / traffic tracks in it.
     The maximum size of the buffer is determined by store_data_buffer_size
     """
-    def __init__(self, store_data_buffer_size=None):
 
+    def __init__(self, store_data_buffer_size=None):
         self.store_data_buffer = {}
 
         if store_data_buffer_size is None:
@@ -46,7 +46,6 @@ class DataBuffer:
 
     def clear_if_necessary(self):
         while len(self.store_data_buffer) >= self.store_data_buffer_size:
-
             tmp_index = self.store_data_indices.popleft()
 
             if not isinstance(self.store_data_buffer[tmp_index], dict):

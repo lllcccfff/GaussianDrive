@@ -24,4 +24,4 @@ class Mode(object):
         bpy.ops.object.mode_set(mode=self._mode)
 
     def __exit__(self, *args, **kw):
-        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.mode_set(mode="OBJECT")

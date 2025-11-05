@@ -21,6 +21,7 @@ from metadrive.utils.math import wrap_to_pi
 
 logger = get_logger()
 
+
 class BaseObject(BaseRunnable, MetaDriveType, ABC):
     """
     BaseObject is something interacting with game engine. If something is expected to have an body in the world or have
@@ -30,24 +31,31 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
     sample some special configs for it ,Properties and parameters in PARAMETER_SPACE of the object are fixed after
     calling __init__().
     """
+
     MASS = None  # if object has an body, the mass will be set automatically
     COLLISION_MASK = None
     SEMANTIC_LABEL = Semantics.UNLABELED.label
 
-    YFront2X = np.array([
-        [ 0., 1.,  0.],
-        [ -1.,  0.,  0.],
-        [ 0. , 0.,  1.],
-    ])
-    XFront2Y = np.array([
-        [ 0., -1.,  0.],
-        [ 1.,  0.,  0.],
-        [ 0. , 0.,  1.],
-    ]) 
-    
+    YFront2X = np.array(
+        [
+            [0.0, 1.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    XFront2Y = np.array(
+        [
+            [0.0, -1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+
     Panda2Real = None
 
-    def __init__(self, physics_world, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False):
+    def __init__(
+        self, physics_world, size=None, name=None, random_seed=None, config=None, escape_random_seed_assertion=False
+    ):
         """
         Config is a static conception, which specified the parameters of one element.
         There parameters doesn't change, such as length of straight road, max speed of one vehicle, etc.
@@ -121,23 +129,42 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
 
     def set_transform(self, m):
         M = m[:3, :3] @ BaseObject.YFront2X
-        self.body.setTransform(TransformState.makeMat(LMatrix4(
-            M[0, 0], M[1, 0], M[2, 0], m[3, 0],
-            M[0, 1], M[1, 1], M[2, 1], m[3, 1],
-            M[0, 2], M[1, 2], M[2, 2], m[3, 2],
-            m[0, 3], m[1, 3], m[2, 3], m[3, 3]
-        )))
+        self.body.setTransform(
+            TransformState.makeMat(
+                LMatrix4(
+                    M[0, 0],
+                    M[1, 0],
+                    M[2, 0],
+                    m[3, 0],
+                    M[0, 1],
+                    M[1, 1],
+                    M[2, 1],
+                    m[3, 1],
+                    M[0, 2],
+                    M[1, 2],
+                    M[2, 2],
+                    m[3, 2],
+                    m[0, 3],
+                    m[1, 3],
+                    m[2, 3],
+                    m[3, 3],
+                )
+            )
+        )
 
     @property
     def transform(self):
         mat = self.body.getTransform().getMat()
-        M = np.array([
-            [mat[0][0], mat[1][0], mat[2][0], mat[3][0]],
-            [mat[0][1], mat[1][1], mat[2][1], mat[3][1]],
-            [mat[0][2], mat[1][2], mat[2][2], mat[3][2]],
-            [mat[0][3], mat[1][3], mat[2][3], mat[3][3]]
-        ], dtype=np.float32)
-        M[:3, :3] = M[:3, :3]  @ BaseObject.XFront2Y
+        M = np.array(
+            [
+                [mat[0][0], mat[1][0], mat[2][0], mat[3][0]],
+                [mat[0][1], mat[1][1], mat[2][1], mat[3][1]],
+                [mat[0][2], mat[1][2], mat[2][2], mat[3][2]],
+                [mat[0][3], mat[1][3], mat[2][3], mat[3][3]],
+            ],
+            dtype=np.float32,
+        )
+        M[:3, :3] = M[:3, :3] @ BaseObject.XFront2Y
         return M
 
     def set_velocity(self, velocity):
@@ -148,9 +175,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         :param value: speed [m/s]
         :param in_local_frame: True, apply speed to local fram
         """
-        self.body.setLinearVelocity(
-            LVector3(velocity[0], velocity[1], self.body.getLinearVelocity()[-1])
-        )
+        self.body.setLinearVelocity(LVector3(velocity[0], velocity[1], self.body.getLinearVelocity()[-1]))
 
     @property
     def velocity(self):
@@ -164,7 +189,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         if not in_rad:
             angular_velocity = angular_velocity / 180 * np.pi
         self.body.setAngularVelocity(LVector3(0, 0, angular_velocity))
-    
+
     @property
     def angular_velocity(self):
         return self.body.getAngularVelocity()[-1]
@@ -199,7 +224,6 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
         km/h
         """
         return self.speed * 3.6
-
 
     @property
     def heading(self):
@@ -243,7 +267,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
             ObjectState.ROLL: self.roll,
             ObjectState.PITCH: self.pitch,
             ObjectState.VELOCITY: self.velocity,
-            ObjectState.TYPE: type(self)
+            ObjectState.TYPE: type(self),
         }
         return state
 
@@ -256,7 +280,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
 
     def rename(self, new_name):
         super(BaseObject, self).rename(new_name)
-        
+
         physics_node = self.body.getPythonTag(self.body.getName())
         if isinstance(physics_node, BaseGhostBodyNode) or isinstance(physics_node, BaseRigidBodyNode):
             physics_node.rename(new_name)
@@ -269,7 +293,7 @@ class BaseObject(BaseRunnable, MetaDriveType, ABC):
             self.physics_world.dynamic_world.attach(self.body)
         else:
             self.physics_world.dynamic_world.attach(obj)
-    
+
     def detachDyWld(self, obj=None):
         if not obj:
             self.physics_world.dynamic_world.remove(self.body)

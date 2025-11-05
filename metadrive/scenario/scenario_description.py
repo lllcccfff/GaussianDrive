@@ -111,6 +111,7 @@ Example:
         }
     }
 """
+
 import math
 import os
 from collections import defaultdict
@@ -125,6 +126,7 @@ class ScenarioDescription(dict):
     """
     MetaDrive Scenario Description. It stores keys of the data dict.
     """
+
     TRACKS = "tracks"
     VERSION = "version"
     ID = "id"
@@ -219,8 +221,9 @@ class ScenarioDescription(dict):
             assert not isinstance(scenario_dict, ScenarioDescription)
 
         # Whether input has all required keys
-        assert cls.FIRST_LEVEL_KEYS.issubset(set(scenario_dict.keys())), \
+        assert cls.FIRST_LEVEL_KEYS.issubset(set(scenario_dict.keys())), (
             "You lack these keys in first level: {}".format(cls.FIRST_LEVEL_KEYS.difference(set(scenario_dict.keys())))
+        )
 
         # Check types, only native python objects
         # This is to avoid issue in pickle deserialization
@@ -235,10 +238,12 @@ class ScenarioDescription(dict):
                 obj_state, scenario_length=scenario_length, object_id=obj_id, valid_check=valid_check
             )
             # position heading check
-            assert ScenarioDescription.HEADING in obj_state[ScenarioDescription.STATE
-                                                            ], "heading is required for an object"
-            assert ScenarioDescription.POSITION in obj_state[ScenarioDescription.STATE
-                                                             ], "position is required for an object"
+            assert ScenarioDescription.HEADING in obj_state[ScenarioDescription.STATE], (
+                "heading is required for an object"
+            )
+            assert ScenarioDescription.POSITION in obj_state[ScenarioDescription.STATE], (
+                "position is required for an object"
+            )
 
         # Check dynamic_map_state
         assert isinstance(scenario_dict[cls.DYNAMIC_MAP_STATES], dict)
@@ -251,11 +256,12 @@ class ScenarioDescription(dict):
 
         # Check metadata
         assert isinstance(scenario_dict[cls.METADATA], dict)
-        assert cls.METADATA_KEYS.issubset(set(scenario_dict[cls.METADATA].keys())), \
+        assert cls.METADATA_KEYS.issubset(set(scenario_dict[cls.METADATA].keys())), (
             "You lack these keys in metadata: {}".format(
                 cls.METADATA_KEYS.difference(set(scenario_dict[cls.METADATA].keys()))
             )
-        assert scenario_dict[cls.METADATA][cls.TIMESTEP].shape == (scenario_length, )
+        )
+        assert scenario_dict[cls.METADATA][cls.TIMESTEP].shape == (scenario_length,)
 
     @classmethod
     def _check_map_features(cls, map_feature):
@@ -263,16 +269,17 @@ class ScenarioDescription(dict):
         for id, feature in map_feature.items():
             if MetaDriveType.is_lane(feature[ScenarioDescription.TYPE]):
                 assert ScenarioDescription.POLYLINE in feature, "No lane center line in map feature"
-                assert isinstance(
-                    feature[ScenarioDescription.POLYLINE], (np.ndarray, list, tuple)
-                ), "lane center line is in invalid type"
+                assert isinstance(feature[ScenarioDescription.POLYLINE], (np.ndarray, list, tuple)), (
+                    "lane center line is in invalid type"
+                )
             if ScenarioDescription.POLYGON in feature and ScenarioDescription.POLYLINE in feature:
                 line_centroid = np.mean(feature["polyline"], axis=0)[:2]
                 polygon_centroid = np.mean(feature["polygon"], axis=0)[:2]
                 diff = line_centroid - polygon_centroid
-                assert norm(diff[0], diff[
-                    1]) < 100, "The distance between centroids of polyline and polygon is greater than 100m. " \
-                               "The map converter should be wrong!"
+                assert norm(diff[0], diff[1]) < 100, (
+                    "The distance between centroids of polyline and polygon is greater than 100m. "
+                    "The map converter should be wrong!"
+                )
 
     @classmethod
     def _check_object_state_dict(cls, obj_state, scenario_length, object_id, valid_check=True):
@@ -289,8 +296,9 @@ class ScenarioDescription(dict):
         assert set(obj_state).issuperset(cls.STATE_DICT_KEYS)
 
         # Check type
-        assert MetaDriveType.has_type(obj_state[cls.TYPE]
-                                      ), "MetaDrive doesn't have this type: {}".format(obj_state[cls.TYPE])
+        assert MetaDriveType.has_type(obj_state[cls.TYPE]), "MetaDrive doesn't have this type: {}".format(
+            obj_state[cls.TYPE]
+        )
 
         # Check set type
         assert obj_state[cls.TYPE] != MetaDriveType.UNSET, "Types should be set for objects and traffic lights"
@@ -306,8 +314,9 @@ class ScenarioDescription(dict):
 
             assert state_array.ndim in [1, 2], "Haven't implemented test array with dim {} yet".format(state_array.ndim)
             if state_array.ndim == 2:
-                assert state_array.shape[
-                    1] != 0, "Please convert all state with dim 1 to a 1D array instead of 2D array."
+                assert state_array.shape[1] != 0, (
+                    "Please convert all state with dim 1 to a 1D array instead of 2D array."
+                )
 
             if state_key == "valid" and valid_check:
                 assert np.sum(state_array) >= 1, "No frame valid for this object. Consider removing it"
@@ -315,9 +324,10 @@ class ScenarioDescription(dict):
             # check valid
             if "valid" in obj_state[cls.STATE] and valid_check:
                 _array = state_array[..., :2] if state_key == "position" else state_array
-                assert abs(np.sum(_array[np.where(obj_state[cls.STATE]["valid"], False, True)])) < 1e-2, \
-                    "Valid array mismatches with {} array, some frames in {} have non-zero values, " \
+                assert abs(np.sum(_array[np.where(obj_state[cls.STATE]["valid"], False, True)])) < 1e-2, (
+                    "Valid array mismatches with {} array, some frames in {} have non-zero values, "
                     "so it might be valid".format(state_key, state_key)
+                )
 
         # Check metadata
         assert isinstance(obj_state[cls.METADATA], dict)
@@ -379,7 +389,7 @@ class ScenarioDescription(dict):
             ScenarioDescription.SUMMARY.TRACK_LENGTH: int(len(track)),
             ScenarioDescription.SUMMARY.MOVING_DIST: float(distance),
             ScenarioDescription.SUMMARY.VALID_LENGTH: int(valid_length),
-            ScenarioDescription.SUMMARY.CONTINUOUS_VALID_LENGTH: int(continuous_valid_length)
+            ScenarioDescription.SUMMARY.CONTINUOUS_VALID_LENGTH: int(continuous_valid_length),
         }
 
     @staticmethod
@@ -409,13 +419,12 @@ class ScenarioDescription(dict):
         # moving object
         number_summary_dict = {
             ScenarioDescription.SUMMARY.NUM_MOVING_OBJECTS: 0,
-            ScenarioDescription.SUMMARY.NUM_MOVING_OBJECTS_EACH_TYPE: defaultdict(int)
+            ScenarioDescription.SUMMARY.NUM_MOVING_OBJECTS_EACH_TYPE: defaultdict(int),
         }
         for v in scenario[ScenarioDescription.METADATA][ScenarioDescription.SUMMARY.OBJECT_SUMMARY].values():
-
             # Fix a tiny compatibility issue
             if ScenarioDescription.SUMMARY.MOVING_DIST not in v:
-                v[ScenarioDescription.SUMMARY.MOVING_DIST] = v['distance']
+                v[ScenarioDescription.SUMMARY.MOVING_DIST] = v["distance"]
 
             if v[ScenarioDescription.SUMMARY.MOVING_DIST] > 1:
                 number_summary_dict[ScenarioDescription.SUMMARY.NUM_MOVING_OBJECTS] += 1
@@ -470,8 +479,9 @@ class ScenarioDescription(dict):
 
         # object
         number_summary_dict[ScenarioDescription.SUMMARY.NUM_OBJECTS] = len(scenario[ScenarioDescription.TRACKS])
-        number_summary_dict[ScenarioDescription.SUMMARY.OBJECT_TYPES] = \
-            set(v["type"] for v in scenario[ScenarioDescription.TRACKS].values())
+        number_summary_dict[ScenarioDescription.SUMMARY.OBJECT_TYPES] = set(
+            v["type"] for v in scenario[ScenarioDescription.TRACKS].values()
+        )
         object_types_counter = defaultdict(int)
         for v in scenario[ScenarioDescription.TRACKS].values():
             object_types_counter[v["type"]] += 1
@@ -495,17 +505,21 @@ class ScenarioDescription(dict):
                     continue
                 dynamic_object_states_types.add(step_state)
                 dynamic_object_states_counter[step_state] += 1
-        number_summary_dict[ScenarioDescription.SUMMARY.NUM_TRAFFIC_LIGHTS
-                            ] = len(scenario[ScenarioDescription.DYNAMIC_MAP_STATES])
+        number_summary_dict[ScenarioDescription.SUMMARY.NUM_TRAFFIC_LIGHTS] = len(
+            scenario[ScenarioDescription.DYNAMIC_MAP_STATES]
+        )
         number_summary_dict[ScenarioDescription.SUMMARY.NUM_TRAFFIC_LIGHT_TYPES] = dynamic_object_states_types
-        number_summary_dict[ScenarioDescription.SUMMARY.NUM_TRAFFIC_LIGHTS_EACH_STEP
-                            ] = dict(dynamic_object_states_counter)
+        number_summary_dict[ScenarioDescription.SUMMARY.NUM_TRAFFIC_LIGHTS_EACH_STEP] = dict(
+            dynamic_object_states_counter
+        )
 
         # map
-        number_summary_dict[ScenarioDescription.SUMMARY.NUM_MAP_FEATURES
-                            ] = len(scenario[ScenarioDescription.MAP_FEATURES])
-        number_summary_dict[ScenarioDescription.SUMMARY.MAP_HEIGHT_DIFF
-                            ] = ScenarioDescription.map_height_diff(scenario[ScenarioDescription.MAP_FEATURES])
+        number_summary_dict[ScenarioDescription.SUMMARY.NUM_MAP_FEATURES] = len(
+            scenario[ScenarioDescription.MAP_FEATURES]
+        )
+        number_summary_dict[ScenarioDescription.SUMMARY.MAP_HEIGHT_DIFF] = ScenarioDescription.map_height_diff(
+            scenario[ScenarioDescription.MAP_FEATURES]
+        )
         return number_summary_dict
 
     @staticmethod

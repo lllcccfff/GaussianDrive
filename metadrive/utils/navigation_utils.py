@@ -10,4 +10,3 @@ def nearest_front_index(path, xy, heading_vec):
         return int(path.shape[0])
     idx_in_mask = int(np.argmin(d2))
     return int(np.arange(len(path))[mask][idx_in_mask])
-

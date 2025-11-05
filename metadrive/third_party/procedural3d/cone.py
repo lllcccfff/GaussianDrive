@@ -83,12 +83,12 @@ class ConeMaker(ModelMaker):
         self,
         bottom_center=None,
         top_center=None,
-        bottom_radius=1.,
-        top_radius=0.,
+        bottom_radius=1.0,
+        top_radius=0.0,
         segments=None,
         smooth=True,
-        slice=0.,
-        rotation=0.,
+        slice=0.0,
+        rotation=0.0,
         bottom_thickness=None,
         top_thickness=None,
         inverted=False,
@@ -97,7 +97,7 @@ class ConeMaker(ModelMaker):
         tex_units=None,
         tex_offset=None,
         tex_rotation=None,
-        tex_scale=None
+        tex_scale=None,
     ):
         """
         This class generates cone model primitives with the given parameters:
@@ -188,28 +188,25 @@ class ConeMaker(ModelMaker):
         self._top_thickness = top_thickness
 
     def reset(self):
-
         ModelMaker.reset(self)
 
         self._bottom_center = None
         self._top_center = None
-        self._bottom_radius = 1.
-        self._top_radius = 0.
+        self._bottom_radius = 1.0
+        self._top_radius = 0.0
         self._smooth = True
-        self._slice = 0.
-        self._rotation = 0.
+        self._slice = 0.0
+        self._rotation = 0.0
         self._bottom_thickness = None
         self._top_thickness = None
 
     def __transform_vertices(self, vertex_data, axis_vec, bottom_center):
-
         mat = Mat4(Mat4.ident_mat())
 
         if self._rotation:
             mat *= Mat4.rotate_mat(self._rotation, Vec3.up())
 
         if axis_vec.normalize():
-
             cross_vec = axis_vec.cross(Vec3.up())
             ref_vec = cross_vec if cross_vec.normalize() else Vec3.right()
             angle = Vec3.up().signed_angle_deg(axis_vec, ref_vec)
@@ -225,16 +222,15 @@ class ConeMaker(ModelMaker):
         vertex_data.transform_vertices(mat)
 
     def generate(self):
-
-        bottom_center = (0., 0., 0.) if self._bottom_center is None else self._bottom_center
-        top_center = (0., 0., 1.) if self._top_center is None else self._top_center
+        bottom_center = (0.0, 0.0, 0.0) if self._bottom_center is None else self._bottom_center
+        top_center = (0.0, 0.0, 1.0) if self._top_center is None else self._top_center
         axis_vec = Point3(*top_center) - Point3(*bottom_center)
         height = axis_vec.length()
-        bottom_radius = max(0., self._bottom_radius)
-        top_radius = max(0., self._top_radius)
+        bottom_radius = max(0.0, self._bottom_radius)
+        top_radius = max(0.0, self._top_radius)
 
-        if bottom_radius == top_radius == 0.:
-            bottom_radius = .001
+        if bottom_radius == top_radius == 0.0:
+            bottom_radius = 0.001
 
         segs = {} if self._segments is None else self._segments
         segs_c = max(3, segs.get("circular", 20))
@@ -244,15 +240,15 @@ class ConeMaker(ModelMaker):
         segs_sc_r = max(0, segs.get("slice_caps_radial", 1))
         segs_sc_a = max(0, segs.get("slice_caps_axial", 1))
         smooth = self._smooth
-        slice = max(0., min(360., self._slice))
-        slice_radians = pi * slice / 180.
-        delta_angle = pi * ((360. - slice) / 180.) / segs_c
+        slice = max(0.0, min(360.0, self._slice))
+        slice_radians = pi * slice / 180.0
+        delta_angle = pi * ((360.0 - slice) / 180.0) / segs_c
         delta_radius = top_radius - bottom_radius
-        bottom_thickness = bottom_radius if self._bottom_thickness is None \
-                           else max(0., min(bottom_radius, self._bottom_thickness))
+        bottom_thickness = (
+            bottom_radius if self._bottom_thickness is None else max(0.0, min(bottom_radius, self._bottom_thickness))
+        )
         inner_bottom_radius = bottom_radius - bottom_thickness
-        top_thickness = top_radius if self._top_thickness is None \
-                           else max(0., min(top_radius, self._top_thickness))
+        top_thickness = top_radius if self._top_thickness is None else max(0.0, min(top_radius, self._top_thickness))
         inner_top_radius = top_radius - top_thickness
         inverted = self._inverted
         has_uvs = self._has_uvs
@@ -266,17 +262,16 @@ class ConeMaker(ModelMaker):
             "top_cap": (),
             "slice_start_cap": (),
             "slice_end_cap": (),
-            "inner_main": ()
+            "inner_main": (),
         }
         stride = 8 if has_uvs else 6  # number of floats on each vertex data row
         values = array.array("f", [])
         indices = array.array("I", [])
         verts = []
 
-        normal = (0., 0., 1. if inverted else -1.)
+        normal = (0.0, 0.0, 1.0 if inverted else -1.0)
 
         if has_uvs:
-
             if tex_units and "bottom_cap" in tex_units:
                 tex_size = tex_units["bottom_cap"]
             else:
@@ -285,44 +280,40 @@ class ConeMaker(ModelMaker):
             mat = self._get_tex_xform("bottom_cap")
 
         if segs_bc and not inner_bottom_radius:
-
             # Define the bottom cap triangle vertices
 
-            u = v = .5
+            u = v = 0.5
 
             if has_uvs and mat:
                 u, v = mat.xform_point(Point2(u, v))
 
-            vert = {"pos": (0., 0., 0.), "normal": normal, "uv": (u, v)}
+            vert = {"pos": (0.0, 0.0, 0.0), "normal": normal, "uv": (u, v)}
             verts.append(vert)
 
             radius = bottom_radius / segs_bc
 
             for i in range(segs_c + 1):
-
-                angle = delta_angle * i + (0. if inverted else slice_radians)
+                angle = delta_angle * i + (0.0 if inverted else slice_radians)
                 c = cos(angle)
-                s = sin(angle) * (-1. if inverted else 1.)
+                s = sin(angle) * (-1.0 if inverted else 1.0)
                 x = radius * c
                 y = radius * s
 
                 if has_uvs:
-
-                    u = .5 + .5 * c / segs_bc
-                    v = .5 + .5 * s * (1. if inverted else -1.) / segs_bc
+                    u = 0.5 + 0.5 * c / segs_bc
+                    v = 0.5 + 0.5 * s * (1.0 if inverted else -1.0) / segs_bc
 
                     if tex_size:
-                        u = (u - .5) * 2. * bottom_radius / tex_size[0] + .5
-                        v = (v - .5) * 2. * bottom_radius / tex_size[1] + .5
+                        u = (u - 0.5) * 2.0 * bottom_radius / tex_size[0] + 0.5
+                        v = (v - 0.5) * 2.0 * bottom_radius / tex_size[1] + 0.5
 
                     if mat:
                         u, v = mat.xform_point(Point2(u, v))
 
                 else:
+                    u = v = 0.0
 
-                    u = v = 0.
-
-                vert = {"pos": (x, y, 0.), "normal": normal, "uv": (u, v)}
+                vert = {"pos": (x, y, 0.0), "normal": normal, "uv": (u, v)}
                 verts.append(vert)
 
             # Define the vertex order of the bottom cap triangles
@@ -331,41 +322,36 @@ class ConeMaker(ModelMaker):
                 indices.extend((0, i + 1, i))
 
         if segs_bc and bottom_thickness:
-
             # Define the bottom cap quad vertices
 
             n = 0 if inner_bottom_radius else 1
 
             for i in range(n, segs_bc + 1 - n):
-
                 radius = inner_bottom_radius + bottom_thickness * (i + n) / segs_bc
 
                 for j in range(segs_c + 1):
-
-                    angle = delta_angle * j + (0. if inverted else slice_radians)
+                    angle = delta_angle * j + (0.0 if inverted else slice_radians)
                     c = cos(angle)
-                    s = sin(angle) * (-1. if inverted else 1.)
+                    s = sin(angle) * (-1.0 if inverted else 1.0)
                     x = radius * c
                     y = radius * s
 
                     if has_uvs:
-
                         r = radius / bottom_radius
-                        u = .5 + .5 * c * r
-                        v = .5 + .5 * s * (1. if inverted else -1.) * r
+                        u = 0.5 + 0.5 * c * r
+                        v = 0.5 + 0.5 * s * (1.0 if inverted else -1.0) * r
 
                         if tex_size:
-                            u = (u - .5) * 2. * bottom_radius / tex_size[0] + .5
-                            v = (v - .5) * 2. * bottom_radius / tex_size[1] + .5
+                            u = (u - 0.5) * 2.0 * bottom_radius / tex_size[0] + 0.5
+                            v = (v - 0.5) * 2.0 * bottom_radius / tex_size[1] + 0.5
 
                         if mat:
                             u, v = mat.xform_point(Point2(u, v))
 
                     else:
+                        u = v = 0.0
 
-                        u = v = 0.
-
-                    vert = {"pos": (x, y, 0.), "normal": normal, "uv": (u, v)}
+                    vert = {"pos": (x, y, 0.0), "normal": normal, "uv": (u, v)}
                     verts.append(vert)
 
             # Define the vertex order of the bottom cap quads
@@ -386,7 +372,6 @@ class ConeMaker(ModelMaker):
         vertex_count = len(verts)
 
         if has_uvs:
-
             if tex_units and "main" in tex_units:
                 tex_size = tex_units["main"]
                 max_radius = max(bottom_radius, top_radius)
@@ -399,7 +384,6 @@ class ConeMaker(ModelMaker):
         # Define the mantle quad vertices
 
         for i in range(segs_a + 1):
-
             radius = bottom_radius + delta_radius * i / segs_a
             z = height * i / segs_a
 
@@ -409,17 +393,16 @@ class ConeMaker(ModelMaker):
                     v *= height / tex_size[1]
                 v_start = v
             else:
-                v = 0.
+                v = 0.0
 
             for j in range(segs_c + 1):
-
-                angle = delta_angle * j + (0. if inverted else slice_radians)
+                angle = delta_angle * j + (0.0 if inverted else slice_radians)
                 x = radius * cos(angle)
-                y = radius * sin(angle) * (-1. if inverted else 1.)
+                y = radius * sin(angle) * (-1.0 if inverted else 1.0)
 
                 if smooth:
                     normal = Vec3(x, y, -radius * delta_radius / height).normalized()
-                    normal *= -1. if inverted else 1.
+                    normal *= -1.0 if inverted else 1.0
 
                 if has_uvs:
                     u = j / segs_c
@@ -428,7 +411,7 @@ class ConeMaker(ModelMaker):
                     if mat:
                         u, v = mat.xform_point(Point2(u, v_start))
                 else:
-                    u = 0.
+                    u = 0.0
 
                 vert = {"pos": (x, y, z), "normal": normal if smooth else None, "uv": (u, v)}
                 verts.append(vert)
@@ -442,9 +425,7 @@ class ConeMaker(ModelMaker):
         f = 1 if smooth else 2
 
         for i in range(1, segs_a + 1):
-
             for j in range(0, segs_c * f, f):
-
                 vi1 = vertex_count + i * n + j
                 vi2 = vi1 - n
                 vi3 = vi2 + 1
@@ -459,10 +440,9 @@ class ConeMaker(ModelMaker):
 
         vertex_count = len(verts)
 
-        normal = (0., 0., -1. if inverted else 1.)
+        normal = (0.0, 0.0, -1.0 if inverted else 1.0)
 
         if has_uvs:
-
             if tex_units and "top_cap" in tex_units:
                 tex_size = tex_units["top_cap"]
             else:
@@ -471,44 +451,40 @@ class ConeMaker(ModelMaker):
             mat = self._get_tex_xform("top_cap")
 
         if segs_tc and not inner_top_radius:
-
             index_offset = vertex_count
 
             # Define the top cap triangle vertices
 
-            u = v = .5
+            u = v = 0.5
 
             if has_uvs and mat:
                 u, v = mat.xform_point(Point2(u, v))
 
-            vert = {"pos": (0., 0., height), "normal": normal, "uv": (u, v)}
+            vert = {"pos": (0.0, 0.0, height), "normal": normal, "uv": (u, v)}
             verts.append(vert)
 
             radius = top_radius / segs_tc
 
             for i in range(segs_c + 1):
-
-                angle = delta_angle * i + (0. if inverted else slice_radians)
+                angle = delta_angle * i + (0.0 if inverted else slice_radians)
                 c = cos(angle)
-                s = sin(angle) * (-1. if inverted else 1.)
+                s = sin(angle) * (-1.0 if inverted else 1.0)
                 x = radius * c
                 y = radius * s
 
                 if has_uvs:
-
-                    u = .5 + .5 * c / segs_tc
-                    v = .5 + .5 * s * (-1. if inverted else 1.) / segs_tc
+                    u = 0.5 + 0.5 * c / segs_tc
+                    v = 0.5 + 0.5 * s * (-1.0 if inverted else 1.0) / segs_tc
 
                     if tex_size:
-                        u = (u - .5) * 2. * top_radius / tex_size[0] + .5
-                        v = (v - .5) * 2. * top_radius / tex_size[1] + .5
+                        u = (u - 0.5) * 2.0 * top_radius / tex_size[0] + 0.5
+                        v = (v - 0.5) * 2.0 * top_radius / tex_size[1] + 0.5
 
                     if mat:
                         u, v = mat.xform_point(Point2(u, v))
 
                 else:
-
-                    u = v = 0.
+                    u = v = 0.0
 
                 vert = {"pos": (x, y, height), "normal": normal, "uv": (u, v)}
                 verts.append(vert)
@@ -521,37 +497,32 @@ class ConeMaker(ModelMaker):
         # Define the top cap quad vertices
 
         if segs_tc and top_thickness:
-
             n = 0 if inner_top_radius else 1
 
             for i in range(n, segs_tc + 1 - n):
-
                 radius = inner_top_radius + top_thickness * (i + n) / segs_tc
 
                 for j in range(segs_c + 1):
-
-                    angle = delta_angle * j + (0. if inverted else slice_radians)
+                    angle = delta_angle * j + (0.0 if inverted else slice_radians)
                     c = cos(angle)
-                    s = sin(angle) * (-1. if inverted else 1.)
+                    s = sin(angle) * (-1.0 if inverted else 1.0)
                     x = radius * c
                     y = radius * s
 
                     if has_uvs:
-
                         r = radius / top_radius
-                        u = .5 + .5 * c * r
-                        v = .5 + .5 * s * (-1. if inverted else 1.) * r
+                        u = 0.5 + 0.5 * c * r
+                        v = 0.5 + 0.5 * s * (-1.0 if inverted else 1.0) * r
 
                         if tex_size:
-                            u = (u - .5) * 2. * top_radius / tex_size[0] + .5
-                            v = (v - .5) * 2. * top_radius / tex_size[1] + .5
+                            u = (u - 0.5) * 2.0 * top_radius / tex_size[0] + 0.5
+                            v = (v - 0.5) * 2.0 * top_radius / tex_size[1] + 0.5
 
                         if mat:
                             u, v = mat.xform_point(Point2(u, v))
 
                     else:
-
-                        u = v = 0.
+                        u = v = 0.0
 
                     vert = {"pos": (x, y, height), "normal": normal, "uv": (u, v)}
                     verts.append(vert)
@@ -572,7 +543,6 @@ class ConeMaker(ModelMaker):
         vert_ranges["top_cap"] = (vertex_count, len(verts))
 
         if segs_sc_r and segs_sc_a and slice and (bottom_thickness or top_thickness):
-
             # Define the slice cap vertices
 
             index_offset = len(verts)
@@ -580,19 +550,17 @@ class ConeMaker(ModelMaker):
             delta_inner_radius = inner_top_radius - inner_bottom_radius
 
             for cap_id in ("start", "end"):
-
                 vertex_count = len(verts)
 
                 if cap_id == "start":
-                    normal = (0., -1. if inverted else 1., 0.)
+                    normal = (0.0, -1.0 if inverted else 1.0, 0.0)
                 else:
                     angle = delta_angle * segs_c
                     c = cos(angle)
                     s = -sin(angle)
-                    normal = Vec3(s, -c, 0.) * (-1. if inverted else 1.)
+                    normal = Vec3(s, -c, 0.0) * (-1.0 if inverted else 1.0)
 
                 if has_uvs:
-
                     cap_name = "slice_{}_cap".format(cap_id)
                     if tex_units and cap_name in tex_units:
                         tex_size = tex_units[cap_name]
@@ -602,7 +570,6 @@ class ConeMaker(ModelMaker):
                     mat = self._get_tex_xform(cap_name)
 
                 for i in range(segs_sc_a + 1):
-
                     # Define the vertices of the slice cap quad
 
                     f = i / segs_sc_a
@@ -616,43 +583,38 @@ class ConeMaker(ModelMaker):
                             v *= height / tex_size[1]
                         v_start = v
                     else:
-                        v = 0.
+                        v = 0.0
 
                     for j in range(segs_sc_r + 1):
-
                         r = inner_radius + (radius - inner_radius) * j / segs_sc_r
 
                         if cap_id == "start":
-                            pos = (r, 0., z)
+                            pos = (r, 0.0, z)
                         else:
                             pos = (r * c, r * s, z)
 
                         if has_uvs:
-
                             if cap_id == "start":
-                                u = .5 + .5 * r / max_radius * (1. if inverted else -1.)
+                                u = 0.5 + 0.5 * r / max_radius * (1.0 if inverted else -1.0)
                             else:
-                                u = .5 - .5 * r / max_radius * (1. if inverted else -1.)
+                                u = 0.5 - 0.5 * r / max_radius * (1.0 if inverted else -1.0)
 
                             if tex_size:
-                                u = (u - .5) * 2. * max_radius / tex_size[0] + .5
+                                u = (u - 0.5) * 2.0 * max_radius / tex_size[0] + 0.5
 
                             if mat:
                                 u, v = mat.xform_point(Point2(u, v_start))
 
                         else:
-
-                            u = 0.
+                            u = 0.0
 
                         vert = {"pos": pos, "normal": normal, "uv": (u, v)}
                         verts.append(vert)
 
                 for i in range(segs_sc_a):
-
                     # Define the vertex order of the slice cap quad
 
                     for j in range(segs_sc_r):
-
                         vi1 = index_offset + j
                         vi2 = vi1 + segs_sc_r + 1
                         vi3 = vi1 + 1
@@ -673,7 +635,6 @@ class ConeMaker(ModelMaker):
                 vert_ranges[surface_name] = (vertex_count, len(verts))
 
         for vert in verts:
-
             values.extend(vert["pos"])
             values.extend(vert["normal"])
 
@@ -683,7 +644,6 @@ class ConeMaker(ModelMaker):
         # Create the geometry structures
 
         if inner_bottom_radius or inner_top_radius:
-
             # If a thickness is given, an inner cone needs to be created to close
             # the surface of the model; its parameters are derived from those of
             # the outer cone and adjusted to make both cones fit together.
@@ -694,7 +654,7 @@ class ConeMaker(ModelMaker):
                 "bottom_cap": 0,
                 "top_cap": 0,
                 "slice_caps_radial": 0,
-                "slice_caps_axial": 0
+                "slice_caps_axial": 0,
             }
             inner_tex_units = {} if tex_units else None
 
@@ -717,7 +677,8 @@ class ConeMaker(ModelMaker):
                 inner_tex_scale["main"] = tex_scale["inner_main"]
 
             model_maker = ConeMaker(
-                None, (0., 0., height),
+                None,
+                (0.0, 0.0, height),
                 inner_bottom_radius,
                 inner_top_radius,
                 segs,
@@ -728,7 +689,7 @@ class ConeMaker(ModelMaker):
                 tex_units=inner_tex_units,
                 tex_offset=inner_tex_offset,
                 tex_rotation=inner_tex_rot,
-                tex_scale=inner_tex_scale
+                tex_scale=inner_tex_scale,
             )
             node = model_maker.generate()
 
@@ -777,7 +738,6 @@ class ConeMaker(ModelMaker):
                 vert_ranges["inner_main"] = inner_range
 
             for surface_name in ("main", "bottom_cap", "top_cap", "slice_start_cap", "slice_end_cap"):
-
                 vert_range = vert_ranges[surface_name]
 
                 if vert_range:
@@ -787,7 +747,6 @@ class ConeMaker(ModelMaker):
                     vert_ranges[surface_name] = (start, end)
 
         else:
-
             if has_uvs:
                 vertex_format = GeomVertexFormat.get_v3n3t2()
             else:

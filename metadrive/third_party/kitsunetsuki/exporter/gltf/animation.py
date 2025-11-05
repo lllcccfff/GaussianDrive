@@ -33,89 +33,89 @@ class AnimationMixin(object):
         # transforms
         channel = self._buffer.add_channel(
             {
-                'componentType': spec.TYPE_FLOAT,
-                'type': 'VEC4' if path == 'rotation' else 'VEC3',
-                'extras': {
-                    'reference': path,
+                "componentType": spec.TYPE_FLOAT,
+                "type": "VEC4" if path == "rotation" else "VEC3",
+                "extras": {
+                    "reference": path,
                 },
             }
         )
 
         gltf_sampler = {
-            'interpolation': 'LINEAR',
-            'input': input_id,
-            'output': channel['bufferView'],
-            'extras': {
-                'joint': bone.name,
-            }
+            "interpolation": "LINEAR",
+            "input": input_id,
+            "output": channel["bufferView"],
+            "extras": {
+                "joint": bone.name,
+            },
         }
         return gltf_sampler
 
     def make_action(self, node, armature, action):
         gltf_armature = None
-        for i, gltf_node in enumerate(self._root['nodes']):
-            if gltf_node['name'] == armature.name:
+        for i, gltf_node in enumerate(self._root["nodes"]):
+            if gltf_node["name"] == armature.name:
                 gltf_armature = gltf_node
                 break
         if not gltf_armature:
             gltf_armature = self.make_armature(node, armature)
 
         gltf_skin = None
-        for i in gltf_armature['children']:
-            gltf_node = self._root['nodes'][i]
-            if 'skin' in gltf_node:
-                gltf_skin = self._root['skins'][gltf_node['skin']]
+        for i in gltf_armature["children"]:
+            gltf_node = self._root["nodes"][i]
+            if "skin" in gltf_node:
+                gltf_skin = self._root["skins"][gltf_node["skin"]]
                 break
 
         if not gltf_skin:
-            print('FAILED TO FIND GLTF SKIN')
+            print("FAILED TO FIND GLTF SKIN")
             return
 
         # <-- animation
         gltf_animation = {
-            'name': action.name if action else 'GLTF_ANIMATION',
-            'channels': [],
-            'samplers': [],
+            "name": action.name if action else "GLTF_ANIMATION",
+            "channels": [],
+            "samplers": [],
         }
 
         # setup bones
         gltf_channels = {}
         gltf_samplers = []
-        for gltf_joint_id in gltf_skin['joints']:
-            gltf_joint = self._root['nodes'][gltf_joint_id]
-            bone = armature.data.bones[gltf_joint['name']]
+        for gltf_joint_id in gltf_skin["joints"]:
+            gltf_joint = self._root["nodes"][gltf_joint_id]
+            bone = armature.data.bones[gltf_joint["name"]]
 
             gltf_target = {}
             if gltf_joint_id is not None:
-                gltf_target['node'] = gltf_joint_id
+                gltf_target["node"] = gltf_joint_id
 
             # time or animation frame
             channel = self._buffer.add_channel(
                 {
-                    'componentType': spec.TYPE_FLOAT,
-                    'type': 'SCALAR',
-                    'extras': {
-                        'reference': 'input',
+                    "componentType": spec.TYPE_FLOAT,
+                    "type": "SCALAR",
+                    "extras": {
+                        "reference": "input",
                     },
                 }
             )
-            input_id = channel['bufferView']
+            input_id = channel["bufferView"]
 
-            for path in ('rotation', 'scale', 'translation'):
+            for path in ("rotation", "scale", "translation"):
                 gltf_samplers.append(self._make_sampler(path, input_id, bone))
 
                 gltf_channel = {
-                    'sampler': len(gltf_samplers) - 1,
-                    'target': copy.copy(gltf_target),
-                    'extras': {
-                        'joint': bone.name,
-                    }
+                    "sampler": len(gltf_samplers) - 1,
+                    "target": copy.copy(gltf_target),
+                    "extras": {
+                        "joint": bone.name,
+                    },
                 }
-                gltf_channel['target']['path'] = path
-                gltf_channels['{}/{}'.format(bone.name, path)] = gltf_channel
+                gltf_channel["target"]["path"] = path
+                gltf_channels["{}/{}".format(bone.name, path)] = gltf_channel
 
-        gltf_animation['channels'] = list(gltf_channels.values())
-        gltf_animation['samplers'] = gltf_samplers
+        gltf_animation["channels"] = list(gltf_channels.values())
+        gltf_animation["samplers"] = gltf_samplers
 
         # set animation data
         frame_start = bpy.context.scene.frame_start
@@ -147,28 +147,28 @@ class AnimationMixin(object):
                 bpy.context.scene.frame_subframe = frame - frame_int
 
             # write bone matrices
-            for gltf_joint_id in gltf_skin['joints']:
-                gltf_joint = self._root['nodes'][gltf_joint_id]
-                bone = armature.pose.bones[gltf_joint['name']]
+            for gltf_joint_id in gltf_skin["joints"]:
+                gltf_joint = self._root["nodes"][gltf_joint_id]
+                bone = armature.pose.bones[gltf_joint["name"]]
                 bone_matrix = self._transform(get_bone_matrix(bone, armature))
 
                 rotation = quat_to_list(bone_matrix.to_quaternion())
                 scale = list(bone_matrix.to_scale())
                 translation = list(bone_matrix.to_translation())
 
-                gltf_channel = gltf_channels['{}/{}'.format(bone.name, 'rotation')]
-                gltf_sampler = gltf_samplers[gltf_channel['sampler']]
-                self._buffer.write(gltf_sampler['output'], *rotation)
+                gltf_channel = gltf_channels["{}/{}".format(bone.name, "rotation")]
+                gltf_sampler = gltf_samplers[gltf_channel["sampler"]]
+                self._buffer.write(gltf_sampler["output"], *rotation)
 
-                gltf_channel = gltf_channels['{}/{}'.format(bone.name, 'scale')]
-                gltf_sampler = gltf_samplers[gltf_channel['sampler']]
-                self._buffer.write(gltf_sampler['output'], *scale)
+                gltf_channel = gltf_channels["{}/{}".format(bone.name, "scale")]
+                gltf_sampler = gltf_samplers[gltf_channel["sampler"]]
+                self._buffer.write(gltf_sampler["output"], *scale)
 
-                gltf_channel = gltf_channels['{}/{}'.format(bone.name, 'translation')]
-                gltf_sampler = gltf_samplers[gltf_channel['sampler']]
-                self._buffer.write(gltf_sampler['output'], *translation)
+                gltf_channel = gltf_channels["{}/{}".format(bone.name, "translation")]
+                gltf_sampler = gltf_samplers[gltf_channel["sampler"]]
+                self._buffer.write(gltf_sampler["output"], *translation)
 
-                self._buffer.write(gltf_sampler['input'], float(t))
+                self._buffer.write(gltf_sampler["input"], float(t))
 
             # advance to the next frame
             frame += speed_scale
@@ -176,4 +176,4 @@ class AnimationMixin(object):
 
         # animation -->
 
-        self._root['animations'].append(gltf_animation)
+        self._root["animations"].append(gltf_animation)

@@ -29,7 +29,7 @@ class VertexMixin(object):
         if can_merge and not self._pose_freeze:
             co = obj_matrix @ co
 
-        self._buffer.write(gltf_primitive['attributes']['POSITION'], *tuple(co))
+        self._buffer.write(gltf_primitive["attributes"]["POSITION"], *tuple(co))
 
         # normals
         # normal = vertex.normal if use_smooth else polygon.normal
@@ -39,32 +39,32 @@ class VertexMixin(object):
         if can_merge and not self._pose_freeze:
             normal = obj_matrix.to_euler().to_matrix() @ normal
 
-        self._buffer.write(gltf_primitive['attributes']['NORMAL'], *tuple(normal))
+        self._buffer.write(gltf_primitive["attributes"]["NORMAL"], *tuple(normal))
 
         # shape keys
-        for i, sk_name in enumerate(gltf_primitive['extras']['targetNames']):
+        for i, sk_name in enumerate(gltf_primitive["extras"]["targetNames"]):
             sk_data = mesh.shape_keys.key_blocks[sk_name]
             sk_co = sk_data.data[vertex_id].co
             if not self._z_up:
                 sk_co = self._matrix @ sk_co
 
-            self._buffer.write(gltf_primitive['targets'][i]['POSITION'], *tuple(sk_co - co))
+            self._buffer.write(gltf_primitive["targets"][i]["POSITION"], *tuple(sk_co - co))
 
     def _write_uv(self, gltf_primitive, uv_id, u, v):
-        texcoord = 'TEXCOORD_{}'.format(uv_id)
-        if texcoord not in gltf_primitive['attributes']:
+        texcoord = "TEXCOORD_{}".format(uv_id)
+        if texcoord not in gltf_primitive["attributes"]:
             channel = self._buffer.add_channel(
                 {
-                    'componentType': spec.TYPE_FLOAT,
-                    'type': 'VEC2',
-                    'extras': {
-                        'reference': texcoord,
+                    "componentType": spec.TYPE_FLOAT,
+                    "type": "VEC2",
+                    "extras": {
+                        "reference": texcoord,
                     },
                 }
             )
-            gltf_primitive['attributes'][texcoord] = channel['bufferView']
+            gltf_primitive["attributes"][texcoord] = channel["bufferView"]
 
-        self._buffer.write(gltf_primitive['attributes'][texcoord], u, 1 - v)
+        self._buffer.write(gltf_primitive["attributes"][texcoord], u, 1 - v)
 
     def _write_tbs(self, obj_matrix, gltf_primitive, t, b, s, can_merge=False):
         if not self._z_up:
@@ -74,65 +74,65 @@ class VertexMixin(object):
             t = obj_matrix.to_euler().to_matrix() @ t
         x, y, z = t
 
-        if 'TANGENT' not in gltf_primitive['attributes']:
+        if "TANGENT" not in gltf_primitive["attributes"]:
             channel = self._buffer.add_channel(
                 {
-                    'componentType': spec.TYPE_FLOAT,
-                    'type': 'VEC4',
-                    'extras': {
-                        'reference': 'TANGENT',
+                    "componentType": spec.TYPE_FLOAT,
+                    "type": "VEC4",
+                    "extras": {
+                        "reference": "TANGENT",
                     },
                 }
             )
-            gltf_primitive['attributes']['TANGENT'] = channel['bufferView']
+            gltf_primitive["attributes"]["TANGENT"] = channel["bufferView"]
 
-        self._buffer.write(gltf_primitive['attributes']['TANGENT'], x, y, z, s)
+        self._buffer.write(gltf_primitive["attributes"]["TANGENT"], x, y, z, s)
 
     def _write_joints_weights(self, gltf_primitive, joints_num, joints_weights):
         for i, joint_weight in enumerate(joints_weights):
             # prepare joints buffer channel
-            joints = 'JOINTS_{}'.format(i)
-            if joints not in gltf_primitive['attributes']:
+            joints = "JOINTS_{}".format(i)
+            if joints not in gltf_primitive["attributes"]:
                 if joints_num > 255:
                     ctype = spec.TYPE_UNSIGNED_SHORT
                 else:
                     ctype = spec.TYPE_UNSIGNED_BYTE
 
                 # Unity glTF importer (UniVRM/UniGLTF) compatibility
-                if self._output.endswith('.vrm'):
+                if self._output.endswith(".vrm"):
                     ctype = spec.TYPE_UNSIGNED_SHORT
 
                 channel = self._buffer.add_channel(
                     {
-                        'componentType': ctype,
-                        'type': 'VEC4',
-                        'extras': {
-                            'reference': joints,
+                        "componentType": ctype,
+                        "type": "VEC4",
+                        "extras": {
+                            "reference": joints,
                         },
                     }
                 )
-                gltf_primitive['attributes'][joints] = channel['bufferView']
+                gltf_primitive["attributes"][joints] = channel["bufferView"]
 
             # write 4 joints
             keys = tuple(zip(*joint_weight))[0]
             assert len(keys) == 4
-            self._buffer.write(gltf_primitive['attributes'][joints], *keys)
+            self._buffer.write(gltf_primitive["attributes"][joints], *keys)
 
             # prepare weights buffer channel
-            weights = 'WEIGHTS_{}'.format(i)
-            if weights not in gltf_primitive['attributes']:
+            weights = "WEIGHTS_{}".format(i)
+            if weights not in gltf_primitive["attributes"]:
                 channel = self._buffer.add_channel(
                     {
-                        'componentType': spec.TYPE_FLOAT,
-                        'type': 'VEC4',
-                        'extras': {
-                            'reference': weights,
+                        "componentType": spec.TYPE_FLOAT,
+                        "type": "VEC4",
+                        "extras": {
+                            "reference": weights,
                         },
                     }
                 )
-                gltf_primitive['attributes'][weights] = channel['bufferView']
+                gltf_primitive["attributes"][weights] = channel["bufferView"]
 
             # write 4 weights
             values = tuple(zip(*joint_weight))[1]
             assert len(values) == 4
-            self._buffer.write(gltf_primitive['attributes'][weights], *values)
+            self._buffer.write(gltf_primitive["attributes"][weights], *values)

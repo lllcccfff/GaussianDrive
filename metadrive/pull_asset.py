@@ -18,7 +18,7 @@ ROOT_DIR = Path(__file__).parent
 ASSET_URL = "https://github.com/metadriverse/metadrive/releases/download/MetaDrive-{}/assets.zip".format(VERSION)
 
 
-class MyProgressBar():
+class MyProgressBar:
     def __init__(self):
         self.pbar = None
 
@@ -35,7 +35,7 @@ class MyProgressBar():
 
 
 def _is_asset_version_file_ready():
-    asset_version_path = ROOT_DIR / 'assets' / 'version.txt'
+    asset_version_path = ROOT_DIR / "assets" / "version.txt"
     return asset_version_path.exists()
 
 
@@ -47,6 +47,7 @@ def wait_asset_lock():
     )
     if not _is_asset_version_file_ready():
         import time
+
         while not _is_asset_version_file_ready():
             logger.info("Assets not pulled yet. Waiting for 10 seconds...")
             time.sleep(10)
@@ -57,8 +58,8 @@ def pull_asset(update):
     logger = get_logger()
 
     assets_folder = ROOT_DIR / "assets"
-    zip_path = ROOT_DIR / 'assets.zip'
-    lock_path = ROOT_DIR / 'assets.lock'
+    zip_path = ROOT_DIR / "assets.zip"
+    lock_path = ROOT_DIR / "assets.lock"
     temp_assets_folder = ROOT_DIR / "temp_assets"
 
     if _is_asset_version_file_ready() and not update:
@@ -90,7 +91,7 @@ def pull_asset(update):
             # Extract to temporary directory
             logger.info("Extracting assets.")
             shutil.unpack_archive(filename=zip_path, extract_dir=temp_assets_folder)
-            shutil.move(str(temp_assets_folder / 'assets'), str(ROOT_DIR))
+            shutil.move(str(temp_assets_folder / "assets"), str(ROOT_DIR))
 
     except Timeout:  # Timeout will be raised if the lock can not be acquired in 1s.
         logger.info(
@@ -118,7 +119,7 @@ def pull_asset(update):
     logger.info("Successfully download assets, version: {}. MetaDrive version: {}".format(asset_version(), VERSION))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--update", action="store_true", help="Force overwrite the current assets")
     args = parser.parse_args()

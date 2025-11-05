@@ -25,17 +25,19 @@ class StateObservation(BaseObservation):
 
     @property
     def observation_space(self):
-        return gym.spaces.Dict({
-            'position': gym.spaces.Box(self._pos_low, self._pos_high, shape=(2,), dtype=np.float32),
-            'velocity': gym.spaces.Box(self._vel_low, self._vel_high, shape=(2,), dtype=np.float32),
-        })
+        return gym.spaces.Dict(
+            {
+                "position": gym.spaces.Box(self._pos_low, self._pos_high, shape=(2,), dtype=np.float32),
+                "velocity": gym.spaces.Box(self._vel_low, self._vel_high, shape=(2,), dtype=np.float32),
+            }
+        )
 
     def observe(self):
         p = self.controller.position
         v = self.controller.velocity
         return {
-            'position': np.array([p[0], p[1]], dtype=np.float32),
-            'velocity': np.array([v[0], v[1]], dtype=np.float32),
+            "position": np.array([p[0], p[1]], dtype=np.float32),
+            "velocity": np.array([v[0], v[1]], dtype=np.float32),
         }
 
     def destroy(self):

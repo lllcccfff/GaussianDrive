@@ -5,6 +5,7 @@ from metadrive.utils.opendrive.elements.road_record import RoadRecord
 
 class Lanes:
     """ """
+
     def __init__(self):
         self._laneOffsets = []
         self._lane_sections = []
@@ -206,6 +207,7 @@ class Lane:
 
 class LaneLink:
     """ """
+
     def __init__(self):
         self._predecessor = None
         self._successor = None
@@ -235,6 +237,7 @@ class LaneSection:
     (Section 5.3.7.2 of OpenDRIVE 1.4)
 
     """
+
     def __init__(self, road=None):
         self.idx = None
         self.sPos = None
@@ -305,7 +308,8 @@ class LaneWidth(RoadRecord):
 
     start_offset being the offset of the entry relative to the preceding lane section record
 
-"""
+    """
+
     def __init__(self, *polynomial_coefficients: float, idx: int = None, start_offset: float = None):
         self.idx = idx
         self.length = 0

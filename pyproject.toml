@@ -12,7 +12,7 @@ authors = [
 ]
 requires-python = ">=3.8"
 version = "0.0.1"
-dependencies = ["lxml", "mediapy", "shapely", "pygame", "panda3d"]
+dependencies = ["lxml", "mediapy", "shapely", "pygame", "panda3d", "rich"]
 
 [project.optional-dependencies]
 dev = ["ruff", "pre-commit"]

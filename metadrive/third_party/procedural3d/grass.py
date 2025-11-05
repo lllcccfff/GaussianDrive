@@ -5,10 +5,10 @@ import random
 
 def makeGrassBlades():
     format = GeomVertexFormat.getV3n3cpt2()
-    vdata = GeomVertexData('blade', format, Geom.UHStatic)
-    vertex = GeomVertexWriter(vdata, 'vertex')
-    normal = GeomVertexWriter(vdata, 'normal')
-    texcoord = GeomVertexWriter(vdata, 'texcoord')
+    vdata = GeomVertexData("blade", format, Geom.UHStatic)
+    vertex = GeomVertexWriter(vdata, "vertex")
+    normal = GeomVertexWriter(vdata, "normal")
+    texcoord = GeomVertexWriter(vdata, "texcoord")
     blade = Geom(vdata)
 
     for x in range(20):
@@ -38,7 +38,7 @@ def makeGrassBlades():
         triangles.addVertices(3 + z, 2 + z, 4 + z)
         blade.addPrimitive(triangles)
 
-    snode = GeomNode('node')
+    snode = GeomNode("node")
     snode.addGeom(blade)
     return snode
 
@@ -54,7 +54,7 @@ for x in range(4):
 
 # Create some lighting
 ambientLight = AmbientLight("ambientLight")
-ambientLight.setColor(Vec4(.3, .3, .3, 1))
+ambientLight.setColor(Vec4(0.3, 0.3, 0.3, 1))
 directionalLight = DirectionalLight("directionalLight")
 directionalLight.setDirection(Vec3(-5, -5, -5))
 directionalLight.setColor(Vec4(1, 1, 1, 1))

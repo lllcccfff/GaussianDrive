@@ -18,6 +18,7 @@ class LateralProfile:
 
     (Section 5.3.6 of OpenDRIVE 1.4)
     """
+
     def __init__(self):
         self._superelevations = []
         self._crossfalls = []
@@ -37,7 +38,7 @@ class LateralProfile:
 
     @property
     def crossfalls(self):
-        """Crossfalls of a LateralProfile. """
+        """Crossfalls of a LateralProfile."""
         return self._crossfalls
 
     @crossfalls.setter
@@ -74,6 +75,7 @@ class Crossfall(RoadRecord):
 
     (Section 5.3.6.2 of OpenDRIVE 1.4)
     """
+
     def __init__(self, *polynomial_coefficients: float, start_pos: float = None, side: str = None):
         super().__init__(*polynomial_coefficients, start_pos=start_pos)
         self.side = side
@@ -119,6 +121,7 @@ class Shape(RoadRecord):
     (Section 5.3.6.3 of OpenDRIVE 1.4)
 
     """
+
     def __init__(
         self,
         *polynomial_coefficients: float,

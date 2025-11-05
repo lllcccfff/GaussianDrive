@@ -1,6 +1,6 @@
 # Development tutorial
 
-install necessary development tools:
+After common installation steps, install necessary development tools:
 
 ```bash
 pip install -e .[dev]

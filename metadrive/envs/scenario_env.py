@@ -19,18 +19,15 @@ SCENARIO_ENV_CONFIG = dict(
     # ===== Scenario Config =====
     data_directory=AssetLoader.file_path("nuscenes", unix_style=False),
     start_scenario_index=0,
-
     # Set num_scenarios=-1 to load all scenarios in the data directory.
     num_scenarios=3,
     sequential_seed=False,  # Whether to set seed (the index of map) sequentially across episodes
     worker_index=0,  # Allowing multi-worker sampling with Rllib
     num_workers=1,  # Allowing multi-worker sampling with Rllib
-
     # ===== Curriculum Config =====
     curriculum_level=1,  # i.e. set to 5 to split the data into 5 difficulty level
     episodes_to_evaluate_curriculum=None,
     target_success_rate=0.8,
-
     # ===== Map Config =====
     store_map=True,
     store_data=True,
@@ -38,7 +35,6 @@ SCENARIO_ENV_CONFIG = dict(
     no_map=False,
     map_region_size=1024,
     cull_lanes_outside_map=True,
-
     # ===== Scenario =====
     no_traffic=False,  # nothing will be generated including objects/pedestrian/vehicles
     no_static_vehicles=False,  # static vehicle will be removed
@@ -50,28 +46,25 @@ SCENARIO_ENV_CONFIG = dict(
     static_traffic_object=True,
     show_sidewalk=False,
     even_sample_vehicle_class=None,  # Deprecated.
-
     # ===== Reward Scheme =====
     # See: https://github.com/metadriverse/metadrive/issues/283
     success_reward=5.0,
     out_of_road_penalty=5.0,
-    on_lane_line_penalty=1.,
-    crash_vehicle_penalty=1.,
+    on_lane_line_penalty=1.0,
+    crash_vehicle_penalty=1.0,
     crash_object_penalty=1.0,
     crash_human_penalty=1.0,
     driving_reward=1.0,
     steering_range_penalty=0.5,
     heading_penalty=1.0,
-    lateral_penalty=.5,
+    lateral_penalty=0.5,
     max_lateral_dist=4,
     no_negative_reward=True,
-
     # ===== Cost Scheme =====
     crash_vehicle_cost=1.0,
     crash_object_cost=1.0,
     out_of_road_cost=1.0,
     crash_human_cost=1.0,
-
     # ===== Termination Scheme =====
     out_of_route_done=False,
     crash_vehicle_done=False,
@@ -79,7 +72,6 @@ SCENARIO_ENV_CONFIG = dict(
     crash_human_done=False,
     relax_out_of_road_done=True,
 )
-
 
 
 class ScenarioEnv(BaseEnv):
@@ -92,32 +84,33 @@ class ScenarioEnv(BaseEnv):
     def __init__(self, model, config=None):
         super(ScenarioEnv, self).__init__(model, config)
         if self.config["curriculum_level"] > 1:
-            assert self.config["num_scenarios"] % self.config["curriculum_level"] == 0, \
+            assert self.config["num_scenarios"] % self.config["curriculum_level"] == 0, (
                 "Each level should have the same number of scenarios"
+            )
             if self.config["num_workers"] > 1:
                 num = int(self.config["num_scenarios"] / self.config["curriculum_level"])
                 assert num % self.config["num_workers"] == 0
         if self.config["num_workers"] > 1:
-            assert self.config["sequential_seed"], \
+            assert self.config["sequential_seed"], (
                 "If using > 1 workers, you have to allow sequential_seed for consistency!"
+            )
 
     def _post_process_config(self, config):
         config = super(ScenarioEnv, self)._post_process_config(config)
         return config
 
     def _init_agent_manager(self):
-        return AgentManager(self.config['actor_config'], self.step_manager)
+        return AgentManager(self.config["actor_config"], self.step_manager)
 
     def done_function(self):
-        state_info = self.agent_managers['actor'].state
+        state_info = self.agent_managers["actor"].state
         is_max_step = self.config["max_step"] is not None and self.episode_lengths >= self.config["max_step"]
-
 
         def msg(reason):
             return "Episode ended! Scenario Index: {} Scenario id: {} Reason: {}.".format(
                 self.current_seed, self.data_manager.current_scenario_id, reason
             )
-        
+
         done = False
         if state_info == AgentState.SUCCESS:
             done = True
@@ -150,10 +143,10 @@ class ScenarioEnv(BaseEnv):
         #     done_info[TerminationState.SUCCESS], vehicle.navigation.route_completion
         # )
 
-        return done, {'reason': state_info}
+        return done, {"reason": state_info}
 
     def cost_function(self):
-        actor_mgr = self.agent_managers['actor']
+        actor_mgr = self.agent_managers["actor"]
         state = actor_mgr.state
 
         step_info = dict(num_crash_object=0, num_crash_human=0, num_crash_vehicle=0, num_on_line=0)
@@ -180,7 +173,7 @@ class ScenarioEnv(BaseEnv):
         :param vehicle_id: id of BaseVehicle
         :return: reward
         """
-        state = self.agent_managers['actor'].state
+        state = self.agent_managers["actor"].state
         step_info = dict()
 
         # crash penalty
@@ -200,23 +193,28 @@ class ScenarioEnv(BaseEnv):
 
         return reward, step_info
 
+
 class ScenarioOnlineEnv(ScenarioEnv):
     """
     This environment allow the user to pass in scenario data directly.
     """
+
     def default_config(cls):
         config = super(ScenarioOnlineEnv, cls).default_config()
-        config.update({
-            "store_map": False,
-        })
+        config.update(
+            {
+                "store_map": False,
+            }
+        )
         return config
 
     def __init__(self, config=None):
         super(ScenarioOnlineEnv, self).__init__(config)
         self.lazy_init()
 
-        assert self.config["store_map"] is False, \
+        assert self.config["store_map"] is False, (
             "ScenarioOnlineEnv should not store map. Please set store_map=False in config"
+        )
 
     def _setup(self):
         """Overwrite the data_manager by ScenarioOnlineDataManager"""
@@ -250,6 +248,7 @@ class ScenarioWaypointEnv(ScenarioEnv):
 
     Most of the functions are implemented in WaypointPolicy.
     """
+
     @classmethod
     def default_config(cls):
         config = super(ScenarioWaypointEnv, cls).default_config()
@@ -259,4 +258,3 @@ class ScenarioWaypointEnv(ScenarioEnv):
         ret = super(ScenarioWaypointEnv, self)._post_process_config(config)
         assert config["set_static"], "Waypoint policy requires set_static=True"
         return ret
-

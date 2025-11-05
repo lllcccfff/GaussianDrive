@@ -23,6 +23,7 @@ def get_vehicle_type(length, need_default_vehicle=False, use_bounding_box=False)
     else:
         return XLVehicle
 
+
 class DefaultVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.DEFAULT_VEHICLE)
     # LENGTH = 4.51
@@ -70,6 +71,7 @@ class XLVehicle(BaseVehicle):
     DEFAULT_HEIGHT = 2.8  # meters
     DEFAULT_WIDTH = 2.3  # meters
 
+
 class LVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.L_VEHICLE)
     # LENGTH = 4.5
@@ -87,7 +89,6 @@ class LVehicle(BaseVehicle):
     DEFAULT_WIDTH = 2.046  # meters
 
 
-
 class MVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.M_VEHICLE)
     # LENGTH = 4.4
@@ -103,6 +104,7 @@ class MVehicle(BaseVehicle):
     DEFAULT_LENGTH = 4.6  # meters
     DEFAULT_HEIGHT = 1.37  # meters
     DEFAULT_WIDTH = 1.85  # meters
+
 
 class SVehicle(BaseVehicle):
     PARAMETER_SPACE = ParameterSpace(VehicleParameterSpace.S_VEHICLE)
@@ -122,6 +124,7 @@ class SVehicle(BaseVehicle):
     DEFAULT_HEIGHT = 1.7  # meters
     DEFAULT_WIDTH = 1.7  # meters
 
+
 class VaryingDynamicsVehicle(DefaultVehicle):
     @property
     def WIDTH(self):
@@ -129,15 +132,15 @@ class VaryingDynamicsVehicle(DefaultVehicle):
 
     @property
     def LENGTH(self):
-        return self.config["length"] if self.config["length"] is not None else super(
-            VaryingDynamicsVehicle, self
-        ).LENGTH
+        return (
+            self.config["length"] if self.config["length"] is not None else super(VaryingDynamicsVehicle, self).LENGTH
+        )
 
     @property
     def HEIGHT(self):
-        return self.config["height"] if self.config["height"] is not None else super(
-            VaryingDynamicsVehicle, self
-        ).HEIGHT
+        return (
+            self.config["height"] if self.config["height"] is not None else super(VaryingDynamicsVehicle, self).HEIGHT
+        )
 
     @property
     def MASS(self):
@@ -150,9 +153,8 @@ class VaryingDynamicsVehicle(DefaultVehicle):
         position=None,
         heading: float = 0.0,  # In degree!
         *args,
-        **kwargs
+        **kwargs,
     ):
-
         assert "width" not in self.PARAMETER_SPACE
         assert "height" not in self.PARAMETER_SPACE
         assert "length" not in self.PARAMETER_SPACE
@@ -164,26 +166,36 @@ class VaryingDynamicsVehicle(DefaultVehicle):
                 should_force_reset = True
             if vehicle_config["length"] is not None and vehicle_config["length"] != self.LENGTH:
                 should_force_reset = True
-            if "max_engine_force" in vehicle_config and \
-                vehicle_config["max_engine_force"] is not None and \
-                vehicle_config["max_engine_force"] != self.config["max_engine_force"]:
+            if (
+                "max_engine_force" in vehicle_config
+                and vehicle_config["max_engine_force"] is not None
+                and vehicle_config["max_engine_force"] != self.config["max_engine_force"]
+            ):
                 should_force_reset = True
-            if "max_brake_force" in vehicle_config and \
-                vehicle_config["max_brake_force"] is not None and \
-                vehicle_config["max_brake_force"] != self.config["max_brake_force"]:
+            if (
+                "max_brake_force" in vehicle_config
+                and vehicle_config["max_brake_force"] is not None
+                and vehicle_config["max_brake_force"] != self.config["max_brake_force"]
+            ):
                 should_force_reset = True
-            if "wheel_friction" in vehicle_config and \
-                vehicle_config["wheel_friction"] is not None and \
-                vehicle_config["wheel_friction"] != self.config["wheel_friction"]:
+            if (
+                "wheel_friction" in vehicle_config
+                and vehicle_config["wheel_friction"] is not None
+                and vehicle_config["wheel_friction"] != self.config["wheel_friction"]
+            ):
                 should_force_reset = True
-            if "max_steering" in vehicle_config and \
-                vehicle_config["max_steering"] is not None and \
-                vehicle_config["max_steering"] != self.config["max_steering"]:
+            if (
+                "max_steering" in vehicle_config
+                and vehicle_config["max_steering"] is not None
+                and vehicle_config["max_steering"] != self.config["max_steering"]
+            ):
                 self.max_steering = vehicle_config["max_steering"]
                 should_force_reset = True
-            if "mass" in vehicle_config and \
-                vehicle_config["mass"] is not None and \
-                vehicle_config["mass"] != self.config["mass"]:
+            if (
+                "mass" in vehicle_config
+                and vehicle_config["mass"] is not None
+                and vehicle_config["mass"] != self.config["mass"]
+            ):
                 should_force_reset = True
 
         # def process_memory():
@@ -203,7 +215,7 @@ class VaryingDynamicsVehicle(DefaultVehicle):
                 random_seed=self.random_seed,
                 position=position,
                 heading_theta=heading,
-                _calling_reset=False
+                _calling_reset=False,
             )
 
             # lm = process_memory()
@@ -213,7 +225,12 @@ class VaryingDynamicsVehicle(DefaultVehicle):
         assert self.max_steering == self.config["max_steering"]
 
         ret = super(VaryingDynamicsVehicle, self).reset(
-            random_seed=random_seed, vehicle_config=vehicle_config, position=position, heading_theta=heading, *args, **kwargs
+            random_seed=random_seed,
+            vehicle_config=vehicle_config,
+            position=position,
+            heading_theta=heading,
+            *args,
+            **kwargs,
         )
 
         # lm = process_memory()
@@ -227,7 +244,6 @@ class VaryingDynamicsBoundingBoxVehicle(VaryingDynamicsVehicle):
     def __init__(
         self, vehicle_config: dict = None, name: str = None, random_seed=None, position=None, heading=None, **kwargs
     ):
-
         # TODO(pzh): The above code is removed for now. How we get BUS label?
         #  vehicle_config has 'width' 'length' and 'height'
         # if vehicle_config["width"] < 0.0:
@@ -241,7 +257,7 @@ class VaryingDynamicsBoundingBoxVehicle(VaryingDynamicsVehicle):
             random_seed=random_seed,
             position=position,
             heading_theta=heading,
-            **kwargs
+            **kwargs,
         )
 
     def _add_visualization(self):
@@ -314,7 +330,8 @@ class VaryingDynamicsBoundingBoxVehicle(VaryingDynamicsVehicle):
                     (
                         self.panda_color[0] * self.MATERIAL_COLOR_COEFF,
                         self.panda_color[1] * self.MATERIAL_COLOR_COEFF,
-                        self.panda_color[2] * self.MATERIAL_COLOR_COEFF, 0.
+                        self.panda_color[2] * self.MATERIAL_COLOR_COEFF,
+                        0.0,
                     )
                 )
                 material.setMetallic(self.MATERIAL_METAL_COEFF)
@@ -364,8 +381,9 @@ def random_vehicle_type(np_random, p=None):
         "default": DefaultVehicle,
     }
     if p:
-        assert len(p) == len(v_type), \
-            "This function only allows to choose a vehicle from 6 types: {}".format(v_type.keys())
+        assert len(p) == len(v_type), "This function only allows to choose a vehicle from 6 types: {}".format(
+            v_type.keys()
+        )
     prob = [1 / len(v_type) for _ in range(len(v_type))] if p is None else p
     return v_type[np_random.choice(list(v_type.keys()), p=prob)]
 
@@ -379,7 +397,7 @@ vehicle_type = {
     "static_default": StaticDefaultVehicle,
     "varying_dynamics": VaryingDynamicsVehicle,
     "varying_dynamics_bounding_box": VaryingDynamicsBoundingBoxVehicle,
-    "traffic_default": TrafficDefaultVehicle
+    "traffic_default": TrafficDefaultVehicle,
 }
 
 vehicle_class_to_type = inv_map = {v: k for k, v in vehicle_type.items()}

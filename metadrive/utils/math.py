@@ -64,7 +64,7 @@ def panda_vector(position_x, position_y, z=0.0):
 
 def distance_greater(vec1, vec2, length):
     """Return whether the distance between two vectors is greater than the given length."""
-    return ((vec1[0] - vec2[0])**2 + (vec1[1] - vec2[1])**2) > length**2
+    return ((vec1[0] - vec2[0]) ** 2 + (vec1[1] - vec2[1]) ** 2) > length**2
 
 
 def mph_to_kmh(speed_in_mph: float):
@@ -76,7 +76,7 @@ def get_laser_end(lidar_range, perceive_distance, laser_index, heading_theta, ve
     angle = lidar_range[laser_index] + heading_theta
     return (
         perceive_distance * math.cos(angle) + vehicle_position_x,
-        perceive_distance * math.sin(angle) + vehicle_position_y
+        perceive_distance * math.sin(angle) + vehicle_position_y,
     )
 
 
@@ -123,8 +123,9 @@ def point_in_rectangle(point, rect_min, rect_max) -> bool:
     return rect_min[0] <= point[0] <= rect_max[0] and rect_min[1] <= point[1] <= rect_max[1]
 
 
-def point_in_rotated_rectangle(point: np.ndarray, center: np.ndarray, length: float, width: float, angle: float) \
-        -> bool:
+def point_in_rotated_rectangle(
+    point: np.ndarray, center: np.ndarray, length: float, width: float, angle: float
+) -> bool:
     """
     Check if a point is inside a rotated rectangle
 
@@ -196,6 +197,7 @@ class Vector(tuple):
     """
     Avoid using this data structure!
     """
+
     def __sub__(self, other):
         return Vector((self[0] - other[0], self[1] - other[1]))
 
@@ -268,8 +270,8 @@ def get_polyline_length(points_array):
 
 def resample_polyline(points, target_distance):
     # Calculate the cumulative distance along the original polyline
-    distances = np.cumsum(np.sqrt(np.sum(np.diff(points, axis=0)**2, axis=1)))
-    distances = np.insert(distances, 0, 0., axis=0)
+    distances = np.cumsum(np.sqrt(np.sum(np.diff(points, axis=0) ** 2, axis=1)))
+    distances = np.insert(distances, 0, 0.0, axis=0)
 
     # Create a linearly spaced array of distances for the resampled polyline
     resampled_distances = np.arange(0, distances[-1], target_distance)

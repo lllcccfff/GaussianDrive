@@ -58,9 +58,9 @@ class BoxMaker(ModelMaker):
     def __init__(
         self,
         center=None,
-        width=1.,
-        depth=1.,
-        height=1.,
+        width=1.0,
+        depth=1.0,
+        height=1.0,
         segments=None,
         open_sides=(),
         thickness=None,
@@ -70,7 +70,7 @@ class BoxMaker(ModelMaker):
         tex_units=None,
         tex_offset=None,
         tex_rotation=None,
-        tex_scale=None
+        tex_scale=None,
     ):
         """
         This class generates box model primitives with the given parameters:
@@ -119,8 +119,18 @@ class BoxMaker(ModelMaker):
         """
 
         surface_ids = (
-            "left", "right", "back", "front", "bottom", "top", "inner_left", "inner_right", "inner_back", "inner_front",
-            "inner_bottom", "inner_top"
+            "left",
+            "right",
+            "back",
+            "front",
+            "bottom",
+            "top",
+            "inner_left",
+            "inner_right",
+            "inner_back",
+            "inner_front",
+            "inner_bottom",
+            "inner_top",
         )
 
         ModelMaker.__init__(
@@ -137,22 +147,18 @@ class BoxMaker(ModelMaker):
         self._side_names = {"-yz": "left", "yz": "right", "-zx": "back", "zx": "front", "-xy": "bottom", "xy": "top"}
 
     def reset(self):
-
         ModelMaker.reset(self)
 
         self._center = None
-        self._width = 1.
-        self._depth = 1.
-        self._height = 1.
+        self._width = 1.0
+        self._depth = 1.0
+        self._height = 1.0
         self._open_sides = ()
         self._thickness = None
 
     def __define_quads(self, indices, index_offset, direction, segs1, segs2=1):
-
         for i in range(segs2):
-
             for j in range(segs1):
-
                 vi1 = index_offset + i * (segs1 + 1) + j
                 vi2 = vi1 + 1
                 vi3 = vi2 + segs1
@@ -173,28 +179,43 @@ class BoxMaker(ModelMaker):
                 indices.extend(inds)
 
     def __define_vertices(
-        self, values, dims, dim1, dim2, c1, c2, sign, plane_id, direction, segs, pos, offset1, offset2, normal,
-        axis1_index, axis2_index, primary_index, indices
+        self,
+        values,
+        dims,
+        dim1,
+        dim2,
+        c1,
+        c2,
+        sign,
+        plane_id,
+        direction,
+        segs,
+        pos,
+        offset1,
+        offset2,
+        normal,
+        axis1_index,
+        axis2_index,
+        primary_index,
+        indices,
     ):
-
         stride = 8 if self._has_uvs else 6  # number of floats on each vertex data row
         index_offset = len(values) // stride
 
         if primary_index == 1:
-            t = ((dim2, c1, c2), (dim1, 0., 0.))
+            t = ((dim2, c1, c2), (dim1, 0.0, 0.0))
             index1 = axis1_index
             index2 = axis2_index
             offs1 = offset1
             offs2 = offset2
         else:
-            t = ((dim1, 0., 0.), (dim2, c2, c1))
+            t = ((dim1, 0.0, 0.0), (dim2, c2, c1))
             index1 = axis2_index
             index2 = axis1_index
             offs1 = offset2
             offs2 = offset1
 
         if self._has_uvs:
-
             side_id = "-" if direction == -1 else ""
             side_id += plane_id
             side_name = self._side_names[side_id]
@@ -207,24 +228,22 @@ class BoxMaker(ModelMaker):
             mat = self._get_tex_xform(side_name)
 
         for dim, start1, start2 in t:
-
             if sign == "-":
-                coord = start1 - dims[index1] * .5
+                coord = start1 - dims[index1] * 0.5
             else:
-                coord = dims[index1] * .5 - start1
+                coord = dims[index1] * 0.5 - start1
 
             pos[index1] = coord + offs1
 
-            a = coord / dims[index1] + .5
+            a = coord / dims[index1] + 0.5
 
             for i in range(segs + 1):
-
                 j = i / segs
 
                 if sign == "-":
-                    coord = start2 - dims[index2] * .5 + j * dim
+                    coord = start2 - dims[index2] * 0.5 + j * dim
                 else:
-                    coord = dims[index2] * .5 - j * dim - start2
+                    coord = dims[index2] * 0.5 - j * dim - start2
 
                 pos[index2] = coord + offs2
 
@@ -232,19 +251,18 @@ class BoxMaker(ModelMaker):
                 values.extend(normal)
 
                 if self._has_uvs:
-
-                    b = coord / dims[index2] + .5
+                    b = coord / dims[index2] + 0.5
 
                     if primary_index == 1:
                         u = (-b if plane_id == "zx" else a) * direction
                     else:
                         u = (-a if plane_id == "zx" else b) * direction
 
-                    if (direction > 0 if plane_id == "zx" else direction < 0):
-                        u += 1.
+                    if direction > 0 if plane_id == "zx" else direction < 0:
+                        u += 1.0
 
                     if self._inverted:
-                        u = 1. - u
+                        u = 1.0 - u
 
                     if primary_index == 1:
                         v = a if plane_id == "zx" else b
@@ -267,11 +285,10 @@ class BoxMaker(ModelMaker):
         self.__define_quads(indices, index_offset, direction, segs)
 
     def generate(self):
-
-        center = (0., 0., 0.) if self._center is None else self._center
-        width = max(.001, self._width)
-        depth = max(.001, self._depth)
-        height = max(.001, self._height)
+        center = (0.0, 0.0, 0.0) if self._center is None else self._center
+        width = max(0.001, self._width)
+        depth = max(0.001, self._depth)
+        height = max(0.001, self._height)
         dims = (width, depth, height)
         side_ids = self._side_ids
         side_names = self._side_names
@@ -279,39 +296,38 @@ class BoxMaker(ModelMaker):
         thickness = self._thickness
 
         if thickness is not None:
-
             # Set limits for the given thickness and derive the dimensions and
             # corner coordinates of the inner box
 
-            th = max(0., thickness)
+            th = max(0.0, thickness)
             inner_corners = {}
             inner_dims = {}
 
-            th_left = 0. if "-yz" in open_side_ids else min(width, th)
-            th_right = 0. if "yz" in open_side_ids else min(width, th)
+            th_left = 0.0 if "-yz" in open_side_ids else min(width, th)
+            th_right = 0.0 if "yz" in open_side_ids else min(width, th)
 
             if th_left + th_right > width:
-                th_left = th_right = width * .5
+                th_left = th_right = width * 0.5
 
             inner_corners["-x"] = th_left
             inner_corners["x"] = th_right
             inner_dims["x"] = width - th_left - th_right
 
-            th_back = 0. if "-zx" in open_side_ids else min(depth, th)
-            th_front = 0. if "zx" in open_side_ids else min(depth, th)
+            th_back = 0.0 if "-zx" in open_side_ids else min(depth, th)
+            th_front = 0.0 if "zx" in open_side_ids else min(depth, th)
 
             if th_back + th_front > depth:
-                th_back = th_front = depth * .5
+                th_back = th_front = depth * 0.5
 
             inner_corners["-y"] = th_back
             inner_corners["y"] = th_front
             inner_dims["y"] = depth - th_back - th_front
 
-            th_bottom = 0. if "-xy" in open_side_ids else min(height, th)
-            th_top = 0. if "xy" in open_side_ids else min(height, th)
+            th_bottom = 0.0 if "-xy" in open_side_ids else min(height, th)
+            th_top = 0.0 if "xy" in open_side_ids else min(height, th)
 
             if th_bottom + th_top > height:
-                th_bottom = th_top = height * .5
+                th_bottom = th_top = height * 0.5
 
             inner_corners["-z"] = th_bottom
             inner_corners["z"] = th_top
@@ -340,7 +356,7 @@ class BoxMaker(ModelMaker):
             "inner_back": (),
             "inner_front": (),
             "inner_bottom": (),
-            "inner_top": ()
+            "inner_top": (),
         }
         stride = 8 if has_uvs else 6  # number of floats on each vertex data row
         values = array.array("f", [])
@@ -349,8 +365,7 @@ class BoxMaker(ModelMaker):
 
         # Define the vertices for each side of the box
 
-        for (axis1_id, axis2_id, axis3_id) in ("xyz", "zxy", "yzx"):
-
+        for axis1_id, axis2_id, axis3_id in ("xyz", "zxy", "yzx"):
             plane_id = axis1_id + axis2_id
             axis1_index = "xyz".index(axis1_id)
             axis2_index = "xyz".index(axis2_id)
@@ -363,39 +378,67 @@ class BoxMaker(ModelMaker):
             segs3 = segs[axis3_id]
 
             for direction in (-1, 1):
-
                 side_id = "-" if direction == -1 else ""
                 side_id += plane_id
 
                 normal = Vec3()
-                normal[axis3_index] = direction * (-1. if inverted else 1.)
+                normal[axis3_index] = direction * (-1.0 if inverted else 1.0)
 
                 if side_id in open_side_ids:
-
                     if thickness is not None:
-
-                        pos[axis3_index] = .5 * dims[axis3_index] * direction + offset3
+                        pos[axis3_index] = 0.5 * dims[axis3_index] * direction + offset3
                         index_offset = len(values) // stride
 
                         for sign in ("-", ""):
-
                             c1 = inner_corners[sign + axis1_id]
                             c2 = inner_corners[sign + axis2_id]
 
-                            if c1 > 0.:
+                            if c1 > 0.0:
                                 dim1 = dims[axis2_index]
                                 dim2 = inner_dims[axis2_id]
                                 self.__define_vertices(
-                                    values, dims, dim1, dim2, c1, c2, sign, plane_id, direction, segs2, pos, offset1,
-                                    offset2, normal, axis1_index, axis2_index, 1, indices
+                                    values,
+                                    dims,
+                                    dim1,
+                                    dim2,
+                                    c1,
+                                    c2,
+                                    sign,
+                                    plane_id,
+                                    direction,
+                                    segs2,
+                                    pos,
+                                    offset1,
+                                    offset2,
+                                    normal,
+                                    axis1_index,
+                                    axis2_index,
+                                    1,
+                                    indices,
                                 )
 
-                            if c2 > 0.:
+                            if c2 > 0.0:
                                 dim1 = dims[axis1_index]
                                 dim2 = inner_dims[axis1_id]
                                 self.__define_vertices(
-                                    values, dims, dim1, dim2, c1, c2, sign, plane_id, direction, segs1, pos, offset1,
-                                    offset2, normal, axis1_index, axis2_index, 2, indices
+                                    values,
+                                    dims,
+                                    dim1,
+                                    dim2,
+                                    c1,
+                                    c2,
+                                    sign,
+                                    plane_id,
+                                    direction,
+                                    segs1,
+                                    pos,
+                                    offset1,
+                                    offset2,
+                                    normal,
+                                    axis1_index,
+                                    axis2_index,
+                                    2,
+                                    indices,
                                 )
 
                         side_name = side_names[side_id]
@@ -403,13 +446,11 @@ class BoxMaker(ModelMaker):
                         vert_ranges[side_name] = (index_offset, end)
 
                 else:
-
-                    pos[axis3_index] = .5 * dims[axis3_index] * direction + offset3
+                    pos[axis3_index] = 0.5 * dims[axis3_index] * direction + offset3
                     index_offset = len(values) // stride
                     side_name = side_names[side_id]
 
                     if has_uvs:
-
                         tex_size = None
 
                         if tex_units and side_name in tex_units:
@@ -419,25 +460,22 @@ class BoxMaker(ModelMaker):
                         mat = self._get_tex_xform(side_name)
 
                     for i in range(segs2 + 1):
-
                         b = i / segs2
-                        pos[axis2_index] = (-.5 + b) * dims[axis2_index] + offset2
+                        pos[axis2_index] = (-0.5 + b) * dims[axis2_index] + offset2
 
                         for j in range(segs1 + 1):
-
                             a = j / segs1
-                            pos[axis1_index] = (-.5 + a) * dims[axis1_index] + offset1
+                            pos[axis1_index] = (-0.5 + a) * dims[axis1_index] + offset1
 
                             values.extend(pos)
                             values.extend(normal)
 
                             if has_uvs:
-
                                 u = (-b if plane_id == "zx" else a) * direction
-                                u += (1. if (direction > 0 if plane_id == "zx" else direction < 0) else 0.)
+                                u += 1.0 if (direction > 0 if plane_id == "zx" else direction < 0) else 0.0
 
                                 if inverted:
-                                    u = 1. - u
+                                    u = 1.0 - u
 
                                 v = a if plane_id == "zx" else b
 
@@ -462,7 +500,6 @@ class BoxMaker(ModelMaker):
         # Create the geometry structures
 
         if thickness is not None:
-
             # If a thickness is given, an inner box needs to be created to close
             # the surface of the model; its parameters are derived from those of
             # the outer box and adjusted to make both boxes fit together.
@@ -470,9 +507,9 @@ class BoxMaker(ModelMaker):
             w = inner_dims["x"]
             d = inner_dims["y"]
             h = inner_dims["z"]
-            x = (inner_corners["-x"] - inner_corners["x"]) * .5 + center[0]
-            y = (inner_corners["-y"] - inner_corners["y"]) * .5 + center[1]
-            z = (inner_corners["-z"] - inner_corners["z"]) * .5 + center[2]
+            x = (inner_corners["-x"] - inner_corners["x"]) * 0.5 + center[0]
+            y = (inner_corners["-y"] - inner_corners["y"]) * 0.5 + center[1]
+            z = (inner_corners["-z"] - inner_corners["z"]) * 0.5 + center[2]
             segs = {"width": segs_w, "depth": segs_d, "height": segs_h}
             inner_tex_units = {} if tex_units else None
 
@@ -514,7 +551,7 @@ class BoxMaker(ModelMaker):
                 tex_units=inner_tex_units,
                 tex_offset=inner_tex_offset,
                 tex_rotation=inner_tex_rot,
-                tex_scale=inner_tex_scale
+                tex_scale=inner_tex_scale,
             )
             node = model_maker.generate()
 
@@ -560,7 +597,6 @@ class BoxMaker(ModelMaker):
             inner_ranges = model_maker.vertex_ranges
 
             for side_name in ("left", "right", "back", "front", "bottom", "top"):
-
                 inner_range = inner_ranges[side_name]
 
                 if inner_range:
@@ -575,7 +611,6 @@ class BoxMaker(ModelMaker):
                     vert_ranges[side_name] = (start, end)
 
         else:
-
             if has_uvs:
                 vertex_format = GeomVertexFormat.get_v3n3t2()
             else:

@@ -29,7 +29,7 @@ def load_opendrive_map(path):
         openDriveXml = parse_opendrive(etree.parse(fh).getroot())
         fh.close()
         return openDriveXml
-    except (etree.XMLSyntaxError) as e:
+    except etree.XMLSyntaxError as e:
         print("XML Syntax Error: {}".format(e))
         return None
     except (TypeError, AttributeError, ValueError) as e:

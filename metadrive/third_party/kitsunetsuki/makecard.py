@@ -23,14 +23,14 @@ from panda3d.core import Filename, VirtualFileSystem, get_model_path
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--frames', type=str, help='comma separated frame groups')
-    parser.add_argument('--fps', type=int, help='frames per second rate')
-    parser.add_argument('--scale', type=float, help='object scale')
-    parser.add_argument('--output', type=str, help='output file')
-    parser.add_argument('--type', type=str, help='spritesheet file type')
-    parser.add_argument('--input', type=str, help='input files', nargs='+')
-    parser.add_argument('--empty', type=str, help='empty frame file')
-    parser.add_argument('--prefix', type=str, help='texture path prefix')
+    parser.add_argument("--frames", type=str, help="comma separated frame groups")
+    parser.add_argument("--fps", type=int, help="frames per second rate")
+    parser.add_argument("--scale", type=float, help="object scale")
+    parser.add_argument("--output", type=str, help="output file")
+    parser.add_argument("--type", type=str, help="spritesheet file type")
+    parser.add_argument("--input", type=str, help="input files", nargs="+")
+    parser.add_argument("--empty", type=str, help="empty frame file")
+    parser.add_argument("--prefix", type=str, help="texture path prefix")
     return parser.parse_args()
 
 
@@ -38,31 +38,31 @@ def main():
     args = parse_args()
 
     if args.frames:
-        animations_frames = map(int, args.frames.split(','))
+        animations_frames = map(int, args.frames.split(","))
     else:
         animations_frames = [len(args.input)]
 
     kwargs = {}
     if args.fps:
-        kwargs['fps'] = args.fps
+        kwargs["fps"] = args.fps
     if args.scale:
-        kwargs['scale'] = args.scale
+        kwargs["scale"] = args.scale
     if args.type:
-        kwargs['type'] = args.type
+        kwargs["type"] = args.type
     if args.empty:
-        kwargs['empty'] = args.empty
+        kwargs["empty"] = args.empty
     if args.prefix:
-        kwargs['prefix'] = args.prefix
+        kwargs["prefix"] = args.prefix
 
     if args.prefix:
         vfs = VirtualFileSystem.get_global_ptr()
-        vfs.mount(Filename.from_os_specific('.').get_fullpath(), args.prefix.rstrip('/'), 0)
+        vfs.mount(Filename.from_os_specific(".").get_fullpath(), args.prefix.rstrip("/"), 0)
         mp = get_model_path()
-        mp.prepend_directory(args.prefix.rstrip('/'))
+        mp.prepend_directory(args.prefix.rstrip("/"))
 
     cm = CardMaker(animations_frames, args.input, **kwargs)
     cm.make(args.output)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

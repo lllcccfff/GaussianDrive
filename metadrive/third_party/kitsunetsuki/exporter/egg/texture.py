@@ -26,35 +26,35 @@ class TextureMixin(object):
         return image.get_num_channels()
 
     def get_images(self, material, shader):
-        if self._render_type == 'rp':  # custom texture order for RP
+        if self._render_type == "rp":  # custom texture order for RP
             return (
-                ((0, 'Diffuse'), self.get_diffuse(material, shader)),
-                ((1, 'Normal'), self.get_normal_map(material, shader)),
-                ((2, 'Specular'), self.get_specular_map(material, shader)),
-                ((3, 'Roughness'), self.get_roughness_map(material, shader)),
+                ((0, "Diffuse"), self.get_diffuse(material, shader)),
+                ((1, "Normal"), self.get_normal_map(material, shader)),
+                ((2, "Specular"), self.get_specular_map(material, shader)),
+                ((3, "Roughness"), self.get_roughness_map(material, shader)),
             )
         else:
             return (
-                ((0, 'Diffuse'), self.get_diffuse(material, shader)),
-                ((1, 'Normal'), self.get_normal_map(material, shader)),
+                ((0, "Diffuse"), self.get_diffuse(material, shader)),
+                ((1, "Normal"), self.get_normal_map(material, shader)),
             )
 
     def make_texture(self, type_, image_texture):
-        filepath = image_texture.image.filepath.lstrip('/')
+        filepath = image_texture.image.filepath.lstrip("/")
         path = os.path.dirname(self._output)
 
         egg_texture = EggTexture(image_texture.image.name, os.path.join(path, filepath))
 
-        if image_texture.extension == 'CLIP':
+        if image_texture.extension == "CLIP":
             egg_texture.set_wrap_mode(EggTexture.WM_clamp)
-        elif image_texture.extension == 'REPEAT':
+        elif image_texture.extension == "REPEAT":
             egg_texture.set_wrap_mode(EggTexture.WM_repeat)
 
         # check if we have patched panda3d
-        have_srgb = hasattr(EggTexture, 'F_srgb_alpha')
+        have_srgb = hasattr(EggTexture, "F_srgb_alpha")
         num_channels = self.get_num_channels(os.path.join(path, filepath))
 
-        if type_[1] == 'Diffuse':
+        if type_[1] == "Diffuse":
             if have_srgb:
                 if num_channels == 4:
                     egg_texture.set_format(EggTexture.F_srgb_alpha)
@@ -72,9 +72,9 @@ class TextureMixin(object):
             elif num_channels == 3:
                 egg_texture.set_format(EggTexture.F_rgb)
 
-        if type_[1] == 'Diffuse':
+        if type_[1] == "Diffuse":
             egg_texture.set_env_type(EggTexture.ET_modulate)
-        elif type_[1] == 'Normal':
+        elif type_[1] == "Normal":
             egg_texture.set_env_type(EggTexture.ET_normal)
         else:
             egg_texture.set_env_type(EggTexture.ET_decal)
@@ -85,7 +85,7 @@ class TextureMixin(object):
         return None, egg_texture  # sampler, image
 
     def make_empty_texture(self, type_):
-        filepath = 'textures/{}.png'.format(type_.lower())
+        filepath = "textures/{}.png".format(type_.lower())
         path = os.path.dirname(self._output)
 
         egg_texture = EggTexture(os.path.basename(filepath), os.path.join(path, filepath))
@@ -93,9 +93,9 @@ class TextureMixin(object):
         egg_texture.set_wrap_mode(EggTexture.WM_clamp)
 
         # check if we have patched panda3d
-        have_srgb = hasattr(EggTexture, 'F_srgb_alpha')
+        have_srgb = hasattr(EggTexture, "F_srgb_alpha")
 
-        if type_[1] == 'Diffuse':
+        if type_[1] == "Diffuse":
             if have_srgb:
                 egg_texture.set_format(EggTexture.F_srgb_alpha)
             else:
@@ -103,9 +103,9 @@ class TextureMixin(object):
         else:
             egg_texture.set_format(EggTexture.F_rgba)
 
-        if type_[1] == 'Diffuse':
+        if type_[1] == "Diffuse":
             egg_texture.set_env_type(EggTexture.ET_modulate)
-        elif type_[1] == 'Normal':
+        elif type_[1] == "Normal":
             egg_texture.set_env_type(EggTexture.ET_normal)
         else:
             egg_texture.set_env_type(EggTexture.ET_decal)

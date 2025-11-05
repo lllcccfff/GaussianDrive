@@ -11,7 +11,7 @@ from .version import __version__
 # except ImportError:
 shaders = None
 
-__all__ = ['init', 'Pipeline']
+__all__ = ["init", "Pipeline"]
 
 
 def _add_shader_defines(shaderstr, defines):
@@ -24,19 +24,19 @@ def _add_shader_defines(shaderstr, defines):
     Returns:
 
     """
-    shaderlines = shaderstr.split('\n')
+    shaderlines = shaderstr.split("\n")
 
     for line in shaderlines:
-        if '#version' in line:
+        if "#version" in line:
             version_line = line
             break
     else:
-        raise RuntimeError('Failed to find GLSL version string')
+        raise RuntimeError("Failed to find GLSL version string")
     shaderlines.remove(version_line)
 
-    define_lines = [f'#define {define} {value}' for define, value in defines.items()]
+    define_lines = [f"#define {define} {value}" for define, value in defines.items()]
 
-    return '\n'.join([version_line] + define_lines + ['#line 1'] + shaderlines)
+    return "\n".join([version_line] + define_lines + ["#line 1"] + shaderlines)
 
 
 def _load_shader_str(shaderpath, defines=None):
@@ -52,7 +52,7 @@ def _load_shader_str(shaderpath, defines=None):
     if shaders:
         shaderstr = shaders[shaderpath]
     else:
-        shader_dir = os.path.join(os.path.dirname(__file__), 'shaders')
+        shader_dir = os.path.join(os.path.dirname(__file__), "shaders")
 
         with open(os.path.join(shader_dir, shaderpath + ".glsl")) as shaderfile:
             shaderstr = shaderfile.read()
@@ -60,20 +60,20 @@ def _load_shader_str(shaderpath, defines=None):
     if defines is None:
         defines = {}
 
-    defines['p3d_TextureBaseColor'] = 'p3d_TextureModulate'
-    defines['p3d_TextureMetalRoughness'] = 'p3d_TextureSelector'
-    defines['p3d_TextureNormal'] = 'p3d_TextureNormal'
-    defines['p3d_TextureEmission'] = 'p3d_TextureEmission'
+    defines["p3d_TextureBaseColor"] = "p3d_TextureModulate"
+    defines["p3d_TextureMetalRoughness"] = "p3d_TextureSelector"
+    defines["p3d_TextureNormal"] = "p3d_TextureNormal"
+    defines["p3d_TextureEmission"] = "p3d_TextureEmission"
 
     shaderstr = _add_shader_defines(shaderstr, defines)
 
-    if 'USE_330' in defines:
-        shaderstr = shaderstr.replace('#version 120', '#version 330')
-        if shaderpath.endswith('vert'):
-            shaderstr = shaderstr.replace('varying ', 'out ')
-            shaderstr = shaderstr.replace('attribute ', 'in ')
+    if "USE_330" in defines:
+        shaderstr = shaderstr.replace("#version 120", "#version 330")
+        if shaderpath.endswith("vert"):
+            shaderstr = shaderstr.replace("varying ", "out ")
+            shaderstr = shaderstr.replace("attribute ", "in ")
         else:
-            shaderstr = shaderstr.replace('varying ', 'in ')
+            shaderstr = shaderstr.replace("varying ", "in ")
 
     return shaderstr
 
@@ -82,6 +82,7 @@ class Pipeline:
     """
     A SimplePBR Pipeline
     """
+
     def __init__(
         self,
         *,
@@ -157,7 +158,7 @@ class Pipeline:
         else:
             self.use_330 = False
 
-            cvar = p3d.ConfigVariableInt('gl-version')
+            cvar = p3d.ConfigVariableInt("gl-version")
             gl_version = [cvar.get_word(i) for i in range(cvar.get_num_words())]
             if len(gl_version) >= 2 and gl_version[0] >= 3 and gl_version[1] >= 2:
                 # Not exactly accurate, but setting this variable to '3 2' is common for disabling
@@ -183,11 +184,11 @@ class Pipeline:
             return
 
         pbr_vars = [
-            'max_lights',
-            'use_normal_maps',
-            'use_emission_maps',
-            'enable_fog',
-            'use_occlusion_maps',
+            "max_lights",
+            "use_normal_maps",
+            "use_emission_maps",
+            "enable_fog",
+            "use_occlusion_maps",
         ]
 
         def resetup_tonemap():
@@ -200,15 +201,15 @@ class Pipeline:
 
         if name in pbr_vars and prev_value != value:
             self._recompile_pbr()
-        elif name == 'exposure':
-            self.tonemap_quad.set_shader_input('exposure', self.exposure)
-        elif name == 'msaa_samples':
+        elif name == "exposure":
+            self.tonemap_quad.set_shader_input("exposure", self.exposure)
+        elif name == "msaa_samples":
             self._setup_tonemapping()
-        elif name == 'render_node' and prev_value != value:
+        elif name == "render_node" and prev_value != value:
             self._recompile_pbr()
-        elif name in ('camera_node', 'window') and prev_value != value:
+        elif name in ("camera_node", "window") and prev_value != value:
             resetup_tonemap()
-        elif name == 'use_330' and prev_value != value:
+        elif name == "use_330" and prev_value != value:
             self._set_use_330(value)
             self._recompile_pbr()
             resetup_tonemap()
@@ -220,23 +221,23 @@ class Pipeline:
 
         """
         pbr_defines = {
-            'MAX_LIGHTS': self.max_lights,
+            "MAX_LIGHTS": self.max_lights,
         }
         if self.use_normal_maps:
-            pbr_defines['USE_NORMAL_MAP'] = ''
+            pbr_defines["USE_NORMAL_MAP"] = ""
         if self.use_emission_maps:
-            pbr_defines['USE_EMISSION_MAP'] = ''
+            pbr_defines["USE_EMISSION_MAP"] = ""
         if self.enable_fog:
-            pbr_defines['ENABLE_FOG'] = ''
+            pbr_defines["ENABLE_FOG"] = ""
         if self.use_occlusion_maps:
-            pbr_defines['USE_OCCLUSION_MAP'] = ''
+            pbr_defines["USE_OCCLUSION_MAP"] = ""
         if self.use_330:
-            pbr_defines['USE_330'] = ''
+            pbr_defines["USE_330"] = ""
         if self.enable_hardware_skinning:
-            pbr_defines['ENABLE_SKINNING'] = ''
+            pbr_defines["ENABLE_SKINNING"] = ""
 
-        pbr_vert_str = _load_shader_str('simplepbr.vert', pbr_defines)
-        pbr_frag_str = _load_shader_str('simplepbr.frag', pbr_defines)
+        pbr_vert_str = _load_shader_str("simplepbr.vert", pbr_defines)
+        pbr_frag_str = _load_shader_str("simplepbr.frag", pbr_defines)
         pbrshader = p3d.Shader.make(
             p3d.Shader.SL_GLSL,
             vertex=pbr_vert_str,
@@ -275,18 +276,18 @@ class Pipeline:
 
         defines = {}
         if self.use_330:
-            defines['USE_330'] = ''
+            defines["USE_330"] = ""
 
-        post_vert_str = _load_shader_str('post.vert', defines)
-        post_frag_str = _load_shader_str('tonemap.frag', defines)
+        post_vert_str = _load_shader_str("post.vert", defines)
+        post_frag_str = _load_shader_str("tonemap.frag", defines)
         tonemap_shader = p3d.Shader.make(
             p3d.Shader.SL_GLSL,
             vertex=post_vert_str,
             fragment=post_frag_str,
         )
         self.tonemap_quad.set_shader(tonemap_shader)
-        self.tonemap_quad.set_shader_input('tex', scene_tex)
-        self.tonemap_quad.set_shader_input('exposure', self.exposure)
+        self.tonemap_quad.set_shader_input("tex", scene_tex)
+        self.tonemap_quad.set_shader_input("exposure", self.exposure)
 
     def get_all_casters(self):
         """
@@ -297,7 +298,7 @@ class Pipeline:
         engine = p3d.GraphicsEngine.get_global_ptr()
         cameras = [dispregion.camera for win in engine.windows for dispregion in win.active_display_regions]
 
-        return [i.node() for i in cameras if hasattr(i.node(), 'is_shadow_caster') and i.node().is_shadow_caster()]
+        return [i.node() for i in cameras if hasattr(i.node(), "is_shadow_caster") and i.node().is_shadow_caster()]
 
     def verify_shaders(self):
         """
@@ -318,7 +319,7 @@ class Pipeline:
 
 
 def init(**kwargs):
-    '''Initialize the PBR render pipeline
+    """Initialize the PBR render pipeline
     :param render_node: The node to attach the shader too, defaults to `base.render` if `None`
     :type render_node: `panda3d.core.NodePath`
     :param window: The window to attach the framebuffer too, defaults to `base.win` if `None`
@@ -345,6 +346,6 @@ def init(**kwargs):
     :param use_hardware_skinning: Force usage of hardware skinning for skeleton animations
         (auto-detect if None, defaults to None)
     :type use_hardware_skinning: bool or None
-    '''
+    """
 
     return Pipeline(**kwargs)

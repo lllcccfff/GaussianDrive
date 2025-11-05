@@ -31,14 +31,14 @@ from panda3d.egg import EggTable, EggXfmSAnim
 class AnimationMixin(object):
     def make_action(self, node, armature, action):
         # <-- root table
-        egg_root_table = EggTable('')
+        egg_root_table = EggTable("")
 
         # <-- animation bundle
-        egg_animation = EggTable('Armature')
+        egg_animation = EggTable("Armature")
         egg_animation.set_table_type(EggTable.TT_bundle)
 
         # <-- skeleton table
-        egg_skeleton = EggTable('<skeleton>')
+        egg_skeleton = EggTable("<skeleton>")
 
         # setup bones
         egg_joints = {}
@@ -48,7 +48,7 @@ class AnimationMixin(object):
             egg_joint = EggTable(bone_name)
 
             # <-- xfm_anim_s
-            egg_xfm_anim_s = EggXfmSAnim('xform', CS_zup_right)
+            egg_xfm_anim_s = EggXfmSAnim("xform", CS_zup_right)
             # set order from glTF
             # i, j, k - scale -> s
             # h, p, r - rotation
@@ -100,9 +100,9 @@ class AnimationMixin(object):
                 # egg_joints_anims[bone_name].add_data(matrix_to_panda(bone_matrix))
 
                 i, j, k = bone_matrix.to_scale()
-                s_anim.add_component_data('i', i)
-                s_anim.add_component_data('j', j)
-                s_anim.add_component_data('k', k)
+                s_anim.add_component_data("i", i)
+                s_anim.add_component_data("j", j)
+                s_anim.add_component_data("k", k)
 
                 # if bone.parent:
                 #     p, r, h = tuple(map(math.degrees, bone_matrix.to_euler()))  # YABEE
@@ -116,15 +116,15 @@ class AnimationMixin(object):
                 #     s_anim.add_component_data('r', r)
 
                 # hpr == zxy ?
-                p, r, h = tuple(map(math.degrees, bone_matrix.to_euler('YXZ')))
-                s_anim.add_component_data('h', h)
-                s_anim.add_component_data('p', p)
-                s_anim.add_component_data('r', r)
+                p, r, h = tuple(map(math.degrees, bone_matrix.to_euler("YXZ")))
+                s_anim.add_component_data("h", h)
+                s_anim.add_component_data("p", p)
+                s_anim.add_component_data("r", r)
 
                 x, y, z = bone_matrix.to_translation()
-                s_anim.add_component_data('x', x)
-                s_anim.add_component_data('y', y)
-                s_anim.add_component_data('z', z)
+                s_anim.add_component_data("x", x)
+                s_anim.add_component_data("y", y)
+                s_anim.add_component_data("z", z)
 
             # advance to the next frame
             frame += speed_scale

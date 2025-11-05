@@ -12,6 +12,7 @@ from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.obs.gaussian_obs import GaussianObservation
 from metadrive.obs.navigation_obs import NavigationObservation
 from metadrive.base_class.base_object import BaseObject
+
 logger = get_logger()
 
 
@@ -27,6 +28,7 @@ class AgentState:
     CRASH_OBJECT = "crash_object"
     CRASH_WORLD = "crash_world"
 
+
 class AgentManager(BaseManager):
     """
     This class maintains a single vehicle agent in the environment.
@@ -36,6 +38,7 @@ class AgentManager(BaseManager):
     agent name: Single agent name (typically default_agent)
     object name: The unique name for the single vehicle object
     """
+
     INITIALIZED = False  # when vehicle instance is created, it will be set to True
 
     def __init__(self, config, step_manager):
@@ -47,22 +50,20 @@ class AgentManager(BaseManager):
         """
         super().__init__()
         self.INITIALIZED = False
-        self.max_step = config.get('max_step', 10_000)
-
+        self.max_step = config.get("max_step", 10_000)
 
         # for getting {agent_id: BaseObject}, use agent_manager.active_agents
         self.config = config
         self.step_manager = step_manager
         self.observer = None
         self.policy = None
-        
-    def lazy_init(self):
-        self.observer = self.config['observer'](self.config['observer_config'])
-        self.policy = self.config['policy'](step_manager=self.step_manager, config=self.config['policy_config'])
-        self.INITIALIZED = True
-        
-    def reset(self, config=None, **kwargs):
 
+    def lazy_init(self):
+        self.observer = self.config["observer"](self.config["observer_config"])
+        self.policy = self.config["policy"](step_manager=self.step_manager, config=self.config["policy_config"])
+        self.INITIALIZED = True
+
+    def reset(self, config=None, **kwargs):
         """
         Agent manager is really initialized after the BaseObject Instances are created
         """
@@ -72,7 +73,7 @@ class AgentManager(BaseManager):
 
         if not self.INITIALIZED:
             self.lazy_init()
-        
+
         self.controller = self._create_agent(**kwargs)
         self.state = AgentState.NOT_SPAWN
 
@@ -84,29 +85,28 @@ class AgentManager(BaseManager):
 
         if math.isclose(self.policy.spawn_timestamp, self.step_manager.current_timestamp):
             self.controller.attachDyWld()
-        
+
         assert isinstance(self.get_action_spaces(), Space)
-        
+
     def _create_agent(self, physics_world, init_state, **kwargs):
         # Only create one agent - use the first config or default agent
         obj_name = "default_agent"
 
         obj = self.spawn_object(
-            self.config['controller'], 
+            self.config["controller"],
             name=obj_name,
-            config=self.config['controller_config'], 
+            config=self.config["controller_config"],
             physics_world=physics_world,
             random_seed=self.generate_seed(),
-            size=self.config['controller_config'].get('size', None),
-            position=init_state['spawn_position'],
-            heading_theta=init_state['spawn_heading']
+            size=self.config["controller_config"].get("size", None),
+            position=init_state["spawn_position"],
+            heading_theta=init_state["spawn_heading"],
         )
         # self.init_pos = init_state['spawn_position']
         # self.dest_pos = init_state['destination']
         return obj
 
     def step(self, action=None):
-
         """
         Some policies should make decision before physics world actuation, in particular, those need decision-making
         But other policies like ReplayPolicy should be called in after_step, as they already know the final state and
@@ -117,7 +117,7 @@ class AgentManager(BaseManager):
                 action = self.policy.act(action)
             else:
                 action = self.policy.act(self.last_observation)
-            
+
             if isinstance(self.policy, ReplayPolicy):
                 self.controller.move(state_info=action)
             else:
@@ -139,7 +139,7 @@ class AgentManager(BaseManager):
             # crash checks from controller
             if isinstance(self.controller, BaseVehicle):
                 self.controller.crash_check()
-                
+
                 if self.controller.crash_human:
                     self.clear_all_objects()
                     self.state = AgentState.CRASH_HUMAN
@@ -175,11 +175,11 @@ class AgentManager(BaseManager):
     def observe(self):
         if self.state == AgentState.ALIVE:
             self.last_observation = self.observer.observe()
-        return {'observation': self.last_observation}
+        return {"observation": self.last_observation}
 
     def get_pose(self):
         return self.controller.transform
-    
+
     def get_observation_spaces(self):
         return self.observer.observation_space
 
@@ -190,7 +190,7 @@ class AgentManager(BaseManager):
         ret = super().get_state()
         ret["created_agents"] = self._agent_object.name
         return ret
-    
+
     def destroy(self):
         # when new agent joins in the game, we only change this two maps.
         if self.INITIALIZED:

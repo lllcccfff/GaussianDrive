@@ -15,7 +15,7 @@ def diamond_square(
     roughness: [float or int],
     random_seed=None,
     uint16=True,
-    minus_mean=True
+    minus_mean=True,
 ):
     """Runs a diamond square algorithm and returns an array (or list) with the landscape
 
@@ -87,7 +87,7 @@ def diamond_square(
     working_shape, iterations = _get_working_shape_and_iterations(shape)
 
     # create the array
-    diamond_square_array = np.full(working_shape, -1, dtype='float')
+    diamond_square_array = np.full(working_shape, -1, dtype="float")
 
     # seed the random number generator
     random.seed(random_seed)
@@ -111,7 +111,7 @@ def diamond_square(
     diamond_square_array = min_height + (diamond_square_array * (max_height - min_height))
 
     # trim array, if needed
-    final_array = diamond_square_array[:shape[0], :shape[1]]
+    final_array = diamond_square_array[: shape[0], : shape[1]]
 
     if minus_mean:
         final_array -= np.mean(final_array)
@@ -160,7 +160,7 @@ def _get_working_shape_and_iterations(requested_shape, max_power_of_two=13):
     # failsafe: no values in the dimensions array were allowed, so print a warning and return
     # the maximum size.
     d = 2**max_power_of_two + 1
-    print("DiamondSquare Warning: Requested size was too large. Grid of size {0} returned" "".format(d))
+    print("DiamondSquare Warning: Requested size was too large. Grid of size {0} returned".format(d))
     return (d, d), max_power_of_two
 
 

@@ -11,6 +11,7 @@ from metadrive.policy.base_policy import BasePolicy
 from metadrive.type import MetaDriveType
 from metadrive.utils.navigation_utils import nearest_front_index
 
+
 class IDMPolicy(BasePolicy):
     ACC_FACTOR = 2.0
     DEACC_FACTOR = 3.0
@@ -24,8 +25,12 @@ class IDMPolicy(BasePolicy):
         self.react_time = float(self.config["react_time"]) if "react_time" in self.config else 1.0
 
         # Sample speeds (m/s)
-        self.max_speed = float(gym.spaces.Box(low=np.array([25.0]), high=np.array([50.0]), dtype=np.float32).sample()[0])
-        self.max_turning_speed = float(gym.spaces.Box(low=np.array([10.0]), high=np.array([20.0]), dtype=np.float32).sample()[0])
+        self.max_speed = float(
+            gym.spaces.Box(low=np.array([25.0]), high=np.array([50.0]), dtype=np.float32).sample()[0]
+        )
+        self.max_turning_speed = float(
+            gym.spaces.Box(low=np.array([10.0]), high=np.array([20.0]), dtype=np.float32).sample()[0]
+        )
 
     def reset(self, controller, seed, state, init_state, **kwargs):
         if controller.metadrive_type != MetaDriveType.VEHICLE:
@@ -36,7 +41,7 @@ class IDMPolicy(BasePolicy):
         timestamp_list = sorted(state.keys())
         self.spawn_timestamp = timestamp_list[0]
 
-        self.destination = init_state['destination']
+        self.destination = init_state["destination"]
 
     def act(self, observation, *args, **kwargs):
         nav = observation["navigation"]
@@ -45,7 +50,7 @@ class IDMPolicy(BasePolicy):
         turn_signal = nav["turn_signal"]
         path = nav["waypoint"]
         pts = np.asarray(path, dtype=np.float32)
-        cumlen = nav['cummulative_length']
+        cumlen = nav["cummulative_length"]
 
         if len(path) < 2:
             return 0.0, 0.1
@@ -95,7 +100,7 @@ class IDMPolicy(BasePolicy):
             s = max(1e-3, delta_dist - 0.5 * ego_len - 0.5 * obj_len)
 
             # Tangent at object's nearest point on path
-            
+
             k0 = max(0, obj_closest_idx - 1)
             k1 = min(len(pts) - 1, obj_closest_idx + 1)
             t_vec = pts[k1] - pts[k0]
