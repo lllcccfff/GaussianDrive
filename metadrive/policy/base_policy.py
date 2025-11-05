@@ -1,9 +1,9 @@
 import copy
-import logging
-import uuid
-import torch
+
 import gymnasium as gym
 import numpy as np
+import torch
+
 from metadrive.base_class.configurable import Configurable
 from metadrive.base_class.randomizable import Randomizable
 

@@ -1,22 +1,18 @@
-import os
-import json
-import torch
+import ctypes
+import platform
 import threading
 from typing import Union
 
-from cuda import cudart
 import glfw
-import ctypes
 import numpy as np
-import platform
 import OpenGL.GL as gl
-from imgui_bundle import imgui, imgui_toggle
-from glm import mat4, mat3, mat4x3, vec3
+import torch
 from easydrive.utils.console_utils import *
+from imgui_bundle import imgui
+
 from metadrive.viewer.client import Client
+from metadrive.viewer.manual_controller import get_controller
 from metadrive.viewer.server import WebSocketServer
-from metadrive.viewer.manual_controller import KeyboardController, get_controller
-import cv2
 
 
 class Viewer:

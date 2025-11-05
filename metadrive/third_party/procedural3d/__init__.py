@@ -6,7 +6,7 @@
 # see: https://github.com/Epihaius/procedural_panda3d_model_primitives for more details
 
 from .box import BoxMaker
-from .cylinder import CylinderMaker
 from .cone import ConeMaker
+from .cylinder import CylinderMaker
 from .sphere import SphereMaker
 from .torus import TorusMaker

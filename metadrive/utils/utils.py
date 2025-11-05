@@ -2,9 +2,10 @@ import copy
 import datetime
 import logging
 import os
+import socket
 import sys
 import time
-import socket
+
 import numpy as np
 from panda3d.bullet import BulletBodyNode
 
@@ -199,8 +200,7 @@ def get_object_from_node(node: BulletBodyNode):
     """
     if node.getPythonTag(node.getName()) is None:
         return None
-    from metadrive.engine.engine_utils import get_object
-    from metadrive.engine.engine_utils import get_engine
+    from metadrive.engine.engine_utils import get_engine, get_object
 
     ret = node.getPythonTag(node.getName()).base_object_name
     is_road = MetaDriveType.is_lane(node.getPythonTag(node.getName()).type_name)

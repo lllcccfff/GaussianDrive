@@ -13,41 +13,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
 import json
 import math
-import mathutils  # make sure to "import bpy" before
 import struct
-
-from bpy_extras.io_utils import ExportHelper
 from typing import Set, cast
 
+import bpy
+import mathutils  # make sure to "import bpy" before
+from bpy_extras.io_utils import ExportHelper
+
 from metadrive.third_party.kitsunetsuki.base.armature import get_armature
-from metadrive.third_party.kitsunetsuki.base.context import Mode
 from metadrive.third_party.kitsunetsuki.base.collections import get_object_collection
+from metadrive.third_party.kitsunetsuki.base.context import Mode
 from metadrive.third_party.kitsunetsuki.base.matrices import (
     get_bone_matrix,
-    get_object_matrix,
     get_inverse_bind_matrix,
+    get_object_matrix,
     matrix_to_list,
     quat_to_list,
 )
 from metadrive.third_party.kitsunetsuki.base.objects import (
+    get_object_properties,
     is_collision,
     is_object_visible,
-    get_object_properties,
     set_active_object,
 )
-
 from metadrive.third_party.kitsunetsuki.exporter.base import Exporter
 
 from . import spec
-from .buffer import GLTFBuffer
 from .animation import AnimationMixin
+from .buffer import GLTFBuffer
 from .geom import GeomMixin
 from .material import MaterialMixin
-from .vertex import VertexMixin
 from .texture import TextureMixin
+from .vertex import VertexMixin
 
 
 class GLTFExporter(AnimationMixin, GeomMixin, MaterialMixin, VertexMixin, TextureMixin, Exporter):

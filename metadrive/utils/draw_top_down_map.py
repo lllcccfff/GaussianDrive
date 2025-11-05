@@ -1,7 +1,8 @@
-from typing import Optional, Union, Iterable
+from typing import Iterable, Optional, Union
 
-import numpy as np
 import cv2
+import numpy as np
+
 from metadrive.engine.top_down_renderer import draw_top_down_map_native as native_draw
 from metadrive.utils.utils import import_pygame
 

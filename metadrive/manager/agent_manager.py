@@ -1,17 +1,13 @@
-import copy
 import math
-import numpy as np
-import torch
+
 from gymnasium.spaces import Space
-from metadrive.constants import DEFAULT_AGENT
-from metadrive.utils.logger import get_logger
+
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.manager.base_manager import BaseManager
+from metadrive.obs.navigation_obs import NavigationObservation
 from metadrive.policy.env_input_policy import EnvInputPolicy
 from metadrive.policy.replay_policy import ReplayPolicy
-from metadrive.obs.gaussian_obs import GaussianObservation
-from metadrive.obs.navigation_obs import NavigationObservation
-from metadrive.base_class.base_object import BaseObject
+from metadrive.utils.logger import get_logger
 
 logger = get_logger()
 
@@ -123,7 +119,6 @@ class AgentManager(BaseManager):
             else:
                 self.controller.move(action=action)
 
-        return
 
     def update_state(self):
         """

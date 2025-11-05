@@ -1,7 +1,7 @@
 import colorsys
 import math
 
-from panda3d.core import CS_linear, PNMImage, PNMFileTypeRegistry
+from panda3d.core import CS_linear, PNMFileTypeRegistry, PNMImage
 
 
 class Palette2LUT(object):

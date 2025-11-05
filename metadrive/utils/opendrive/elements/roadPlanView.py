@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from typing import Tuple
+
 import numpy as np
 
-from metadrive.utils.opendrive.elements.geometry import (
-    Geometry,
-    Line,
-    Spiral,
-    ParamPoly3,
-    Arc,
-    Poly3,
-)
+from metadrive.utils.opendrive.elements.geometry import Arc, Geometry, Line, ParamPoly3, Poly3, Spiral
 
 __author__ = "Benjamin Orthen, Stefan Urban"
 __copyright__ = "TUM Cyber-Physical Systems Group"

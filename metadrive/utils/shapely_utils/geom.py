@@ -1,11 +1,12 @@
-import shapely
 import heapq
-from typing import Union
-from metadrive.utils.math import norm
-from shapely.geometry import Polygon, LineString
-from shapely.ops import split
-from shapely.geometry import Polygon
 from itertools import combinations
+from typing import Union
+
+import shapely
+from shapely.geometry import LineString, Polygon
+from shapely.ops import split
+
+from metadrive.utils.math import norm
 
 
 def cut_polygon_along_parallel_edges(polygon):

@@ -13,19 +13,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
+import itertools
 import json
 import math
-import itertools
 
+import bpy
 from panda3d.core import CS_zup_right, LMatrix4d
 from panda3d.egg import EggComment, EggData, EggGroup, EggPolygon, EggTransform
 
 from metadrive.third_party.kitsunetsuki.base.armature import get_armature
 from metadrive.third_party.kitsunetsuki.base.collections import get_object_collection
-from metadrive.third_party.kitsunetsuki.base.matrices import get_object_matrix, get_bone_matrix
-from metadrive.third_party.kitsunetsuki.base.objects import is_collision, get_object_properties, set_active_object
-
+from metadrive.third_party.kitsunetsuki.base.matrices import get_bone_matrix, get_object_matrix
+from metadrive.third_party.kitsunetsuki.base.objects import get_object_properties, is_collision, set_active_object
 from metadrive.third_party.kitsunetsuki.exporter.base import Exporter
 
 from .animation import AnimationMixin

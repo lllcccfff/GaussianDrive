@@ -1,8 +1,8 @@
 import copy
-import warnings
+
 import torch
-from metadrive.utils.math import compute_angular_velocity
-from metadrive.utils.math import norm
+
+from metadrive.utils.math import compute_angular_velocity, norm
 
 
 def get_max_valid_indicis(track, current_index):
@@ -103,7 +103,6 @@ def parse_object_state(poses, idx, check_last_state=True, include_z_position=Fal
     Parse object state from 4x4 ego-to-world transformation matrices
     matrix_list: List of 4x4 numpy arrays representing ego2world transforms
     """
-    import numpy as np
 
     ts_list = sorted(poses.keys())
 

@@ -1,11 +1,10 @@
-import logging
 import math
 import time
 
 import numpy as np
-from panda3d.core import NodePath, TextNode, LQuaternionf
+from panda3d.core import LQuaternionf, NodePath, TextNode
 
-from metadrive.constants import COLLISION_INFO_COLOR, COLOR, MetaDriveType, CamMask, RENDER_MODE_NONE
+from metadrive.constants import COLLISION_INFO_COLOR, COLOR, RENDER_MODE_NONE, CamMask, MetaDriveType
 from metadrive.engine.asset_loader import AssetLoader
 
 

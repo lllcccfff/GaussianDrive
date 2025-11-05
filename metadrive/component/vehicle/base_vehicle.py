@@ -1,27 +1,21 @@
 import math
-import os
 from collections import deque
-from typing import Union, Optional, List
+from typing import List, Union
 
 import numpy as np
-from panda3d.bullet import BulletVehicle, BulletBoxShape, ZUp
-from panda3d.core import Material, Vec3, TransformState
+import torch
+from panda3d.bullet import BulletBoxShape, BulletVehicle, ZUp
+from panda3d.core import TransformState, Vec3
 
 from metadrive.base_class.base_object import BaseObject
 
 # from metadrive.component.navigation_module.node_network_navigation import NodeNetworkNavigation
-from metadrive.component.pg_space import VehicleParameterSpace, ParameterSpace
-from metadrive.constants import CamMask, get_color_palette
-from metadrive.constants import MetaDriveType, CollisionGroup
-from metadrive.constants import Semantics
-from metadrive.engine.asset_loader import AssetLoader
-from metadrive.utils.logger import get_logger
+from metadrive.component.pg_space import ParameterSpace, VehicleParameterSpace
+from metadrive.constants import CollisionGroup, MetaDriveType, Semantics
 from metadrive.engine.physics_node import BaseRigidBodyNode
 from metadrive.utils import Config, safe_clip_for_small_array
-from metadrive.utils.math import get_vertical_vector, norm, clip
-from metadrive.utils.math import wrap_to_pi
-from metadrive.utils.utils import get_object_from_node
-import torch
+from metadrive.utils.logger import get_logger
+from metadrive.utils.math import norm
 
 logger = get_logger()
 
@@ -151,7 +145,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.on_lane = None
         self._init_step_info()
 
-        #
         self.break_down = False
         # if self.engine.current_map is not None:
         if _calling_reset:

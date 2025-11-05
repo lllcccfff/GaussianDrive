@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import os
 import math
+import os
 
-from panda3d.core import CS_linear, PNMImage, PNMFileTypeRegistry, LMatrix4d
-from panda3d.egg import EggData, EggComment, EggGroup, EggPolygon, EggVertex, EggVertexPool, EggTexture
+from panda3d.core import CS_linear, LMatrix4d, PNMFileTypeRegistry, PNMImage
+from panda3d.egg import EggComment, EggData, EggGroup, EggPolygon, EggTexture, EggVertex, EggVertexPool
 
 
 class CardMaker(object):

@@ -1,9 +1,7 @@
-import platform
 
-from panda3d.core import LineSegs, NodePath
-from panda3d.core import Material, Vec3, LVecBase4
+from panda3d.core import LineSegs, LVecBase4, Material, NodePath, Vec3
 
-from metadrive.component.pg_space import VehicleParameterSpace, ParameterSpace
+from metadrive.component.pg_space import ParameterSpace, VehicleParameterSpace
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.constants import Semantics
 from metadrive.engine.asset_loader import AssetLoader

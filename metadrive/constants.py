@@ -4,8 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 from panda3d.bullet import BulletWorld
-from panda3d.core import Vec3
-from panda3d.core import Vec4, BitMask32
+from panda3d.core import BitMask32, Vec3, Vec4
 
 from metadrive.type import MetaDriveType
 from metadrive.version import VERSION
@@ -533,7 +532,7 @@ class TerrainProperty:
                     if isinstance(polygon, Polygon)
                     else [list(geom.exterior.coords) for geom in polygon.geoms]
                 )
-        except Exception as error:
+        except Exception:
             return None
 
 

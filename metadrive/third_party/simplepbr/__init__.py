@@ -1,7 +1,6 @@
 import os
 
 import panda3d.core as p3d
-
 from direct.filter.FilterManager import FilterManager
 
 from .version import __version__

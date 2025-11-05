@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import random
 
 import matplotlib.pyplot as plt
 

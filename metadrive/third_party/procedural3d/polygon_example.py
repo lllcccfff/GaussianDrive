@@ -3,7 +3,6 @@
 import numpy as np
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import *
-from shapely import geometry
 
 # @time_me
 from metadrive.utils.vertex import make_polygon_model
@@ -31,7 +30,6 @@ class MyApp(ShowBase):
         self.disable_mouse()
         self.camera.set_pos(0.0, 15.0, 100.0)
         self.camera.look_at(0.0, 0.0, 0.0)
-        #
         points = [
             [236.70966602, -79.94476767],
             [235.48608421, -81.79984158],

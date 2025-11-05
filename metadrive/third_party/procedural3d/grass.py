@@ -1,6 +1,6 @@
-from panda3d.core import *
-from direct.directbase import DirectStart
 import random
+
+from panda3d.core import *
 
 
 def makeGrassBlades():

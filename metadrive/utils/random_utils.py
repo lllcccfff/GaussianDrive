@@ -7,7 +7,6 @@ import logging
 import os
 import struct
 import uuid
-from typing import Optional
 
 import numpy as np
 

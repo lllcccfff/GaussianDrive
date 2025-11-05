@@ -1,7 +1,8 @@
 from collections import deque
 
-from metadrive.engine.engine_utils import get_engine
 import numpy as np
+
+from metadrive.engine.engine_utils import get_engine
 
 
 def _clear_if_necessary(obj, depth=0):

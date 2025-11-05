@@ -1,7 +1,8 @@
-from metadrive.utils.logger import get_logger
-from metadrive.policy.base_policy import BasePolicy
 import gymnasium as gym
 import numpy as np
+
+from metadrive.policy.base_policy import BasePolicy
+from metadrive.utils.logger import get_logger
 
 logger = get_logger()
 

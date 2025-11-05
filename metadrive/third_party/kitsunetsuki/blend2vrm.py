@@ -16,7 +16,6 @@
 
 import argparse
 import json
-import struct
 
 from . import bl_info
 

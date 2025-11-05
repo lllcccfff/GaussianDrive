@@ -1,9 +1,9 @@
 import math
 
-import numpy as np
 import glfw
+import numpy as np
 
-from metadrive.utils import is_win, is_mac
+from metadrive.utils import is_win
 
 
 def get_controller(controller_name, window=None):
@@ -133,7 +133,7 @@ class SteeringWheelController(Controller):
     def __init__(self):
         try:
             import evdev
-            from evdev import ecodes, InputDevice
+            from evdev import InputDevice, ecodes
         except ImportError:
             print(
                 "Fail to load evdev, which is required for steering wheel control. Install evdev via pip install evdev"
@@ -224,7 +224,7 @@ class XboxController(Controller):
     def __init__(self):
         try:
             import evdev
-            from evdev import ecodes, InputDevice
+            from evdev import InputDevice, ecodes
         except ImportError:
             print(
                 "Fail to load evdev, which is required for steering wheel control. Install evdev via pip install evdev"
@@ -256,7 +256,6 @@ class XboxController(Controller):
 
     def process_input(self, vehicle):
         import pygame
-        import math
 
         pygame.event.pump()
         steering = -self.joystick.get_axis(self.STEERING_AXIS)

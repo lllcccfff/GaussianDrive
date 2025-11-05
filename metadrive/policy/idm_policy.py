@@ -4,8 +4,9 @@
 # TODO: pid steering
 
 import math
-import numpy as np
+
 import gymnasium as gym
+import numpy as np
 
 from metadrive.policy.base_policy import BasePolicy
 from metadrive.type import MetaDriveType

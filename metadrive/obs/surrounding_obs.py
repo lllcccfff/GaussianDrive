@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 
 from metadrive.obs.observation_base import BaseObservation

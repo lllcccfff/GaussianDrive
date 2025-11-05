@@ -5,7 +5,7 @@ calculation and tell Object about these results, inheriting from these BulletNod
 Physics Callbacks and Object class
 """
 
-from panda3d.bullet import BulletRigidBodyNode, BulletGhostNode
+from panda3d.bullet import BulletGhostNode, BulletRigidBodyNode
 
 
 class BaseRigidBodyNode(BulletRigidBodyNode):

@@ -1,12 +1,10 @@
 import logging
 from typing import Tuple
 
-from panda3d.bullet import BulletBoxShape
-from panda3d.bullet import BulletCylinderShape
+from panda3d.bullet import BulletBoxShape, BulletCylinderShape
 
 from metadrive.component.static_object.base_static_object import BaseStaticObject
-from metadrive.constants import CollisionGroup
-from metadrive.constants import MetaDriveType, Semantics
+from metadrive.constants import CollisionGroup, MetaDriveType, Semantics
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.engine.physics_node import BaseRigidBodyNode
 

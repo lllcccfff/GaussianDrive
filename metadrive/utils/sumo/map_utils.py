@@ -5,6 +5,7 @@ from __future__ import (
 import logging
 
 import numpy as np
+
 from metadrive.scenario import ScenarioDescription as SD
 from metadrive.type import MetaDriveType
 
@@ -12,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 try:
     import sumolib
@@ -300,7 +301,6 @@ class RoadLaneJunctionGraph:
 
 def extract_map_features(graph):
     """This func extracts the map features like lanes/lanelines from the SUMO map"""
-    from shapely.geometry import Polygon
 
     ret = {}
     # # build map boundary

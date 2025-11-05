@@ -3,15 +3,15 @@ from copy import copy
 
 import numpy as np
 from panda3d.core import (
-    GeomVertexData,
     Geom,
+    GeomNode,
+    GeomTriangles,
     GeomVertexArrayFormat,
+    GeomVertexData,
     GeomVertexFormat,
     GeomVertexWriter,
-    GeomNode,
-    Triangulator,
-    GeomTriangles,
     NodePath,
+    Triangulator,
 )
 
 from metadrive.utils import norm

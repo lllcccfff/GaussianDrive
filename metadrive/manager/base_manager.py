@@ -1,7 +1,4 @@
-import copy
-from metadrive.constants import DEFAULT_AGENT
 
-from gymnasium.spaces import Space
 
 from metadrive.base_class.randomizable import Randomizable
 

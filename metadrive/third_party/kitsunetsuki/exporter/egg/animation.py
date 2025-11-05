@@ -13,19 +13,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
-import collections
 import math
+
+import bpy
 
 try:
     from collections.abc import Callable
 except ImportError:
     from collections import Callable
 
-from metadrive.third_party.kitsunetsuki.base.matrices import get_bone_matrix
-
 from panda3d.core import CS_zup_right
 from panda3d.egg import EggTable, EggXfmSAnim
+
+from metadrive.third_party.kitsunetsuki.base.matrices import get_bone_matrix
 
 
 class AnimationMixin(object):

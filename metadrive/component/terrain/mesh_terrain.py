@@ -1,12 +1,8 @@
+from panda3d.bullet import BulletTriangleMesh, BulletTriangleMeshShape
 from panda3d.core import Loader, NodePath
-from panda3d.bullet import (
-    BulletTriangleMesh,
-    BulletTriangleMeshShape,
-)
-from metadrive.constants import MetaDriveType, CollisionGroup
 
 from metadrive.base_class.base_object import BaseObject
-from metadrive.constants import CollisionGroup
+from metadrive.constants import CollisionGroup, MetaDriveType
 from metadrive.engine.physics_node import BaseRigidBodyNode
 
 

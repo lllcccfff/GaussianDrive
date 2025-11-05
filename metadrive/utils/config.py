@@ -1,6 +1,6 @@
 import copy
 import pathlib
-from typing import Union, Any
+from typing import Any, Union
 
 import numpy as np
 

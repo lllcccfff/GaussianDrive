@@ -5,7 +5,7 @@ We use the gym.spaces as helpers, but it may cause problem if user using some ol
 
 import logging
 import typing as tp
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 
 import numpy as np
 

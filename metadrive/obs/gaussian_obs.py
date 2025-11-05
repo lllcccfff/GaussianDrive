@@ -1,9 +1,8 @@
 import gymnasium as gym
 import numpy as np
-
-from metadrive.component.vehicle.base_vehicle import BaseVehicle
-from metadrive.obs.observation_base import BaseObservation
 import torch
+
+from metadrive.obs.observation_base import BaseObservation
 
 
 class GaussianObservation(BaseObservation):

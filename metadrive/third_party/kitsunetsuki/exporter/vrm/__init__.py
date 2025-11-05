@@ -13,15 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
 import configparser
 import os
-
-from bpy_extras.io_utils import ExportHelper
 from typing import Set, cast
 
-from ..gltf import GLTFExporter
-from ..gltf import spec
+import bpy
+from bpy_extras.io_utils import ExportHelper
+
+from ..gltf import GLTFExporter, spec
 from .armature import ArmatureMixin
 
 BLENDSHAPE_PRESETS = (

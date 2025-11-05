@@ -8,15 +8,13 @@ data format: client received
  - server_gpu (name, vmem, peak_vmem)
 """
 
-import cv2
-import zlib
-import torch
 import asyncio
 import threading
-import socket
+
 import numpy as np
-from torchvision.io import encode_jpeg, decode_jpeg
+import torch
 import websockets
+from torchvision.io import decode_jpeg
 
 # fmt: on
 
@@ -89,7 +87,7 @@ class Client:
                             torch.from_numpy(np.frombuffer(buffer, np.uint8)), device="cuda"
                         )  # 10ms for 1080p...
                         tensor = tensor.permute(1, 2, 0)
-                    except RuntimeError as e:
+                    except RuntimeError:
                         print("Image corruptted.")
                         continue
 

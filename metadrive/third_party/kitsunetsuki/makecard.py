@@ -16,9 +16,9 @@
 
 import argparse
 
-from metadrive.third_party.kitsunetsuki.cardmaker import CardMaker
-
 from panda3d.core import Filename, VirtualFileSystem, get_model_path
+
+from metadrive.third_party.kitsunetsuki.cardmaker import CardMaker
 
 
 def parse_args():

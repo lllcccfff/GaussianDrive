@@ -1,10 +1,10 @@
 from typing import Sequence, Tuple
-from metadrive.constants import CamMask
-from metadrive.type import MetaDriveType
 
 from panda3d.core import NodePath
 
 from metadrive.base_class.base_object import BaseObject
+from metadrive.constants import CamMask
+from metadrive.type import MetaDriveType
 
 LaneIndex = Tuple[str, str, int]
 

@@ -13,8 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
 import os
+
+import bpy
 
 from metadrive.third_party.kitsunetsuki.base.collections import get_object_collection
 from metadrive.third_party.kitsunetsuki.base.objects import (

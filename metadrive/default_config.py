@@ -1,15 +1,14 @@
 import logging
 
-from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
-from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
-from metadrive.policy.env_input_policy import EnvInputPolicy
-from metadrive.policy.replay_policy import ReplayPolicy
 from metadrive.component.vehicle.vehicle_type import DefaultVehicle
+from metadrive.constants import DEFAULT_AGENT
+from metadrive.obs.assembly_obs import AssemblyObservation
 from metadrive.obs.gaussian_obs import GaussianObservation
 from metadrive.obs.navigation_obs import NavigationObservation
-from metadrive.obs.state_obs import StateObservation
-from metadrive.obs.assembly_obs import AssemblyObservation
 from metadrive.obs.observation_base import DefaultObservation
+from metadrive.obs.state_obs import StateObservation
+from metadrive.policy.env_input_policy import EnvInputPolicy
+from metadrive.policy.replay_policy import ReplayPolicy
 
 BASE_DEFAULT_CONFIG = dict(
     # ===== agent =====

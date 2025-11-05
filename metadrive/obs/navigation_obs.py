@@ -1,9 +1,11 @@
 import math
-import numpy as np
+
 import gymnasium as gym
+import numpy as np
 from trajdata import VectorMap
-from metadrive.obs.observation_base import BaseObservation
+
 from metadrive.base_class.randomizable import Randomizable
+from metadrive.obs.observation_base import BaseObservation
 from metadrive.utils.navigation_utils import nearest_front_index
 
 

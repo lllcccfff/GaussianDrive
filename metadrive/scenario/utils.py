@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.pyplot import figure
 
-from metadrive.component.static_object.traffic_object import TrafficCone, TrafficBarrier
+from metadrive.component.static_object.traffic_object import TrafficBarrier, TrafficCone
 from metadrive.component.traffic_participants.cyclist import Cyclist
 from metadrive.component.traffic_participants.pedestrian import Pedestrian
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
@@ -299,7 +299,7 @@ def convert_recorded_scenario_exported(record_episode, scenario_log_interval=0.1
             # Maybe actions is also recorded. If so, add item to tracks:
             # TODO: In the case of discrete action, what should we do?
             for key, policy_state in policy_info.items():
-                if policy_state is {}:
+                if policy_state == {}:
                     continue
                 policy_state = np.asarray(policy_state)
                 assert policy_state.dtype != object

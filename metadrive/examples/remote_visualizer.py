@@ -1,6 +1,6 @@
 import argparse
-from metadrive.viewer.viewer import Viewer
 
+from metadrive.viewer.viewer import Viewer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MetaDrive Remote Visualizer")

@@ -2,18 +2,11 @@
 This environment can load all scenarios exported from other environments via env.export_scenarios()
 """
 
-import numpy as np
 
-import torch
-from metadrive.manager.agent_manager import AgentState
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.base_env import BaseEnv
-from metadrive.manager.scenario_curriculum_manager import ScenarioCurriculumManager
-from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
-from metadrive.manager.scenario_map_manager import ScenarioMapManager
-from metadrive.manager.agent_manager import AgentManager
-from metadrive.utils import get_np_random
-from metadrive.utils.math import wrap_to_pi
+from metadrive.manager.agent_manager import AgentManager, AgentState
+from metadrive.manager.scenario_data_manager import ScenarioOnlineDataManager
 
 SCENARIO_ENV_CONFIG = dict(
     # ===== Scenario Config =====

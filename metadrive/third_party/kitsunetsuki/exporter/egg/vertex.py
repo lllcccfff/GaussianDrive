@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from metadrive.third_party.kitsunetsuki.base.matrices import get_object_matrix
 
 from panda3d.egg import EggVertex, EggVertexUV
 

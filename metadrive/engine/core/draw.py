@@ -1,8 +1,8 @@
 from direct.directtools.DirectGeometry import LineNodePath
-from metadrive.engine.asset_loader import AssetLoader
-from panda3d.core import VBase4, NodePath, Material
+from panda3d.core import LVecBase4f, Material, NodePath, VBase4
+
 from metadrive.constants import CamMask
-from panda3d.core import LVecBase4f
+from metadrive.engine.asset_loader import AssetLoader
 
 
 class ColorLineNodePath(LineNodePath):

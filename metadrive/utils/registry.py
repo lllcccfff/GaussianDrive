@@ -7,6 +7,7 @@ def _initialize_registry():
     _metadrive_class_list = []
 
     # Register all PG blocks
+    from metadrive.component.pgblock.bidirection import Bidirection
     from metadrive.component.pgblock.bottleneck import Merge, Split
     from metadrive.component.pgblock.curve import Curve
     from metadrive.component.pgblock.fork import InFork, OutFork
@@ -17,7 +18,6 @@ def _initialize_registry():
     from metadrive.component.pgblock.std_t_intersection import StdTInterSection
     from metadrive.component.pgblock.straight import Straight
     from metadrive.component.pgblock.tollgate import TollGate
-    from metadrive.component.pgblock.bidirection import Bidirection
 
     _metadrive_class_list.extend(
         [

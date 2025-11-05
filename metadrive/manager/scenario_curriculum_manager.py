@@ -1,4 +1,4 @@
-from collections import deque, OrderedDict
+from collections import OrderedDict, deque
 
 from metadrive.manager.base_manager import BaseManager
 from metadrive.manager.scenario_data_manager import ScenarioDataManager

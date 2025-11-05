@@ -13,10 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
 import mathutils  # make sure to "import bpy" before
 
-from metadrive.third_party.kitsunetsuki.base.vertex import uv_equals, normal_equals
+from metadrive.third_party.kitsunetsuki.base.vertex import normal_equals, uv_equals
 
 
 class VertexMixin(object):

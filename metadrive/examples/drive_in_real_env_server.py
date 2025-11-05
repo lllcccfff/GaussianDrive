@@ -4,12 +4,13 @@ This script demonstrates how to use the environment where traffic and road map a
 """
 
 import argparse
+
+from easydrive.models.scenes.simulator_interface import SimulatorInterface
+
 from metadrive.constants import HELP_MESSAGE
 from metadrive.engine.asset_loader import AssetLoader
 from metadrive.envs.scenario_env import ScenarioEnv
-from easydrive.models.scenes.simulator_interface import SimulatorInterface
 from metadrive.viewer.viewer import Viewer
-import imageio
 
 RENDER_MESSAGE = {
     "Quit": "ESC",

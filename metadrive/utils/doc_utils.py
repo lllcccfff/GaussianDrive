@@ -8,17 +8,17 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import PythonLexer
 from pygments.token import (
+    Comment,
+    Error,
+    Generic,
     Keyword,
     Name,
-    Comment,
-    String,
-    Error,
     Number,
     Operator,
-    Generic,
+    Punctuation,
+    String,
     Token,
     Whitespace,
-    Punctuation,
 )
 
 

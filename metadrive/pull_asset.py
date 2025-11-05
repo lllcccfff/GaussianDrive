@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 import shutil
-import time
 import urllib.request
 from pathlib import Path
 

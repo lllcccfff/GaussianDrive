@@ -3,8 +3,9 @@
 # On github, buckinha/DiamondSquare
 #
 
-import random
 import math
+import random
+
 import numpy as np
 
 

@@ -16,24 +16,14 @@ data format: server received
 
 from __future__ import annotations
 
-import os
-import glm
-import time
-import zlib
-import torch
 import asyncio
 import threading
-import websockets
+
 import numpy as np
-import cv2
-import torch.nn.functional as F
-
-from copy import deepcopy
-from typing import List, Union, Dict
-from glm import vec3, vec4, mat3, mat4, mat4x3
-from torchvision.io import encode_jpeg, decode_jpeg
-
+import torch
+import websockets
 from easydrive.utils.console_utils import log
+from torchvision.io import encode_jpeg
 
 
 class WebSocketServer:

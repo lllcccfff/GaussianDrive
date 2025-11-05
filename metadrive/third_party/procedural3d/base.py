@@ -4,9 +4,8 @@
 # This module contains a couple of imports and a base class needed for the
 # creation of all 3D primitives.
 
+
 from panda3d.core import *
-from math import pi, sin, cos, acos, atan2, sqrt
-import array
 
 
 class ModelMaker:

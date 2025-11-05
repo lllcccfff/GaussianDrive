@@ -1,46 +1,35 @@
-import logging
 import time
 from collections import defaultdict
-from typing import Union, Dict, AnyStr, Optional, Tuple, Callable
-from collections import OrderedDict
-import torch
+from typing import AnyStr, Callable, Dict, Tuple, Union
+
 import gymnasium as gym
 import numpy as np
-from panda3d.core import PNMImage
+import torch
+from easydrive.engine.config import Config
+from panda3d.core import PNMImage, PythonCallbackObject
 
-from metadrive import constants
-from metadrive.constants import DEFAULT_SENSOR_HPR, DEFAULT_SENSOR_OFFSET
-from metadrive.constants import RENDER_MODE_NONE, DEFAULT_AGENT
-from metadrive.constants import TerminationState, TerrainProperty
-from metadrive.utils.logger import get_logger, set_log_level
+from metadrive.component.traffic_participants.cyclist import Cyclist
+from metadrive.component.traffic_participants.pedestrian import Pedestrian
+from metadrive.component.vehicle.vehicle_type import get_vehicle_type
+from metadrive.constants import TerminationState
+from metadrive.default_config import BASE_DEFAULT_CONFIG
+from metadrive.engine.core.collision_callback import collision_callback
+from metadrive.engine.core.physics_world import PhysicsWorld
+from metadrive.engine.step_counter import StepCounter
 from metadrive.manager.agent_manager import AgentManager, AgentState
+from metadrive.manager.scenario_data_manager import ScenarioDataManager
+from metadrive.manager.scenario_map_manager import ScenarioMapManager
 
 # from metadrive.manager.record_manager import RecordManager
 # from metadrive.manager.replay_manager import ReplayManager
 # from metadrive.obs.image_obs import ImageStateObservation
-from metadrive.obs.observation_base import BaseObservation
-from metadrive.obs.gaussian_obs import GaussianObservation
 from metadrive.obs.observation_base import DummyObservation
+from metadrive.policy.replay_policy import ReplayPolicy
 
 # from metadrive.obs.state_obs import LidarStateObservation
 from metadrive.scenario.utils import convert_recorded_scenario_exported
-from metadrive.utils import merge_dicts, get_np_random, concat_step_infos
-from metadrive.utils.logger import get_logger, reset_logger
-from metadrive.engine.core.physics_world import PhysicsWorld
-from metadrive.engine.step_counter import StepCounter
-from metadrive.engine.core.collision_callback import collision_callback
-from panda3d.core import AntialiasAttrib, loadPrcFileData, LineSegs, PythonCallbackObject, Vec3, NodePath
-from metadrive.version import VERSION
-from metadrive.component.traffic_participants.cyclist import Cyclist
-from metadrive.component.traffic_participants.pedestrian import Pedestrian
-from metadrive.component.vehicle.vehicle_type import get_vehicle_type
-from metadrive.manager.scenario_data_manager import ScenarioDataManager, ScenarioOnlineDataManager
-from metadrive.manager.scenario_map_manager import ScenarioMapManager
-from metadrive.obs.navigation_obs import NavigationObservation
-from metadrive.obs.assembly_obs import AssemblyObservation
-from metadrive.policy.replay_policy import ReplayPolicy
-from easydrive.engine.config import Config
-from metadrive.default_config import BASE_DEFAULT_CONFIG
+from metadrive.utils import concat_step_infos, get_np_random
+from metadrive.utils.logger import get_logger
 
 
 class BaseEnv(gym.Env):

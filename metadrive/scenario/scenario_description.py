@@ -116,10 +116,11 @@ import math
 import os
 from collections import defaultdict
 from typing import Optional
-from metadrive.utils.math import norm
+
 import numpy as np
 
 from metadrive.type import MetaDriveType
+from metadrive.utils.math import norm
 
 
 class ScenarioDescription(dict):

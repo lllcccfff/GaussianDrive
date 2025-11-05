@@ -1,13 +1,9 @@
-import copy
+
 
 from metadrive.component.terrain.ground import GroundPlane
 from metadrive.component.terrain.mesh_terrain import MeshTerrain
-from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager
-from metadrive.utils.logger import get_logger, set_log_level
-
-from easydrive.engine import MODELS
-from easydrive.utils.base_utils import dotdict
+from metadrive.utils.logger import get_logger
 
 logger = get_logger()
 

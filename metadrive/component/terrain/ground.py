@@ -1,12 +1,10 @@
-from typing import Tuple, Sequence
-from metadrive.constants import CamMask
+from typing import Sequence, Tuple
 
-from panda3d.core import LVector3
 from panda3d.bullet import BulletPlaneShape
-from metadrive.constants import MetaDriveType, CollisionGroup
+from panda3d.core import LVector3
 
 from metadrive.base_class.base_object import BaseObject
-from metadrive.constants import CollisionGroup
+from metadrive.constants import CollisionGroup, MetaDriveType
 from metadrive.engine.physics_node import BaseRigidBodyNode
 
 LaneIndex = Tuple[str, str, int]
