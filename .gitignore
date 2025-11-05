@@ -1,7 +1,7 @@
 # Custom
 /.aider*
 /.vscode
-/outputs*
+/output*
 /data*
 
 # Reference: https://github.com/github/gitignore/blob/main/Python.gitignore

@@ -5,6 +5,7 @@ This code is currently under heavy development based on MetaDrive.
 ## Installation
 
 ```bash
+# python >= 3.8 is compatible
 conda create -n "gaussiandrive" python=3.11 -y
 conda activate gaussiandrive
 
@@ -19,8 +20,8 @@ For development, see [DEV.md](docs/DEV.md)
 ## Visualization
 
 ```bash
-# Server side
-python -m metadrive.examples.drive_in_real_env_server -c /.../EasyDrive/configs/exps/street_gs --host 10.76.5.241 --port 12721
+# Server side(easydrive)
+python -m metadrive.examples.easydrive -c /.../EasyDrive/configs/exps/street_gs --host 10.76.5.241 --port 12721
 
 # Client side (for example, Windows)
 python -m metadrive.examples.remote_visualizer  --host 10.76.5.241 --port 12721 --width 1920 --height 1280

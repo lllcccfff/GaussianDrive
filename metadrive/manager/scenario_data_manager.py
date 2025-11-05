@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import torch
-from easydrive.engine.config import Config
 
 from metadrive.component.vehicle.vehicle_type import random_vehicle_type
 from metadrive.manager.base_manager import BaseManager
@@ -46,11 +45,9 @@ class ScenarioDataManager(BaseManager):
         self.num_scenarios = 0
         for config_file in os.listdir(self.directory):
             self.num_scenarios += 1
-            cfg = Config.fromfile(
-                filename=os.path.join(self.directory, config_file)
-            )  # TODO(fyz): Fix this with more generizable solution
-
-            scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(cfg)
+            cfg, scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(
+                os.path.join(self.directory, config_file)
+            )
             # timestamp : list|tuple [2]
             # camera params :
             #     "camera_name" :
@@ -78,7 +75,7 @@ class ScenarioDataManager(BaseManager):
                 ego_poses=ego_poses,
                 participants=participants,
             )
-            self.metadata[scene_name]["scene_mesh_path"] = scene_mesh_path
+            self.metadata[scene_name]["scene_mesh_path"] = os.path.abspath(scene_mesh_path)
 
             self.idx2scene.append(scene_name)
 

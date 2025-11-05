@@ -42,7 +42,7 @@ class BaseEnv(gym.Env):
         if config is None:
             config = dict()
         default_config = self.default_config()
-        default_config.merge_from(config, replace_keys=["agent_configs"])
+        default_config.update(config)
 
         self.logger = get_logger()
         # set_log_level(config.get("log_level", logging.DEBUG if config.get("debug", False) else logging.INFO))
