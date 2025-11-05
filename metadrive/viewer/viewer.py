@@ -171,11 +171,11 @@ class Viewer:
         imgui.backends.glfw_init_for_open_gl(self.window_address, True)
         imgui.backends.opengl3_init(self.glsl_version)
 
-        io = imgui.get_io()
+        # io = imgui.get_io()
         # self.default_font = io.fonts.add_font_from_file_ttf(self.font_default, self.font_size)
         # self.italic_font = io.fonts.add_font_from_file_ttf(self.font_italic, self.font_size)
         # self.bold_font = io.fonts.add_font_from_file_ttf(self.font_bold, self.font_size)
-        io.fonts.build()
+        # io.fonts.build()
 
         # # Markdown initialization
         # options = imgui_md.MarkdownOptions()
