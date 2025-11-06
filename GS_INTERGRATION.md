@@ -80,13 +80,14 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
       }
   }
   ```
+- `bk_ground_model_path` (str): the path for background mesh, usally in 'obj', if not have, return None
 
 **Responsibilities:**
 - **Identify the scene from cfg** (e.g., cfg.scene_name)
 - Parse the scene data into the required structure
 - Cache necessary data internally for later use
 
-### 3. `load_model(self, cfg)`
+### 3. `load_model(self, cfg) -> `
 
 **Parameters:**
 - `cfg`: Configuration object for a specific scene. **Use this to identify which scene's model to load.**
@@ -96,6 +97,10 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 - **Identify the scene from cfg** (same way as in `load_metadata`)
 - Load the pre-trained Gaussian model weights for this specific scene
 - prepare GPU/CUDA resources
+
+
+**Returns:**
+- `trajdata`: A Trajdata VectorMap object, if not have, return None
 
 ### 4. `update_scene(self, frame, object_poses)`
 
