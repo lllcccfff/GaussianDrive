@@ -11,6 +11,7 @@ import torch
 from imgui_bundle import imgui
 
 from metadrive import CONSOLE
+from metadrive.utils.opengl_utils import Quad
 from metadrive.viewer.client import Client
 from metadrive.viewer.manual_controller import get_controller
 from metadrive.viewer.server import WebSocketServer
@@ -185,8 +186,6 @@ class Viewer:
         # imgui_md.get_font_loader_function()() # requires imgui_hello
 
     def _init_quad(self):
-        from easydrive.utils.opengl_utils import Quad
-
         self.quad = Quad(H=self.H, W=self.W)  # will blit this texture to screen if rendered
 
     def _bind_callbacks(self):

@@ -72,7 +72,7 @@ class SimulatorInterface:
             ego_poses,
             {},
             None,
-            # str(dataset_config_path.parent / "sparse_pc.obj"),
+            # str(dataset_config_path.parent / "sparse_pc.obj"), # TODO: Add mesh support
         )
 
     def load_model(self, cfg):
@@ -133,19 +133,22 @@ if __name__ == "__main__":
     viser = Viewer(0, 0, mode="server", host=args.host, port=args.port)
     action = [0, 0]
 
-    for i in range(1, 100000):
-        o, r, tm, tc, info = env.step(action)
+    try:
+        for i in range(1, 100000):
+            o, r, tm, tc, info = env.step(action)
 
-        if tm or tc:
-            env.reset()
-            action = [0, 0]
-            continue
+            if tm or tc:
+                env.reset()
+                action = [0, 0]
+                continue
 
-        if viser.is_running():
-            o_for_vis = o["gaussian"]["CAM_FRONT"][-1]
-            turn_signal = o["navigation"]["turn_signal"]
-            # print("[Turn Signal] ", turn_signal)
-            action = viser.run(o_for_vis)
+            if viser.is_running():
+                o_for_vis = o["gaussian"]["CAM_FRONT"][-1]
+                turn_signal = o["navigation"]["turn_signal"]
+                # print("[Turn Signal] ", turn_signal)
+                action = viser.run(o_for_vis)
+    except KeyboardInterrupt:
+        pass
 
     env.close()
     viser.shutdown()
