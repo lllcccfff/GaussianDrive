@@ -12,6 +12,10 @@ from metadrive.scenario.utils import read_scenario_data
 from metadrive.utils.trajectory import Trajectory
 
 
+class InvalidMetadataException(Exception):
+    pass
+
+
 class ScenarioDataManager(BaseManager):
     DEFAULT_DATA_BUFFER_SIZE = 100
     PRIORITY = -10
@@ -44,10 +48,13 @@ class ScenarioDataManager(BaseManager):
         self.metadata, self.idx2scene = {}, []
         self.num_scenarios = 0
         for config_file in os.listdir(self.directory):
+            try:
+                cfg, scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(
+                    os.path.join(self.directory, config_file)
+                )
+            except InvalidMetadataException:
+                continue
             self.num_scenarios += 1
-            cfg, scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(
-                os.path.join(self.directory, config_file)
-            )
             # timestamp : list|tuple [2]
             # camera params :
             #     "camera_name" :
@@ -75,7 +82,9 @@ class ScenarioDataManager(BaseManager):
                 ego_poses=ego_poses,
                 participants=participants,
             )
-            self.metadata[scene_name]["scene_mesh_path"] = os.path.abspath(scene_mesh_path)
+            self.metadata[scene_name]["scene_mesh_path"] = (
+                os.path.abspath(scene_mesh_path) if scene_mesh_path is not None else None
+            )
 
             self.idx2scene.append(scene_name)
 

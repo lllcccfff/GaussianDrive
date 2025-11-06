@@ -21,10 +21,13 @@ For development, see [DEV.md](docs/DEV.md)
 
 ```bash
 # Server side(easydrive)
-python -m metadrive.examples.easydrive -c /.../EasyDrive/configs/exps/street_gs --host 10.76.5.241 --port 12721
+python -m metadrive.examples.server.easydrive -c /.../EasyDrive/configs/exps/EasyDrive/configs/exps/street_gs --host 127.0.0.1 --port 12723
+
+# Server side(hugp)
+python -m metadrive.examples.server.hugpv2 -c outputs/scene-0061/hugp_dynamic/2025-11-06_091308 --host 127.0.0.1 --port 12723
 
 # Client side (for example, Windows)
-python -m metadrive.examples.remote_visualizer  --host 10.76.5.241 --port 12721 --width 1920 --height 1280
+python -m metadrive.examples.remote_visualizer  --host 127.0.0.1 --port 12723 --width 1920 --height 1280
 ```
 
 ---
