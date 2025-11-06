@@ -1,0 +1,11 @@
+#version 330
+#pragma vscode_glsllint_stage : frag
+
+uniform sampler2D tex;
+layout(location = 0) out vec4 frag_color;
+
+void main() {
+    // reverse y and passing through
+    ivec2 fragcood = ivec2(gl_FragCoord.x, gl_FragCoord.y);
+    frag_color = texelFetch(tex, fragcood, 0);
+}

@@ -185,7 +185,7 @@ class Mesh:
                 shaders.compileShader(load_shader_source("point.frag"), gl.GL_FRAGMENT_SHADER),
             )
         except Exception as e:
-            print(str(e).encode("utf-8").decode("unicode_escape"))
+            print(e)
             raise e
 
     @property
@@ -339,7 +339,7 @@ class Quad(Mesh):
                 shaders.compileShader(load_shader_source("quad.frag"), gl.GL_FRAGMENT_SHADER),
             )
         except Exception as e:
-            print(str(e).encode("utf-8").decode("unicode_escape"))
+            print(e)
             raise e
 
     def resize_textures(self, width: int, height: int):  # analogy to update_gl_buffers
