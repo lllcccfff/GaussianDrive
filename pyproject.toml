@@ -28,7 +28,7 @@ dependencies = [
     "shapely",
     "torch",
     "trajdata",
-    "websockets",
+    "websockets<14",
 ]
 
 [project.optional-dependencies]

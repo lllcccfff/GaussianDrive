@@ -150,5 +150,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
 
-    env.close()
-    viser.shutdown()
+    # env.close()
+    # viser.shutdown()
