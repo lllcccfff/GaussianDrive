@@ -195,11 +195,10 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         self.set_heading_theta(heading_theta)
         # self.set_wheel_friction(self.config["wheel_friction"])
-
         if len(position) == 2:
             self.set_position(position, height=self.HEIGHT / 2)
         elif len(position) == 3:
-            self.set_position(position[:2], height=position[-1])
+            self.set_position(position[:2], height=position[-1] + 0.25)
         else:
             raise ValueError()
 
@@ -210,7 +209,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.energy_consumption = 0
 
         if self.config["spawn_velocity"]:
-            self.set_velocity(self.config["spawn_velocity"], in_local_frame=self.config["spawn_velocity_car_frame"])
+            self.set_velocity(self.config["spawn_velocity"])
 
         # self.add_light()
 
@@ -303,7 +302,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         if len(ground_contact) > 0:
             ground_contact = torch.stack(ground_contact).cuda().float()
-            print(ground_contact)
             if self._is_crash_world(ground_contact):
                 self.crash_world = True
 
@@ -324,7 +322,6 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         nearest_z = wheel_centers[nearest_idx, 2]  # [N]
 
         if (contact_points[:, 2] - nearest_z > 0).any().item():
-            breakpoint()
             return True
         return False
 
@@ -395,7 +392,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
 
         chassis_shape = BulletBoxShape(Vec3(self.WIDTH / 2, self.LENGTH / 2, self.HEIGHT / 2))
         chassis_shape.setMargin(0.03)
-        ts = TransformState.makePos(Vec3(0, 0, self.HEIGHT / 4))
+        ts = TransformState.makePos(Vec3(0, 0, self.TIRE_RADIUS))
         chassis.addShape(chassis_shape, ts)
         chassis.setDeactivationEnabled(False)
         chassis.notifyCollisions(True)  # advance collision check, do callback in pg_collision_callback

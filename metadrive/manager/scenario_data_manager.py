@@ -55,6 +55,10 @@ class ScenarioDataManager(BaseManager):
             except InvalidMetadataException:
                 continue
             self.num_scenarios += 1
+            cfg = Config.fromfile(filename=os.path.join(self.directory, config_file))
+
+            scene_name, timestamp_range, camera_params, ego_poses, participants, scene_mesh_path = loader(cfg)
+            # scene_name : str
             # timestamp : list|tuple [2]
             # camera params :
             #     "camera_name" :
@@ -68,12 +72,13 @@ class ScenarioDataManager(BaseManager):
             #     n : list[4][4]
             # participants :
             #     "unique_name" :
-            #         "size" :
-            #         "type" :
+            #         "size" : list[3]
+            #         "type" : str (vehicle/pedestrian/bicycle)
             #         "poses" :
             #             1 : list[4][4]
             #             ...
             #             n : list[4][4]
+            # scene_mesh_path : str
 
             self.metadata[scene_name] = self.restructure_metadata(
                 config=cfg,

@@ -11,7 +11,7 @@ To integrate your Gaussian splatting renderer, you need to implement a **Simulat
 Design Idea:
 
 - **All scene configs are located in a single folder** specified by `scene_config_directory` (see examples/drive_in_real_env_server.py)
-- **Each config file identifies one unique scene** with a unique scene name. The data type and internal is totally defined by your GS algorithm. It 
+- **Each config file identifies one unique scene** with a unique scene name. The data type and internal is totally defined by your GS algorithm. It
 - The simulator **automatically discovers scenes** by iterating through all config files in this folder
 - Your interface parses metadata and loads gaussian models by passing the config file of the corresponding scene
 
@@ -80,13 +80,14 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
       }
   }
   ```
+- `bk_ground_model_path` (str): the path for background mesh, usally in 'obj', if not have, return None
 
 **Responsibilities:**
 - **Identify the scene from cfg** (e.g., cfg.scene_name)
 - Parse the scene data into the required structure
 - Cache necessary data internally for later use
 
-### 3. `load_model(self, cfg)`
+### 3. `load_model(self, cfg) -> `
 
 **Parameters:**
 - `cfg`: Configuration object for a specific scene. **Use this to identify which scene's model to load.**
@@ -96,6 +97,10 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 - **Identify the scene from cfg** (same way as in `load_metadata`)
 - Load the pre-trained Gaussian model weights for this specific scene
 - prepare GPU/CUDA resources
+
+
+**Returns:**
+- `trajdata`: A Trajdata VectorMap object, if not have, return None
 
 ### 4. `update_scene(self, frame, object_poses)`
 
@@ -128,4 +133,3 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 
 
 ## Coordinate Systems
-
