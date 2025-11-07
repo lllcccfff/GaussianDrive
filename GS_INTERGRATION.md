@@ -25,7 +25,7 @@ scene_config_directory/
 
 When the environment initializes, it:
 1. Scans `scene_config_directory` for all config files
-2. For each config, calls `interface.load_metadata(cfg)` to parse scene data
+2. For each config, calls `interface.load_metadata(cfg_path)` to parse scene data
 3. Randomly selects a scene during episode resets
 4. Calls `interface.load_model(cfg)` to load the gaussian model of the scene
 
@@ -42,15 +42,16 @@ Your `SimulatorInterface` class must implement the following methods:
 **Responsibilities:**
 - Initialize required attributes
 
-### 2. `load_metadata(self, cfg) -> tuple`
+### 2. `load_metadata(self, cfg_path) -> tuple`
 
 **Parameters:**
-- `cfg`: Configuration object loaded from a single scene config file. Use this to identify which scene to load.
+- `cfg_path`: config path of a single scene config file. Use this to identify which scene to load.
 
 **Returns:**
-A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
+A tuple of `(scene_name, cfg, timestamp_range, camera_params, ego_poses, tracking_data, bk_ground_model_path)`:
 - `scene_name` (str): **Unique identifier for this scene** (extract from cfg)
-- `frame_range` (list[int, int]): [start_frame, end_frame]
+- `cfg` (object): Merged configuration object for this scene
+- `timestamp_range` (list[int, int]): [start_timestamp, end_timestamp]. Notice: The unit of timestamp is microsecond, type is integer.
 - `camera_params` (dict): Camera parameters for each camera view
   ```python
   {
@@ -62,10 +63,10 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
       }
   }
   ```
-- `ego_poses` (dict): Ego vehicle poses per frame
+- `ego_poses` (dict): Ego vehicle poses per timestamp
   ```python
   {
-      int(frame): list[4][4]  # 4x4 ego-to-world transform matrix
+      int(timestamp): list[4][4]  # 4x4 ego-to-world transform matrix
   }
   ```
 - `tracking_data` (dict): Tracked object trajectories
@@ -73,7 +74,7 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
   {
       str(object_id): {
           "transforms": {
-              int(frame): list[4][4]  # 4x4 object-to-world transform
+              int(timestamp): list[4][4]  # 4x4 object-to-world transform
           },
           "size": list[3],          # [length, width, height]
           "type": str               # "vehicle", "pedestrian", "cyclist"
@@ -102,10 +103,10 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 **Returns:**
 - `trajdata`: A Trajdata VectorMap object, if not have, return None
 
-### 4. `update_scene(self, frame, object_poses)`
+### 4. `update_scene(self, timestamp, object_poses)`
 
 **Parameters:**
-- `frame` (int): Current frame number
+- `timestamp` (int): Current timestamp
 - `object_poses` (dict): Current poses of dynamic objects
   ```python
   {
@@ -115,7 +116,7 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 
 **Responsibilities:**
 - Update dynamic object poses in your scene
-- Prepare scene for rendering at the given frame
+- Prepare scene for rendering at the given timestamp
 
 ### 5. `render(self, K, H, W, extrinsics) -> np.ndarray`
 
@@ -123,7 +124,7 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 - `K` (torch.Tensor or list): 3x3 camera intrinsic matrix
 - `H` (int): Image height in pixels
 - `W` (int): Image width in pixels
-- `extrinsics` (torch.Tensor or list): 4x4 camera-to-world transformation matrix
+- `extrinsics` (torch.Tensor or list): 4x4 world-to-camera transformation matrix
 
 **Returns:**
 - `np.ndarray`: Rendered RGB image of shape `(H, W, 3)` with values in range [0, 255] (uint8) or [0.0, 1.0] (float32)
@@ -133,4 +134,3 @@ A tuple of `(scene_name, frame_range, camera_params, ego_poses, tracking_data)`:
 
 
 ## Coordinate Systems
-

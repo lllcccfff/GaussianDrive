@@ -66,4 +66,5 @@ class BaseTrafficParticipant(BaseObject):
     
     def destroy(self):
         super(BaseTrafficParticipant, self).destroy()
+        self.detachDyWld()
         self.body = None

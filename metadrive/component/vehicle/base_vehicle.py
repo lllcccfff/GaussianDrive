@@ -203,7 +203,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         if len(position) == 2:
             self.set_position(position, height=self.HEIGHT / 2)
         elif len(position) == 3:
-            self.set_position(position[:2], height=position[-1] + 0.25)
+            self.set_position(position[:2], height=position[-1])
         else:
             raise ValueError()
 
