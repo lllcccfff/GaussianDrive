@@ -60,6 +60,10 @@ if __name__ == "__main__":
         o, r, tm, tc, info = env.step(action)
         
         if tm or tc:
+            # for i, img in enumerate(img_stack):
+            #     imageio.imwrite(f'recorded_images/{imgnum}.png', img)
+            #     imgnum += 1
+            # img_stack = []
             env.reset()
             action = [0, 0]
             continue
@@ -71,10 +75,5 @@ if __name__ == "__main__":
             print('[Turn Signal] ', turn_signal)
             action = viser.run(o_for_vis)
 
-        # if len(img_stack) % 200 == 0:
-        #     for i, img in enumerate(img_stack):
-        #         imageio.imwrite(f'recorded_images/{imgnum}.png', img)
-        #         imgnum += 1
-        #     img_stack = []
     env.close()
     viser.shutdown()

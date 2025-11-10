@@ -152,7 +152,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.break_down = False
         # if self.engine.current_map is not None:
         if _calling_reset:
-            self.reset(position=position, heading_theta=heading_theta, vehicle_config=config)
+            self.reset(position=position, heading_theta=heading_theta, vehicle_config=config, **kwargs)
 
     def _init_step_info(self):
         # done info will be initialized every frame
@@ -180,6 +180,7 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         position: np.ndarray = None,
         heading_theta: float = 0.0,
         velocity: np.ndarray = None,
+        angluar_velocity: float = 0.0,
         *args,
         **kwargs
     ):
@@ -214,7 +215,8 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.energy_consumption = 0
 
         if self.config["spawn_velocity"]:
-            self.set_velocity(self.config["spawn_velocity"])
+            self.set_velocity(velocity)
+            self.set_angular_velocity(angluar_velocity)
 
         # self.add_light()
 

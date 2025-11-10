@@ -99,7 +99,10 @@ class AgentManager(BaseManager):
             random_seed=self.generate_seed(),
             size=self.config['controller_config'].get('size', None),
             position=init_state['spawn_position'],
-            heading_theta=init_state['spawn_heading']
+            heading_theta=init_state['spawn_yaw'],
+            velocity=init_state.get('spawn_velocity', None),
+            angluar_velocity=init_state.get('spawn_angular_velocity', 0.0),
+            **kwargs
         )
         # self.init_pos = init_state['spawn_position']
         # self.dest_pos = init_state['destination']

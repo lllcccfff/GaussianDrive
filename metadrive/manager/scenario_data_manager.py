@@ -88,6 +88,7 @@ class ScenarioDataManager(BaseManager):
         init_state, agent_state = {}, {}
         ego_ts = sorted(int(ts) for ts in ego_poses.keys())
         timestamp_range[0] = min(ego_ts, key=lambda ts: abs(ts - timestamp_range[0]))
+        timestamp_range[1] = min(ego_ts, key=lambda ts: abs(ts - timestamp_range[1]))
         scene_timestamp_list = list(range(timestamp_range[0], timestamp_range[1], int(self.base_config['physics_world_step_size'])))
         for name, tracking in (participants | {'actor': ego_poses}).items():
             if name == 'actor':
@@ -116,10 +117,11 @@ class ScenarioDataManager(BaseManager):
             first_state, last_state = parsed_data[first_ts], parsed_data[last_ts]
             init_state[name] = dict(
                 spawn_position=list(first_state["position"]),
-                spawn_heading=first_state["heading_theta"],
+                spawn_yaw=first_state["heading_theta"],
                 spawn_velocity=first_state["velocity"],
                 spawn_angular_velocity=first_state["angular_velocity"],
-                destination=last_state["position"]
+                destination=last_state["position"],
+                destination_yaw=last_state["heading_theta"]
             )
             agent_state[name] = parsed_data
 

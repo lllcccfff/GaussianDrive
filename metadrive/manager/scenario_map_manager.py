@@ -52,6 +52,8 @@ class ScenarioMapManager(BaseManager):
                 physics_world=physics_world,
                 random_seed=self.random_seed
             )
+        
+        return vec_map
 
     def clear_object(self, object_id):
         obj = self.spawned_objects.pop(object_id)

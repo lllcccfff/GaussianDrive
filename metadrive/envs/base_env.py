@@ -92,7 +92,7 @@ class BaseEnv(gym.Env):
         """
         self._register_manager("data_manager", ScenarioDataManager(config, self.model.load_metadata))
         self._register_manager("map_manager", ScenarioMapManager(self.config['map_config'], self.model.load_model))
-        self._register_manager("step_manager", StepCounter(self.config['physics_world_step_size'],))
+        self._register_manager("step_manager", StepCounter(self.config['physics_world_step_size'] * self.config["decision_repeat"],))
 
         # self._register_manager("record_manager", RecordManager())
         # self._register_manager("replay_manager", ReplayManager())

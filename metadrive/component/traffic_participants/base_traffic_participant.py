@@ -24,7 +24,8 @@ class BaseTrafficParticipant(BaseObject):
             position: Sequence[float], 
             heading_theta: float = 0., 
             random_seed=None, 
-            name=None
+            name=None,
+            **kwargs
         ):
         super(BaseTrafficParticipant, self).__init__(physics_world, size=size, random_seed=random_seed, name=name, config=config)
         

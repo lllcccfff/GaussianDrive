@@ -57,7 +57,7 @@ BASE_DEFAULT_CONFIG = dict(
         controller=DefaultVehicle,
         controller_config=dict(
             enable_reverse=True,
-            spawn_velocity=False,
+            spawn_velocity=True,
         )
     ),
     # ===== participant =====
