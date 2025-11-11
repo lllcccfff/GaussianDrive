@@ -359,6 +359,10 @@ class BaseEnv(gym.Env):
             file_name = "main_index_{}_step_{}_{}.png".format(self.current_seed, self.engine.episode_step, time.time())
         self._capture_img.write(file_name)
         self.logger.info("Image is saved at: {}".format(file_name))
+    
+    @property
+    def scene_name(self) -> str:
+        return self.data_manager.idx2scene[self.data_manager.current_scenario_id]
 
     @property
     def actor_controller(self):

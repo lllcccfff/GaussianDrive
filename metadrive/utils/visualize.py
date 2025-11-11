@@ -2,6 +2,56 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from trajdata.utils import map_utils
+import cv2
+import numpy as np
+
+def project_points_on_image(img, k, w2c, h, w, points, color=(0, 255, 0)):
+    """
+    Args:
+        img: np.ndarray (H_img, W_img, 3) 背景图
+        k: np.ndarray (3, 3) 内参矩阵
+        w2c: np.ndarray (4, 4) 世界到相机变换矩阵
+        h, w: int 图像尺寸，用于视口检查
+        points: np.ndarray (N, 3) 世界坐标点
+        color: tuple RGB 颜色
+
+    Return:
+        out_img: 投影结果图
+    """
+
+    # === 1. 将点从世界坐标转到相机坐标 ===
+    R = w2c[:3, :3]
+    t = w2c[:3, 3]
+    pts_cam = (R @ points.T + t.reshape(3, 1)).T  # (N,3)
+
+    # 只保留在前方的点
+    mask_front = pts_cam[:, 2] > 1e-6
+    pts_cam = pts_cam[mask_front]
+
+    # === 2. 投影到像素坐标 ===
+    pts_norm = pts_cam / pts_cam[:, 2:3]
+    pts_pix = (k @ pts_norm.T).T  # (N,3)
+    u = pts_pix[:, 0]
+    v = pts_pix[:, 1]
+
+    # === 3. 过滤在图像外的点 ===
+    valid = (u >= 0) & (u < w) & (v >= 0) & (v < h)
+    u = u[valid].astype(int)
+    v = v[valid].astype(int)
+
+    out_img = img.copy()
+
+    # === 4. 画点 ===
+    for (x, y) in zip(u, v):
+        cv2.circle(out_img, (x, y), radius=2, color=color, thickness=-1)
+
+    # === 5. 连线 ===
+    if len(u) >= 2:
+        pts_2d = np.stack([u, v], axis=1)
+        for i in range(len(pts_2d) - 1):
+            cv2.line(out_img, tuple(pts_2d[i]), tuple(pts_2d[i + 1]), color=color, thickness=1)
+
+    return out_img
 
 def render_vehicle_trajectories(vec_map,
                                 trajectories,

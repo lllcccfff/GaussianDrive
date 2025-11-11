@@ -112,9 +112,9 @@ class NavigationObservation(BaseObservation, Randomizable):
         for k in range(0, n - 4): 
             sum = np.sum(c[k:k + 5])
             if sum == 5:
-                return -1
-            elif sum == -5: # 
                 return 1
+            elif sum == -5: # 
+                return -1
 
         return 0
 
