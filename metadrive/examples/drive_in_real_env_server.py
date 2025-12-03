@@ -52,25 +52,16 @@ if __name__ == "__main__":
     viser = Viewer(0, 0, mode='server', host=args.host, port=args.port)
     action = [0, 0]
 
-    # img_stack = []
-    # imgnum = 0
-    # shutil.rmtree('recorded_images', ignore_errors=True)
-    # os.makedirs('recorded_images', exist_ok=True)
     for i in range(1, 100000):
         o, r, tm, tc, info = env.step(action)
         
         if tm or tc:
-            # for i, img in enumerate(img_stack):
-            #     imageio.imwrite(f'recorded_images/{imgnum}.png', img)
-            #     imgnum += 1
-            # img_stack = []
             env.reset()
             action = [0, 0]
             continue
 
         if viser.is_running():
             o_for_vis = o['gaussian']['FRONT'][-1]
-            # img_stack.append(o_for_vis)
             turn_signal = o['navigation']['turn_signal']
             print('[Turn Signal] ', turn_signal)
             action = viser.run(o_for_vis)

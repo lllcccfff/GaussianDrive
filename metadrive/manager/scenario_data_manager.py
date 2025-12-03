@@ -103,6 +103,8 @@ class ScenarioDataManager(BaseManager):
 
                 timestamp_list = [ts for ts in scene_timestamp_list if rounded_start <= ts <= rounded_end]
                 traj = Trajectory(tracking['poses'])
+            if len(timestamp_list) < 2:
+                continue
             traj_mat = {int(k): traj.get_transform(k) for k in timestamp_list}
 
             first_ts, last_ts = timestamp_list[0], timestamp_list[-1]
@@ -150,10 +152,18 @@ class ScenarioDataManager(BaseManager):
         config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
 
         current_metadata = self.get_current_scenario_data()
+        config_dict=self.current_config["actor_config"]
+        config_dict["controller"] = config_dict.get("controller", random_vehicle_type(self.np_random)) 
+        current_metadata = self.get_current_scenario_data()
         ego_poses = current_metadata['ego_poses']
-        average_ego_height =  np.mean([pose[2][3] for pose in ego_poses.values()])
-        ground_height = average_ego_height - config_dict["controller"].DEFAULT_HEIGHT / 2
-        current_metadata['ground_height'] = ground_height
+        # average_ego_height =  np.mean([pose[2][3] for pose in ego_poses.values()])
+        start_ts = current_metadata['timestamp_range'][0]
+        start_ego_height = ego_poses[start_ts][2][3]
+        ground_height = start_ego_height - config_dict["controller"].DEFAULT_HEIGHT / 2 + 0.1
+        current_metadata['ground_plane'] = {
+            'normal': [0, 0, 1],
+            'constant': ground_height
+        }
 
     def get_current_scenario_data(self):
         return self.get_scenario_data(self.current_scenario_id)

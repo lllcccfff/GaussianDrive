@@ -73,7 +73,7 @@ A tuple of `(scene_name, cfg, timestamp_range, camera_params, ego_poses, trackin
   ```python
   {
       str(object_id): {
-          "transforms": {
+          "poses": {
               int(timestamp): list[4][4]  # 4x4 object-to-world transform
           },
           "size": list[3],          # [length, width, height]

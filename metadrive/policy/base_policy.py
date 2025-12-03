@@ -57,7 +57,7 @@ class BasePolicy(Randomizable, Configurable):
 
         distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
         min_distance = torch.min(distances).item()
-        road_threshold = 5.0
+        road_threshold = 2.0
         return min_distance < road_threshold
     
     def get_action_info(self):

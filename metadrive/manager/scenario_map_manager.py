@@ -5,9 +5,6 @@ from metadrive.component.terrain.mesh_terrain import MeshTerrain
 from metadrive.constants import DEFAULT_AGENT
 from metadrive.manager.base_manager import BaseManager
 from metadrive.utils.logger import get_logger, set_log_level
-
-from easydrive.engine import MODELS
-from easydrive.utils.base_utils import dotdict
 logger = get_logger()
 
 
@@ -30,7 +27,7 @@ class ScenarioMapManager(BaseManager):
         self.loader = loader
         self.ground = None
 
-    def reset(self, config, scene_config, ground_height, physics_world, scene_mesh_path, **kwargs):
+    def reset(self, config, scene_config, physics_world, scene_mesh_path, **kwargs):
         self.config = config
         self.current_sdc_route = None
         self.sdc_dest_point = None
@@ -38,11 +35,14 @@ class ScenarioMapManager(BaseManager):
         vec_map = self.loader(scene_config)
 
         if not scene_mesh_path:
+            plane_params = kwargs['ground_plane']
+            normal = plane_params.get('normal')
+            constant = plane_params.get('constant')
             self.spawn_object(
                 GroundPlane,
                 physics_world=physics_world, 
-                direction=[0,0,1.],
-                constant=ground_height,
+                direction=normal,
+                constant=constant,
                 random_seed=self.random_seed
             )
         else:   

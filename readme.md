@@ -1,6 +1,6 @@
-# StreetWorld
+# GaussianDrive
 
-StreetWorld is built on MetaDrive, integrating Gaussian splatting rendering and simulation. It discovers scenes automatically from a scene-config directory and supports remote visualization in a client/server mode for interactive driving or RL training.
+GaussianDrive is built on MetaDrive, integrating Gaussian splatting rendering and real-scene replay. It discovers scenes automatically from a scene-config directory and supports remote visualization in a client/server mode for interactive driving or RL training.
 
 ## Installation
 - Install dependencies:
@@ -9,7 +9,7 @@ StreetWorld is built on MetaDrive, integrating Gaussian splatting rendering and 
   ```
 - If you use the default Gaussian renderer, ensure `easydrive` is installed.
 
-## Quickstart Example
+## Quickstart
 1) Start the server (handles simulation + rendering and waits for clients):
 ```bash
 python -m metadrive.examples.drive_in_real_env_server \
@@ -30,3 +30,8 @@ Read `GS_INTERGRATION.md` and implement the `SimulatorInterface` methods `load_m
 
 ## Scene Config
 Place each scene config file under `SCENE_CONFIG_DIRECTORY` so `ScenarioEnv` can scan and recognize the reconstructed scene assets.
+
+## FAQ
+- `SimulatorInterface` import fails: confirm your renderer package is installed or added to `PYTHONPATH`.
+- Scene not discovered: check that `--scene_config_directory` points to a directory containing per-scene config files.
+- Rendering issues: ensure GPU/driver are normal; `render()` should return an RGB array of shape `(H, W, 3)`.

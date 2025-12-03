@@ -137,7 +137,7 @@ class NavigationObservation(BaseObservation, Randomizable):
             pos = self.state[ts]["position"]
             x, y = float(pos[0]), float(pos[1])
             points.append([x, y])
-        self._set_path(p)
+        self._set_path(points)
 
     def _build_lane_follow_path(self):
         spawn_xyz = np.array(self.init_state["spawn_position"])
