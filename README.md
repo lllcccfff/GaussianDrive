@@ -28,5 +28,11 @@ Controls: `W/A/S/D` drive.
 ## Integrate Your Gaussian Renderer
 Read `GS_INTERGRATION.md` and implement the `SimulatorInterface` methods `load_metadata / load_model / render` to plug in custom rendering.
 
+## Environment Config
+We provide defualt environment config in `metadrive\default_config.py`
+User are able to edit the component of actor and participant through `actor_config` and `participant_config`.
+For each component (observer, policy, controller), user are required to provide component type and configuration.
+And currently user can not config participant's controller, as it is automatically decided by the object's type.
+
 ## Scene Config
 Place each scene config file under `SCENE_CONFIG_DIRECTORY` so `ScenarioEnv` can scan and recognize the reconstructed scene assets.
