@@ -143,6 +143,10 @@ class BaseVehicle(BaseObject, BaseVehicleState):
         self.dist_to_left_side = None
         self.dist_to_right_side = None
 
+        # VehicleFeedback state variables
+        self._brake_pedal_position = 0.0  # 0-100
+        self._accelerator_pedal_position = 0.0  # 0-100
+
         # step info
         self.out_of_route = None
         self.on_lane = None
@@ -361,12 +365,17 @@ class BaseVehicle(BaseObject, BaseVehicleState):
                 self.vehicle.setBrake(2.0, wheel_index)
                 if self.speed_km_h > self.max_speed_km_h:
                     self.vehicle.applyEngineForce(0.0, wheel_index)
+                    self._accelerator_pedal_position = 0.0
                 else:
                     self.vehicle.applyEngineForce(self.max_engine_force * throttle_brake, wheel_index)
+                    self._accelerator_pedal_position = throttle_brake * 100.0
+                self._brake_pedal_position = 0.0
             else:
                 if self.enable_reverse:
                     self.vehicle.applyEngineForce(self.max_engine_force * throttle_brake, wheel_index)
                     self.vehicle.setBrake(0, wheel_index)
+                    self._accelerator_pedal_position = abs(throttle_brake) * 100.0
+                    self._brake_pedal_position = 0.0
                 else:
                     DEADZONE = 0.01
 
@@ -378,9 +387,13 @@ class BaseVehicle(BaseObject, BaseVehicleState):
                     if speed_in_heading < DEADZONE:
                         self.vehicle.applyEngineForce(0.0, wheel_index)
                         self.vehicle.setBrake(2, wheel_index)
+                        self._accelerator_pedal_position = 0.0
+                        self._brake_pedal_position = 100.0
                     else:
                         self.vehicle.applyEngineForce(0.0, wheel_index)
                         self.vehicle.setBrake(abs(throttle_brake) * self.max_brake_force, wheel_index)
+                        self._accelerator_pedal_position = 0.0
+                        self._brake_pedal_position = abs(throttle_brake) * 100.0
 
     """---------------------------------------- vehicle info ----------------------------------------------"""
 
@@ -548,5 +561,113 @@ class BaseVehicle(BaseObject, BaseVehicleState):
     @property
     def max_speed_m_s(self):
         return self.config["max_speed_km_h"] / 3.6
+
+    # ===== VehicleFeedback API =====
+    # These methods provide vehicle state feedback matching the VehicleFeedback protocol
+
+    def get_steering_wheel_angle(self):
+        """
+        Get current steering wheel angle in radians.
+        Returns the normalized steering value multiplied by max_steering.
+        """
+        return self.steering * self.max_steering * (np.pi / 180.0)  # Convert to radians
+
+    def get_vehicle_speed(self):
+        """
+        Get current vehicle speed in km/h.
+        """
+        return self.speed_km_h
+
+    def get_front_left_wheel_speed(self):
+        """
+        Get front left wheel speed in m/s.
+        Calculated from wheel rotation speed and wheel radius.
+        """
+        if len(self.wheels) < 1:
+            return 0.0
+        wheel = self.wheels[0]  # Front left wheel (index 0)
+        rotation_speed = wheel.getDeltaRotation()  # rad/s
+        wheel_radius = wheel.getWheelRadius()  # meters
+        return rotation_speed * wheel_radius  # m/s
+
+    def get_front_right_wheel_speed(self):
+        """
+        Get front right wheel speed in m/s.
+        """
+        if len(self.wheels) < 2:
+            return 0.0
+        wheel = self.wheels[1]  # Front right wheel (index 1)
+        rotation_speed = wheel.getDeltaRotation()
+        wheel_radius = wheel.getWheelRadius()
+        return rotation_speed * wheel_radius
+
+    def get_rear_left_wheel_speed(self):
+        """
+        Get rear left wheel speed in m/s.
+        """
+        if len(self.wheels) < 3:
+            return 0.0
+        wheel = self.wheels[2]  # Rear left wheel (index 2)
+        rotation_speed = wheel.getDeltaRotation()
+        wheel_radius = wheel.getWheelRadius()
+        return rotation_speed * wheel_radius
+
+    def get_rear_right_wheel_speed(self):
+        """
+        Get rear right wheel speed in m/s.
+        """
+        if len(self.wheels) < 4:
+            return 0.0
+        wheel = self.wheels[3]  # Rear right wheel (index 3)
+        rotation_speed = wheel.getDeltaRotation()
+        wheel_radius = wheel.getWheelRadius()
+        return rotation_speed * wheel_radius
+
+    def get_brake_pedal_position(self):
+        """
+        Get current brake pedal position (0-100).
+        Returns the recorded brake pedal position.
+        """
+        return self._brake_pedal_position
+
+    def get_accelerator_pedal_position(self):
+        """
+        Get current accelerator pedal position (0-100).
+        Returns the recorded accelerator pedal position.
+        """
+        return self._accelerator_pedal_position
+
+    def get_steering_wheel_speed(self):
+        """
+        Get steering wheel angular velocity in rad/s.
+        Uses the chassis angular velocity around Z-axis.
+        """
+        angular_velocity = self.body.getAngularVelocity()
+        return angular_velocity[2]  # Z-axis angular velocity in rad/s
+
+    def get_longitudinal_acceleration(self):
+        """
+        Get longitudinal acceleration in m/s^2.
+        Calculated from velocity change.
+        """
+        current_velocity = self.speed
+        acceleration = (current_velocity - self.last_velocity) / (self.physics_world.physics_world_step_size / 1e6)
+        return acceleration
+
+    def get_left_directive_wheel_angle(self):
+        """
+        Get left front wheel steering angle in radians.
+        """
+        if len(self.wheels) < 1:
+            return 0.0
+        return self.wheels[0].getSteering() * (np.pi / 180.0)  # Convert to radians
+
+    def get_right_directive_wheel_angle(self):
+        """
+        Get right front wheel steering angle in radians.
+        """
+        if len(self.wheels) < 2:
+            return 0.0
+        return self.wheels[1].getSteering() * (np.pi / 180.0)  # Convert to radians
 
 

@@ -141,11 +141,28 @@ class ScenarioDataManager(BaseManager):
             'timestamp_range': timestamp_range
         }
 
-    def reset(self):
+    def reset(self, scene_id=None):
+        """
+        Reset scenario data manager.
+
+        Args:
+            scene_id: Scene index (int) to load specific scene.
+                     If None, randomly select a scene (default behavior).
+
+        Raises:
+            ValueError: If scene_id is out of valid range.
+        """
         # if not self.store_data:
         #     assert len(self._scenarios) <= 1, "It seems you access multiple scenarios in one episode"
         #     self._scenarios = {}
-        self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
+
+        # Support explicit scene selection for OnSite integration
+        if scene_id is not None:
+            if not (0 <= scene_id < self.num_scenarios):
+                raise ValueError(f"scene_id {scene_id} out of range [0, {self.num_scenarios})")
+            self.current_scenario_id = scene_id
+        else:
+            self.current_scenario_id = self.np_random.randint(0, self.num_scenarios)
         self.current_config = self.base_config.copy()
 
         config_dict=self.current_config["actor_config"]

@@ -175,6 +175,41 @@ class AgentManager(BaseManager):
                 self.state = AgentState.SUCCESS
                 return
 
+    def set_state(self, new_state):
+        """
+        Set agent state directly (for OnSite integration).
+
+        This method is called by external code (OnSite integration) to control
+        agent lifecycle based on Notify messages, bypassing the normal policy-based
+        state transitions.
+
+        Args:
+            new_state: AgentState enum value
+        """
+        old_state = self.state
+        self.state = new_state
+
+        # Handle state transitions
+        if new_state == AgentState.ALIVE:
+            # Activate agent: attach to physics world
+            if old_state == AgentState.NOT_SPAWN:
+                self.controller.attachDyWld()
+                logger.info(f"Agent {self.controller.name} activated (attached to physics world)")
+        elif new_state in [
+            AgentState.SUCCESS,
+            AgentState.OUT_OF_ROAD,
+            AgentState.CRASH_VEHICLE,
+            AgentState.CRASH_HUMAN,
+            AgentState.CRASH_OBJECT,
+            AgentState.CRASH_WORLD,
+            AgentState.IDLE,
+        ]:
+            # Terminal states: detach from physics world
+            self.clear_all_objects()
+            logger.info(f"Agent {self.controller.name} terminated with state {new_state}")
+
+        logger.debug(f"Agent state changed: {old_state} -> {new_state}")
+
     def observe(self):
         if self.state == AgentState.ALIVE:
             self.last_observation = self.observer.observe()
