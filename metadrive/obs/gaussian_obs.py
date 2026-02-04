@@ -4,6 +4,7 @@ import numpy as np
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.obs.observation_base import BaseObservation
 import torch
+from scipy.spatial.transform import Rotation as R
 
 class GaussianObservation(BaseObservation):
     """
@@ -15,6 +16,7 @@ class GaussianObservation(BaseObservation):
         super().__init__(config)
         self.STACK_SIZE = config["stack_size"]
         self.clip_rgb = config['clip_rgb']
+        self.camera_configs = config.get('cameras', {})
 
     def reset(self, controller, render_fn, camera_params, **kwargs):
         """
@@ -26,12 +28,56 @@ class GaussianObservation(BaseObservation):
         
         self.controller = controller
         self.render_fn = render_fn
-        self.params = camera_params
+        self.build_camera_params(camera_params)
 
         if self.clip_rgb:
             self.state = {cam_name: np.zeros(self.an_observation_shape(cam['H'], cam['W']), dtype=np.float32) for cam_name, cam in self.params.items()}
         else:
             self.state = {cam_name: np.zeros(self.an_observation_shape(cam['H'], cam['W']), dtype=np.uint8) for cam_name, cam in self.params.items()}
+
+    def build_camera_params(self, _camera_params):
+        if not self.camera_configs:
+            self.params = _camera_params
+            return
+
+        parsed_camera_params = {}
+        R_ego2cam_base = np.array([
+            [0, -1, 0],
+            [0, 0, -1],
+            [1, 0, 0]
+        ], dtype=np.float32)
+
+        for cam_name, cam_cfg in self.camera_configs.items():
+            H = int(cam_cfg["H"])
+            W = int(cam_cfg["W"])
+            focal = float(cam_cfg["focal"])
+            K = torch.tensor([
+                [focal, 0, W / 2.0],
+                [0, focal, H / 2.0],
+                [0, 0, 1]
+            ], dtype=torch.float32)
+
+            hpr = np.asarray(cam_cfg["hpr"], dtype=np.float32)
+            hpr_rad = np.deg2rad(hpr)
+            R_additional = R.from_euler('ZYX', hpr_rad, degrees=False).as_matrix()
+            R_final = np.asarray(R_ego2cam_base @ R_additional, dtype=np.float32)
+
+            offset = np.asarray(cam_cfg["offset"], dtype=np.float32)
+            translation = -np.asarray(R_final @ offset, dtype=np.float32)
+
+            ego2camera = np.eye(4, dtype=np.float32)
+            ego2camera[:3, :3] = R_final
+            ego2camera[:3, 3] = translation
+
+            parsed_camera_params[cam_name] = {
+                "K": K,
+                "H": H,
+                "W": W,
+                "ego2camera": torch.from_numpy(ego2camera)
+            }
+
+        self.params = parsed_camera_params
+        
 
 
     @property
