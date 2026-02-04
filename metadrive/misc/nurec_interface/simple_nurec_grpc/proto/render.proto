@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package nurec.render;
+
+// FTheta distortion parameters for fisheye cameras
+message FThetaParams {
+    // Reference polynomial type
+    // "ANGLE_TO_PIXELDIST" or "PIXELDIST_TO_ANGLE"
+    string reference_poly = 1;
+
+    // Pixel distance to angle polynomial coefficients
+    repeated float pixeldist_to_angle_poly = 2;
+
+    // Angle to pixel distance polynomial coefficients
+    repeated float angle_to_pixeldist_poly = 3;
+
+    // Maximum field of view angle (radians)
+    float max_angle = 4;
+
+    // Linear distortion coefficients [C, D, E] (optional)
+    repeated float linear_cde = 5;
+}
+
+// Camera parameters for rendering
+message CameraParams {
+    // Camera to world transformation matrix (3x4)
+    // Stored as row-major order: [R11, R12, R13, T1, R21, R22, R23, T2, R31, R32, R33, T3]
+    repeated float camera_to_world = 1;
+
+    // Intrinsic parameters
+    float fx = 2;  // Focal length x
+    float fy = 3;  // Focal length y
+    float cx = 4;  // Principal point x
+    float cy = 5;  // Principal point y
+
+    // Image dimensions
+    int32 width = 6;   // Image width
+    int32 height = 7;  // Image height
+
+    // Optional timestamp for dynamic scenes
+    optional float time = 8;
+
+    // Optional camera model type ("pinhole" or "ftheta")
+    optional string camera_model = 9;
+
+    // Optional FTheta distortion parameters (for fisheye cameras)
+    optional FThetaParams ftheta_params = 10;
+}
+
+// RGB image data (always RGB_UINT8 format)
+message RGBImage {
+    // Image dimensions
+    int32 width = 1;
+    int32 height = 2;
+
+    // RGB pixel data (width * height * 3 bytes)
+    // Stored as interleaved RGB format: [R1, G1, B1, R2, G2, B2, ...]
+    // Each channel is 8-bit unsigned integer (0-255)
+    bytes rgb_data = 3;
+}
+
+// Render request message
+message RenderRequest {
+    CameraParams camera = 1;
+}
+
+message TrafficPoseRequest {
+    // Object id
+    string object_id = 1;
+
+    // 4x4 row-major matrix
+    repeated float pose_4x4 = 2;
+}
+
+message TrafficPoseResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message LoadModelRequest {
+    // Checkpoint file path to load.
+    string ckpt_path = 1;
+}
+
+message LoadModelResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+// Render response message
+message RenderResponse {
+    // RGB output
+    RGBImage rgb_image = 1;
+
+    // Rendering metadata
+    float render_time_ms = 2;  // Rendering time in milliseconds
+    bool success = 3;          // Whether rendering was successful
+    string error_message = 4;  // Error message if rendering failed
+}
+
+// Render service definition
+service RenderService {
+    // Render a single camera view
+    rpc Render(RenderRequest) returns (RenderResponse);
+
+    // Update traffic pose override for rendering
+    rpc SetTrafficPose(TrafficPoseRequest) returns (TrafficPoseResponse);
+
+    // Load the checkpoint model for rendering
+    rpc LoadModel(LoadModelRequest) returns (LoadModelResponse);
+}

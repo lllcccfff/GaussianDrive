@@ -27,6 +27,10 @@ class BasePolicy(Randomizable, Configurable):
         self.spawn_timestamp = timestamp_list[0]
 
         self.trajectory = state
+        states = self.trajectory.values()
+        self.expert_positions = torch.stack(
+            [torch.tensor(traj['position'][:2], dtype=torch.float32) for traj in states]
+        ).cuda()
         self.destination = init_state['destination']
         self.static = sum([np.linalg.norm(traj['velocity']) for traj in self.trajectory.values()]) / len(self.trajectory) < 0.1
 
@@ -52,10 +56,7 @@ class BasePolicy(Randomizable, Configurable):
         ego_position = self.controller.position
         ego_position = torch.tensor([ego_position[0], ego_position[1]], dtype=torch.float32).cuda()
 
-        states = self.trajectory.values()
-        expert_positions = torch.stack([torch.tensor(state['position'][:2]).float() for state in states]).cuda()
-
-        distances = torch.norm(expert_positions - ego_position.unsqueeze(0), dim=1)
+        distances = torch.norm(self.expert_positions - ego_position.unsqueeze(0), dim=1)
         min_distance = torch.min(distances).item()
         road_threshold = 2.0
         return min_distance < road_threshold

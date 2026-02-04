@@ -1,24 +1,18 @@
 """
 data format: client received
- - image
- - modal_list
-
- --- not implemented yet ---
- - server_frame, server_fps
- - server_gpu (name, vmem, peak_vmem)
+ - image (raw bytes + shape + format)
 """
 
-import cv2
-import zlib
 import torch
-import asyncio
 import threading
-import socket
 import numpy as np
-from torchvision.io import encode_jpeg, decode_jpeg
-import websockets
+import grpc
+from concurrent.futures import ThreadPoolExecutor
+from metadrive.utils.remote_viewer_proto import remote_viewer_pb2, remote_viewer_pb2_grpc
 
 # fmt: on
+
+_DEFAULT_MAX_MESSAGE_BYTES = 2048 * 2048 * 3
 
 
 class Client:
@@ -26,72 +20,73 @@ class Client:
                  server_ip='127.0.0.1', 
                  server_port=56789,
                  lock: threading.Lock = None,
+                 max_message_bytes: int = _DEFAULT_MAX_MESSAGE_BYTES,
                  **kwargs,
                  ):
         self.server_ip = server_ip
         self.server_port = server_port
-        self.lock = lock
+        self.max_message_bytes = max_message_bytes
+        self.lock = lock or threading.Lock()
         self.output = None
         self.input = None
+        self._last_action = [0.0, 0.0]
+        self._grpc_server = None
 
-    
-    @property
-    def url(self):
-        return f"ws://{self.server_ip}:{self.server_port}"
     
     def run(self):
         client_thread = threading.Thread(target=self.client_thread, daemon=True)
         client_thread.start()
 
     def client_thread(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.client_loop())
-        loop.run_forever()
+        server_options = [
+            ("grpc.max_send_message_length", self.max_message_bytes),
+            ("grpc.max_receive_message_length", self.max_message_bytes),
+        ]
+        self._grpc_server = grpc.server(ThreadPoolExecutor(max_workers=2), options=server_options)
+        servicer = remote_viewer_pb2_grpc.OnsiteViewerServiceServicer()
 
-    async def client_loop(self):
-        while True:
-            try:
-                async with websockets.connect(self.url) as websocket:
-                    print(f"Connected to server at {self.url}")
-                    send_task = asyncio.create_task(self._send_inputs(websocket))
-                    recv_task = asyncio.create_task(self._recv_outputs(websocket))
-                    _done, pending = await asyncio.wait({send_task, recv_task}, return_when=asyncio.FIRST_EXCEPTION)
-                    for task in pending:
-                        task.cancel()
-            except (websockets.ConnectionClosed, ConnectionRefusedError, OSError, websockets.WebSocketException) as e:
-                print(f"Connection failed: {e}. Retrying in 1 seconds...")
-                await asyncio.sleep(1)
-
-    async def _send_inputs(self, websocket):
-        try:
-            while True:
+        def send_image(request, context):
+            tensor = self._decode_frame(request)
+            if tensor is not None:
                 with self.lock:
-                    _input = self.input
-                    self.input = None
-                if _input:
-                    assert isinstance(_input, list) and len(_input) == 2
-                    data = np.array(_input, dtype=np.float32).tobytes()
-                    await websocket.send(data)
-                # Yield control to allow recv task to run
-                await asyncio.sleep(0)
-        except websockets.ConnectionClosed:
-            return
+                    self.output = tensor
 
-    async def _recv_outputs(self, websocket):
-        try:
-            while True:
-                buffer = await websocket.recv()
-                if buffer is not None:
-                    try:
-                        # https://github.com/pytorch/vision/issues/4378 Still not fixed even to this day? CUDA 12.1 seems fine
-                        tensor = decode_jpeg(torch.from_numpy(np.frombuffer(buffer, np.uint8)), device='cuda')  # 10ms for 1080p...
-                        tensor = tensor.permute(1, 2, 0)
-                    except RuntimeError as e:
-                        print("Image corruptted.")
-                        continue
+            with self.lock:
+                action = self.input
+                if action is None:
+                    action = self._last_action
+                else:
+                    self._last_action = action
+            return remote_viewer_pb2.Action(
+                steering=float(action[0]),
+                throttle_brake=float(action[1]),
+            )
 
-                    with self.lock:
-                        self.output = tensor
-        except websockets.ConnectionClosed:
-            return
+        servicer.SendImage = send_image
+        remote_viewer_pb2_grpc.add_OnsiteViewerServiceServicer_to_server(servicer, self._grpc_server)
+        self._grpc_server.add_insecure_port(f"{self.server_ip}:{self.server_port}")
+        print(f"Listening for viewer server at {self.server_ip}:{self.server_port}")
+        self._grpc_server.start()
+        self._grpc_server.wait_for_termination()
+
+    def shutdown(self):
+        if self._grpc_server is not None:
+            self._grpc_server.stop(grace=1)
+            self._grpc_server = None
+
+    @staticmethod
+    def _decode_frame(frame):
+        if frame is None or not frame.data:
+            return None
+        expected = int(frame.width * frame.height * frame.channels)
+        img = np.frombuffer(frame.data, dtype=np.uint8)
+        if img.size != expected:
+            print(f"Image corrupted: got={img.size} expected={expected}")
+            return None
+        img = img.reshape(frame.height, frame.width, frame.channels)
+        if frame.format.upper() == "BGR":
+            img = img[:, :, ::-1]
+        tensor = torch.from_numpy(img)
+        if torch.cuda.is_available():
+            tensor = tensor.to("cuda", non_blocking=True)
+        return tensor

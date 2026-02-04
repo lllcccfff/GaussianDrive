@@ -40,7 +40,11 @@ install_requires = [
     "lxml",
     "mediapy",
     "shapely",
-    "pygame"
+    "pygame",
+    "grpcio==1.76.0",
+    "grpcio-tools==1.50.0",
+    "protobuf==4.25.8"
+
 ]
 
 gym_requirement = [

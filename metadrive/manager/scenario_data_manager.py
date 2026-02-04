@@ -3,9 +3,7 @@ import os
 import numpy as np
 import torch
 from metadrive.manager.base_manager import BaseManager
-from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
-from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
-from metadrive.scenario.parse_object_state import parse_full_trajectory, parse_object_state
+from metadrive.utils.scenario_utils import parse_full_trajectory, parse_object_state
 from metadrive.component.vehicle.vehicle_type import random_vehicle_type, vehicle_type
 from metadrive.utils.trajectory import Trajectory
 import json

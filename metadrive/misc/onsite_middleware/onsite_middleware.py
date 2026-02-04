@@ -14,12 +14,12 @@ import numpy as np
 import libMulticastNetwork
 
 # Import proto messages and enums
-from api_reference.chassis.proto.chassis_messages_pb2 import VehicleFeedback, VehicleControl
-from api_reference.chassis.proto.chassis_enums_pb2 import VEHICLE_FEEDBACK, VEHICLE_CONTROL
-from api_reference.main.proto.messages_pb2 import (
+from metadrive.misc.onsite_middleware.onsite_proto.chassis.proto.chassis_messages_pb2 import VehicleFeedback, VehicleControl
+from metadrive.misc.onsite_middleware.onsite_proto.chassis.proto.chassis_enums_pb2 import VEHICLE_FEEDBACK, VEHICLE_CONTROL
+from metadrive.misc.onsite_middleware.onsite_proto.main.proto.messages_pb2 import (
     PubRole, SubRole, Notify, ActorPrepare, ActorPrepareResult, SessionInfo
 )
-from api_reference.main.proto.enums_pb2 import (
+from metadrive.misc.onsite_middleware.onsite_proto.main.proto.enums_pb2 import (
     MT_PUBROLE, MT_SUBROLE, MT_NOTIFY, MT_SESSIONINFO,
     MT_ACTOR_PREPARE, MT_ACTOR_PREPARE_RESULT,
     NT_ABORT_TEST, NT_START_TEST, NT_FINISH_TEST, NT_DESTROY_ROLE
@@ -41,7 +41,7 @@ class OnSiteMiddleware:
     # Constants for conversion
     MAX_STEERING_RAD = 1.047  # 60 degrees in radians
 
-    def __init__(self, config_center, field_id, net_interface, local_ip, actor_id="metadrive_simulator"):
+    def __init__(self, config_center, field_id, net_interface, local_ip):
         """
         Initialize OnSite middleware.
 
@@ -50,13 +50,11 @@ class OnSiteMiddleware:
             field_id: Unique field ID (must match daemon and simulator)
             net_interface: Network interface name (e.g., "eno2")
             local_ip: Local IP address
-            actor_id: Actor ID for this simulator
         """
         self.config_center = config_center
         self.field_id = field_id
         self.net_interface = net_interface
         self.local_ip = local_ip
-        self.actor_id = actor_id
 
         # Channel references
         self.channels = None
@@ -88,13 +86,13 @@ class OnSiteMiddleware:
         param.net_interface_name = self.net_interface
         param.field_id = self.field_id
         param.log_level = 1  # 1-info, 2-warning, 3-error
-        param.client_name = "metadrive_simulator"
+        param.client_name = "simulator"
         param.recv_self_msg = True
 
         self.channels = libMulticastNetwork.ChannelPtrVector()
         ret = libMulticastNetwork.create_channels(param, self.channels)
 
-        if ret != 0:
+        if ret:
             raise RuntimeError(f"Failed to create channels, ret: {ret}")
 
         # Build channel map
@@ -535,7 +533,7 @@ class OnSiteMiddleware:
         Returns:
             SingleRole proto message
         """
-        from api_reference.main.proto.messages_pb2 import SingleRole
+        from metadrive.misc.onsite_middleware.onsite_proto.main.proto.messages_pb2 import SingleRole
 
         role = SingleRole()
         role.id = agent_id

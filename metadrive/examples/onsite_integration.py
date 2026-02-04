@@ -14,19 +14,33 @@ import time
 import sys
 import os
 
-# Add api_reference to path for proto imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'api_reference'))
-
-from metadrive.envs.onsite_scenario_env import OnSiteScenarioEnv
-from metadrive.middleware.onsite_middleware import OnSiteMiddleware
+from metadrive.misc.onsite_middleware import OnSiteMiddleware, OnSiteScenarioEnv
 from metadrive.manager.agent_manager import AgentState
 
 # Import proto enums for Notify types
-from api_reference.main.proto.enums_pb2 import (
+from metadrive.misc.onsite_middleware.onsite_proto.main.proto.enums_pb2 import (
     NT_START_TEST, NT_RESUME_TEST, NT_INVALID, NT_ABORT_TEST,
     NT_FINISH_TEST, NT_DESTROY_ROLE, NT_ARRIVED_ROLE, NT_ROLLED,
     NT_PAUSE_TEST
 )
+
+import socket
+import fcntl
+import struct
+
+
+def get_ip_address(ifname):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(
+            fcntl.ioctl(
+                s.fileno(),
+                0x8915,  # SIOCGIFADDR
+                struct.pack('256s', bytes(ifname[:15], "utf-8")))[20:24])
+    except Exception as e:
+        pass
+    finally:
+        s.close()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,6 +62,7 @@ NOTIFY_TO_STATE = {
 recv_prepare = False
 start_test = False
 session_id = ""
+actor_id = ""
 
 
 def process_notify(middleware, env):
@@ -67,6 +82,7 @@ def process_notify(middleware, env):
     notifies = middleware.recv_all_notifies()
 
     for notify in notifies:
+        breakpoint()
         role_id = notify.role_id
         notify_type = notify.type
 
@@ -105,7 +121,7 @@ def get_prepare(middleware):
     Returns:
         tuple: (session_id, actor_id, brief_data) if received, None otherwise
     """
-    global recv_prepare, session_id
+    global recv_prepare, session_id, actor_id
 
     result = middleware.recv_actor_prepare()
     if result is None:
@@ -114,7 +130,6 @@ def get_prepare(middleware):
     session_id, actor_id, brief_data = result
     recv_prepare = True
     logger.info(f"Received ActorPrepare: session={session_id}, actor={actor_id}")
-
     return result
 
 
@@ -159,7 +174,7 @@ def main_loop(env, middleware):
 
         # Phase 3: Send ActorPrepareResult and SubRole
         if recv_prepare and not start_test:
-            send_prepare_result(middleware, middleware.actor_id)
+            send_prepare_result(middleware, actor_id)
             # Send SubRole (only session_id required)
             middleware.send_sub_role(session_id)
             logger.info("Sent SubRole, waiting for NT_START_TEST")
@@ -234,28 +249,17 @@ def main():
     parser = argparse.ArgumentParser(description="MetaDrive OnSite Integration")
     parser.add_argument("--scene_config_directory", type=str, required=True,
                         help="Directory containing scene config files")
-    parser.add_argument("--config_center", type=str, default="10.11.17.88:52009",
+    parser.add_argument("--config_center", type=str, default="www.zjvts.cn:52009",
                         help="OnSite config center address")
     parser.add_argument("--field_id", type=str, default="unique_fieldid",
                         help="Unique field ID (must match daemon and simulator)")
     parser.add_argument("--net_interface", type=str, default="eno2",
                         help="Network interface name")
-    parser.add_argument("--local_ip", type=str, default=None,
-                        help="Local IP address (auto-detected if not specified)")
-    parser.add_argument("--actor_id", type=str, default="metadrive_simulator",
-                        help="Actor ID for this simulator")
     args = parser.parse_args()
 
     # Auto-detect local IP if not specified
-    if args.local_ip is None:
-        try:
-            from api_reference.get_ip import get_ip_address
-            args.local_ip = get_ip_address(args.net_interface)
-            logger.info(f"Auto-detected local IP: {args.local_ip}")
-        except Exception as e:
-            logger.error(f"Failed to auto-detect local IP: {e}")
-            logger.error("Please specify --local_ip manually")
-            sys.exit(1)
+    args.local_ip = get_ip_address(args.net_interface)
+    logger.info(f"Auto-detected local IP: {args.local_ip}")
 
     # Initialize OnSite middleware
     logger.info("Initializing OnSite middleware...")
@@ -265,7 +269,6 @@ def main():
             field_id=args.field_id,
             net_interface=args.net_interface,
             local_ip=args.local_ip,
-            actor_id=args.actor_id
         )
         logger.info("OnSite middleware initialized successfully")
     except Exception as e:
@@ -276,7 +279,7 @@ def main():
     logger.info("Initializing MetaDrive environment...")
     try:
         # Import simulator interface
-        from metadrive.simulator_interface import SimulatorInterface
+        from easydrive.models.scenes.simulator_interface import SimulatorInterface
 
         # Create model and environment
         model = SimulatorInterface()

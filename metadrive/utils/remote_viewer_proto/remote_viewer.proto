@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package onsite.viewer;
+
+message Action {
+  float steering = 1;         // [-1, 1]
+  float throttle_brake = 2;   // [-1, 1], positive throttle, negative brake
+}
+
+message Image {
+  bytes data = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  uint32 channels = 4;
+  string format = 5;          // "BGR" or "RGB"
+  int64 timestamp_us = 6;
+}
+
+service OnsiteViewerService {
+  rpc SendImage(Image) returns (Action);
+}

@@ -1,0 +1,214 @@
+/* Copyright (c) 2019. vts, ZhejiangLab.
+ * Date: 2021.08.11
+ * Note: 协议中的消息类型
+ */
+syntax = "proto3";
+import "main/proto/fields.proto";
+import "main/proto/enums.proto";
+
+package vts.protocol.main;
+
+option java_multiple_files = true;
+option java_package = "com.zhejianglab.vts.protocol.main";
+
+//------------------------------ 身份账号相关 -------------------------
+// 注册
+message Register {
+	string account = 1;
+	string password = 2;
+}
+
+// 登录
+message Login {
+	string account = 1;
+	string password = 2;
+	RoleContainerType type = 3;
+}
+
+// 登出
+message Logout {
+	string reason = 1;  // 登出原因
+}
+
+// 账号操作结果
+message AccountResult {
+	AccountOPType op = 1;
+	bool result = 2;
+	string version = 3;
+	string reason = 4;
+	bool isController = 5; //是否为控制端，多测试车测试时，由服务端指定一个发起和控制测试，ms6新增
+}
+
+//----------------------------- 测试流程相关 -----------------------------
+// 尝试测试
+message TryTest {
+	string case_file_id = 1; //测试案例编号
+}
+
+// 尝试回放
+message TryReplay {
+	string test_record_id = 1; //测试记录编号
+}
+
+// 尝试结果
+message TryResult {
+	string session_id = 1;
+	bool result = 2;
+	int32 progress = 3;
+	int32 wait_second = 4;  // 单位:秒
+	string reason = 5;
+	oneof archive_id {
+		string case_file_id = 6; //测试案例编号
+		string test_record_id = 7; //测试记录编号
+	}
+}
+
+// Session信息
+message SessionInfo {
+	SimHeader header = 1;
+	string session_id = 2;
+	float percent = 3;
+	int64 session_time = 4;
+	repeated RoleContainerInfo clients = 5;
+}
+
+// 请求Session测试结果信息
+message FetchSessionTestResult {
+	string session_id = 1;
+}
+
+// Session测试结果信息
+message SessionTestResult {
+	SimHeader header = 1;
+	string session_id = 2;
+	string test_record_id = 3;
+	string result_url = 4;
+}
+
+// Session Debug参数设置
+message DebugSession {
+	string session_id = 1;
+	repeated uint32 params = 2;
+}
+
+// Session Debug参数设置结果
+message DebugSessionResult {
+	string session_id = 1;
+	bool result = 2;
+	string reason = 3;
+}
+
+// 客户端准备测试
+message ActorPrepare {
+	string session_id = 1;
+	string actor_id = 2;
+	ArchiveInfo archive_info = 3;
+}
+
+// 客户端准备结果
+message ActorPrepareResult {
+	string session_id = 1;
+	string actor_id = 2;
+	bool result = 3;
+	string reason = 4;
+}
+
+//---------------------------------- 数据文件相关 -------------------------------
+// 获取存档信息
+message QueryArchiveInfo {
+	//ADD 2020-07-10
+	ArchiveType type = 1;  //存档类型
+	//其他可选条件，json格式
+	string condition = 2;
+}
+
+// 存档信息列表
+message ArchiveInfoList {
+	repeated ArchiveInfo archive_info_list = 1;
+}
+
+//---------------------------------- Role相关 ---------------------------------
+// 订阅交通角色数据消息
+message SubRole {
+	string session_id = 1;
+	repeated string role_types = 2;
+	repeated string role_ids = 3;
+	repeated AOIInfo role_AOIs = 4;
+}
+
+// 订阅操作的结果
+message SubRoleResult {
+	bool result = 1;
+	string reason = 2;
+	string session_id = 3;
+}
+
+// 发布交通数据消息
+message PubRole {
+	SimHeader header = 1;
+	string session_id = 2;
+	repeated SingleRole s_roles = 3;
+	repeated CompoundRole c_roles = 4;
+}
+
+// 接管，ms6新增
+message TakeOverRole {
+	string session_id = 1;
+	//希望接管的角色ID
+	string role_id = 2;
+}
+
+// 接管结果，ms6新增
+message TakeOverRoleResult {
+	string session_id = 1;
+	string role_id = 2;
+	//接管结果：true表示角色已同意被接管
+	bool result = 3;
+	string reason = 4;
+}
+
+//---------------------------------- 通用 ---------------------------------------
+// 事件
+message Notify {
+	SimHeader header = 1;
+	string session_id = 2;
+	string role_id = 3;
+	NotifyType type = 4;
+	string s_param = 5;
+	repeated double d_param = 6;
+}
+
+// 发布交通信号灯消息，ms8新增
+message PubTrafficLight {
+	SimHeader header = 1;	//仿真头
+	string session_id = 2;	//会话ID
+	repeated TrafficLightGroup traffic_light_groups = 3;
+}
+
+// 发布局部轨迹规划点，ms9新增
+message PubLocalPlanTrajectory {
+	SimHeader header = 1;	//仿真头
+	string session_id = 2;	//会话ID
+	repeated RoleTrajectories local_trajectories = 3; //局部轨迹
+}
+
+// 发布全局规划路径，ms9新增
+message PubGlobalPlanPath {
+	SimHeader header = 1;	//仿真头
+	string session_id = 2;	//会话ID
+	repeated RoleGlobalPath global_paths = 3;//全局路径
+}
+
+//数据订阅
+message SubData {
+	string session_id = 1;	//会话ID
+	repeated MsgType msg_types  = 2; //订阅的消息类型
+}
+
+//数据订阅结果
+message SubDataResult {
+	string session_id = 1;
+	bool result = 2;
+	string reason = 3;
+}
+
